@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>funa — Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Noto+Sans+JP:wght@300;400&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f8f7f4;
+  --text:     #111111;
+  --muted:    #777777;
+  --faint:    #bbbbbb;
+  --border:   #e0dedd;
+  --serif:    'EB Garamond', Georgia, serif;
+  --sans:     'Noto Sans JP', sans-serif;
+  --serif-jp: 'Noto Serif JP', serif;
+  --max:      720px;
+  --pad:      2rem;
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── LAYOUT ── */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+
+/* ── NAV ── */
+header {
+  padding: 3rem var(--pad) 2rem;
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+}
+
+.site-name {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+nav {
+  display: flex;
+  gap: 2rem;
+}
+
+nav a {
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 1px;
+}
+
+nav a:hover { color: var(--text); }
+nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── HOME ── */
+#page-home {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 5rem var(--pad) 6rem;
+}
+
+.intro-name {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.01em;
+}
+
+.intro-tagline {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 3rem;
+  line-height: 1.9;
+  max-width: 520px;
+}
+
+.intro-tagline em {
+  color: var(--text);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.home-section {
+  margin-bottom: 3.5rem;
+}
+
+.home-section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1.2rem;
+}
+
+.home-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.home-item:last-child { border-bottom: 1px solid var(--border); }
+.home-item:hover { opacity: 0.6; }
+
+.home-item-title {
+  font-family: var(--serif-jp);
+  font-size: 0.92rem;
+  font-weight: 300;
+  color: var(--text);
+}
+
+.home-item-meta {
+  font-size: 0.75rem;
+  color: var(--faint);
+  white-space: nowrap;
+  padding-top: 0.1rem;
+}
+
+/* ── SECTION BASE ── */
+.section {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 4rem var(--pad) 6rem;
+}
+
+.section-header {
+  margin-bottom: 3.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+/* ── ABOUT ── */
+.prose p {
+  font-size: 0.92rem;
+  line-height: 2.1;
+  color: var(--text);
+  margin-bottom: 1.6rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.prose p:last-child { margin-bottom: 0; }
+
+.prose strong {
+  font-weight: 400;
+  border-bottom: 1px solid var(--faint);
+}
+
+.meta-table {
+  margin: 3rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.meta-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1.5rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.meta-row-label {
+  color: var(--faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 0.1rem;
+}
+
+.meta-row-value {
+  color: var(--text);
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  line-height: 1.9;
+}
+
+.reading-section {
+  margin-top: 3.5rem;
+}
+
+.reading-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1.5rem;
+}
+
+.reading-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.reading-item {
+  font-size: 0.83rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.6;
+}
+
+.reading-item:nth-child(odd) { padding-right: 1.5rem; }
+.reading-item:nth-child(even) { padding-left: 1.5rem; border-left: 1px solid var(--border); }
+
+/* ── RESEARCH ── */
+.research-block {
+  margin-bottom: 4rem;
+}
+
+.research-problem {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 2rem;
+  padding-left: 1.2rem;
+  border-left: 2px solid var(--border);
+}
+
+.research-body p {
+  font-size: 0.9rem;
+  line-height: 2.1;
+  color: var(--text);
+  margin-bottom: 1.4rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.8rem;
+}
+
+.keyword {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.7rem;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+}
+
+.awards-section {
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2.5rem;
+}
+
+.awards-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 2rem;
+}
+
+.award-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 2rem;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.award-year {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  color: var(--faint);
+  padding-top: 0.1rem;
+}
+
+.award-name {
+  font-size: 0.88rem;
+  color: var(--text);
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  line-height: 1.7;
+  margin-bottom: 0.2rem;
+}
+
+.award-org {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ── MUSIC ── */
+.music-intro {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.9;
+  margin-bottom: 3rem;
+}
+
+.instrument-list {
+  border-top: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+
+.instrument-item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 2rem;
+  padding: 1.8rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.instrument-name {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+  padding-top: 0.1rem;
+}
+
+.instrument-desc {
+  font-size: 0.87rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 2;
+}
+
+.orchestra-block {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+}
+
+.orch-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 0.8rem;
+}
+
+.orch-name {
+  font-family: var(--serif-jp);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.orch-role {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+
+.orch-desc {
+  font-size: 0.87rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 2;
+  max-width: 540px;
+}
+
+/* ── THOUGHTS ── */
+.thought-list {
+  border-top: 1px solid var(--border);
+}
+
+.thought-item {
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.thought-item:hover { opacity: 0.6; }
+
+.thought-date {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin-bottom: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
+.thought-title {
+  font-family: var(--serif-jp);
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--text);
+  margin-bottom: 0.6rem;
+  line-height: 1.6;
+}
+
+.thought-excerpt {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.9;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.thought-soon {
+  font-size: 0.78rem;
+  color: var(--faint);
+  text-align: center;
+  padding: 4rem 0 2rem;
+  letter-spacing: 0.1em;
+}
+
+/* ── CONTACT ── */
+.contact-intro {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.9;
+  margin-bottom: 3rem;
+  max-width: 480px;
+}
+
+.contact-links {
+  border-top: 1px solid var(--border);
+}
+
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+
+.contact-row:hover { opacity: 0.5; }
+
+.contact-row-label {
+  font-size: 0.83rem;
+  color: var(--text);
+}
+
+.contact-row-arrow {
+  font-family: var(--serif);
+  font-size: 1rem;
+  color: var(--faint);
+}
+
+/* ── FOOTER ── */
+footer {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 2rem var(--pad) 3rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+footer p {
+  font-size: 0.72rem;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  header { flex-direction: column; gap: 1.2rem; }
+  nav { gap: 1.2rem; }
+  .reading-grid { grid-template-columns: 1fr; }
+  .reading-item:nth-child(even) { border-left: none; padding-left: 0; }
+  .instrument-item { grid-template-columns: 1fr; gap: 0.5rem; }
+  .award-row { grid-template-columns: 70px 1fr; gap: 1rem; }
+  .meta-row { grid-template-columns: 1fr; gap: 0.3rem; }
+  footer { flex-direction: column; gap: 0.4rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="site-name" onclick="showPage('home')">funa.</span>
+  <nav>
+    <a onclick="showPage('home')" data-page="home">Index</a>
+    <a onclick="showPage('about')" data-page="about">About</a>
+    <a onclick="showPage('research')" data-page="research">Research</a>
+    <a onclick="showPage('music')" data-page="music">Music</a>
+    <a onclick="showPage('thoughts')" data-page="thoughts">Thoughts</a>
+    <a onclick="showPage('contact')" data-page="contact">Contact</a>
+  </nav>
+</header>
+
+<!-- ── INDEX ── -->
+<div id="page-home" class="page active">
+  <div id="page-home" style="max-width:720px;margin:0 auto;padding:5rem 2rem 6rem;">
+    <p class="intro-name">ふな</p>
+    <p class="intro-tagline">
+      香川県立高松高校 3年生。<em>廃棄物からエネルギーを生む研究</em>と、
+      政策・音楽・思想の交差点に立ちながら、社会の上流から変革することを目指す。
+    </p>
+
+    <div class="home-section">
+      <p class="home-section-label">Research</p>
+      <div class="home-item" onclick="showPage('research')">
+        <span class="home-item-title">廃棄うどんを用いた高効率水素生成プロセスの設計と最適化</span>
+        <span class="home-item-meta">2024–2025</span>
+      </div>
+      <div class="home-item" onclick="showPage('research')">
+        <span class="home-item-title">化学工学会 第91年次大会 優秀学生賞</span>
+        <span class="home-item-meta">2025</span>
+      </div>
+      <div class="home-item" onclick="showPage('research')">
+        <span class="home-item-title">第21回 高校環境化学賞 奨励賞</span>
+        <span class="home-item-meta">2025</span>
+      </div>
+    </div>
+
+    <div class="home-section">
+      <p class="home-section-label">Thoughts</p>
+      <div class="home-item" onclick="showPage('thoughts')">
+        <span class="home-item-title">三島由紀夫を70%の反面教師として読む</span>
+        <span class="home-item-meta">準備中</span>
+      </div>
+      <div class="home-item" onclick="showPage('thoughts')">
+        <span class="home-item-title">廃棄うどんと社会実装の間にある壁</span>
+        <span class="home-item-meta">準備中</span>
+      </div>
+    </div>
+
+    <div class="home-section">
+      <p class="home-section-label">Music</p>
+      <div class="home-item" onclick="showPage('music')">
+        <span class="home-item-title">かがわ・ジュニアフィルハーモニック・オーケストラ — コンサートマスター</span>
+        <span class="home-item-meta">現在</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ABOUT ── -->
+<div id="page-about" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">About</p>
+      <h1 class="section-title">技術と社会を<br>どう接続するか。</h1>
+    </div>
+
+    <div class="prose">
+      <p>
+        香川県立高松高校3年生。東大工学部への推薦入試を目指しながら、
+        廃棄うどんを活用した水素生成研究に取り組む。
+        UTokyoGSC-Nextプログラムにて東大生産技術研究所Aziz研究室（現・東北大学）の指導のもと研究を行い、
+        化学工学会で優秀学生賞を受賞した。
+      </p>
+      <p>
+        高校生徒会長として県教育委員会へ一人一台端末の政策提言を行った際、
+        「無理」の一言で退けられた。その経験から、<strong>良い構想を持つだけでは不十分</strong>で、
+        権力の上流に立つことが変革の前提であると確信した。
+      </p>
+      <p>
+        目指すのは、理系の知見を持つテクノクラート（官僚・政治家）として
+        教育・科学技術政策を上流から動かすこと。
+        ゆくゆくはStanford大学での学びも視野に入れている。
+        現在は三島由紀夫・魯迅・ルソーを読み解きながら、思想の核を鍛え続けている。
+      </p>
+    </div>
+
+    <div class="meta-table">
+      <div class="meta-row">
+        <span class="meta-row-label">所属</span>
+        <span class="meta-row-value">香川県立高松高校 3年</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-row-label">研究プログラム</span>
+        <span class="meta-row-value">UTokyoGSC-Next（東大生産技術研究所）</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-row-label">音楽</span>
+        <span class="meta-row-value">かがわ・ジュニアフィルハーモニック・オーケストラ コンサートマスター</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-row-label">志向</span>
+        <span class="meta-row-value">テクノクラート → 政治家 / Stanford大学 / 孫正義財団</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-row-label">関心領域</span>
+        <span class="meta-row-value">エネルギー政策 / 科学技術行政 / 教育 / 政治哲学</span>
+      </div>
+    </div>
+
+    <div class="reading-section">
+      <p class="reading-label">現在の読書リスト</p>
+      <div class="reading-grid">
+        <div class="reading-item">マルクス『資本論』第1巻</div>
+        <div class="reading-item">ロック『統治二論』</div>
+        <div class="reading-item">ルソー『社会契約論』</div>
+        <div class="reading-item">レーニン『帝国主義論』</div>
+        <div class="reading-item">小川淳也『日本改革原案』</div>
+        <div class="reading-item">『論語』</div>
+        <div class="reading-item">三島由紀夫『文化防衛論』</div>
+        <div class="reading-item">ニーチェ『ツァラトゥストラ』</div>
+        <div class="reading-item">スピノザ『エチカ』</div>
+        <div class="reading-item">『史記』</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESEARCH ── -->
+<div id="page-research" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Research</p>
+      <h1 class="section-title">廃棄物を資源へ。<br>地域から世界のエネルギー問題へ。</h1>
+    </div>
+
+    <div class="research-block">
+      <p class="research-problem">
+        なぜ香川では大量のうどんが廃棄され続けるのか。<br>
+        そして、その廃棄物はエネルギーになれないのか。
+      </p>
+
+      <div class="research-body">
+        <p>
+          香川県では製造・流通過程で大量のうどんが廃棄される。
+          この廃棄うどんに着目し、バイオマスとしての水素生成ポテンシャルを探求した。
+          地域固有の廃棄物問題と、社会全体のエネルギー転換を結びつける研究として設計した。
+        </p>
+        <p>
+          UTokyoGSC-Nextプログラムにおいて東大生産技術研究所Aziz研究室（現・東北大学）の指導のもと、
+          廃棄うどんからの高効率水素生成プロセスを設計・最適化。
+          反応条件・収率・プロセス経済性の観点から体系的な最適化を行った。
+        </p>
+        <p>
+          現在は東大・苷蔗研究室（総合文化研究科、プロセスシステム工学・エネルギー工学）と
+          連携し、研究をさらに深めることを目指している。
+          JSECへの応募を経て、ISEFでの日本代表選出を射程に入れている。
+        </p>
+      </div>
+
+      <div class="keyword-list">
+        <span class="keyword">水素エネルギー</span>
+        <span class="keyword">バイオマス</span>
+        <span class="keyword">プロセス最適化</span>
+        <span class="keyword">化学工学</span>
+        <span class="keyword">廃棄物利用</span>
+        <span class="keyword">カーボンニュートラル</span>
+      </div>
+    </div>
+
+    <div class="awards-section">
+      <p class="awards-label">Awards & Activities</p>
+
+      <div class="award-row">
+        <span class="award-year">2025</span>
+        <div>
+          <p class="award-name">化学工学会 第91年次大会 優秀学生賞</p>
+          <p class="award-org">公益社団法人 化学工学会</p>
+        </div>
+      </div>
+      <div class="award-row">
+        <span class="award-year">2025</span>
+        <div>
+          <p class="award-name">第21回 高校環境化学賞 奨励賞</p>
+          <p class="award-org">高校環境化学賞実行委員会</p>
+        </div>
+      </div>
+      <div class="award-row">
+        <span class="award-year">2024–</span>
+        <div>
+          <p class="award-name">UTokyoGSC-Next プログラム参加</p>
+          <p class="award-org">東京大学生産技術研究所</p>
+        </div>
+      </div>
+      <div class="award-row">
+        <span class="award-year">予定</span>
+        <div>
+          <p class="award-name">JSEC 応募 → ISEF 日本代表選出を目指して</p>
+          <p class="award-org">高校生・高専生科学技術チャレンジ / Intel ISEF</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MUSIC ── -->
+<div id="page-music" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Music</p>
+      <h1 class="section-title">音楽は、構造を<br>身体で理解する行為だ。</h1>
+    </div>
+
+    <p class="music-intro">
+      楽器を演奏することは、論理の体験だと思っている。<br>
+      音楽の構造を理解し、他者と同期し、全体を導く——<br>
+      その経験は、研究や政策立案に通じる何かを持っている。
+    </p>
+
+    <div class="instrument-list">
+      <div class="instrument-item">
+        <span class="instrument-name">Violin</span>
+        <p class="instrument-desc">
+          旋律の最前線を担う。オーケストラでは音楽全体の方向性を示す役割を持ち、
+          論理と感情の橋渡しを体感する楽器。主旋律を引っ張りながら、
+          同時に全体の中の自分を把握し続ける必要がある。
+        </p>
+      </div>
+      <div class="instrument-item">
+        <span class="instrument-name">Cello</span>
+        <p class="instrument-desc">
+          低音の支柱として和声を支える。ヴァイオリンとは異なる視座から音楽を俯瞰し、
+          構造の土台を担う感覚は、政策における「制度設計」に近い。
+          表に出ないが、なければ全体が崩れる。
+        </p>
+      </div>
+    </div>
+
+    <div class="orchestra-block">
+      <p class="orch-label">Orchestra</p>
+      <p class="orch-name">かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）</p>
+      <p class="orch-role">コンサートマスター</p>
+      <p class="orch-desc">
+        指揮者と奏者の間に立ち、音楽的解釈を伝達しオーケストラをまとめる役割。
+        技術と信頼の両立、場の空気を読む力、集団の中でのリーダーシップ——
+        これらは研究室でも、将来の行政組織でも求められるものと重なる。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ── THOUGHTS ── -->
+<div id="page-thoughts" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Thoughts</p>
+      <h1 class="section-title">思考の痕跡を、<br>言葉として残す。</h1>
+    </div>
+
+    <div class="thought-list">
+      <div class="thought-item">
+        <p class="thought-date">準備中</p>
+        <p class="thought-title">三島由紀夫を70%の反面教師として読む</p>
+        <p class="thought-excerpt">
+          イデオロギーの純化が政治的現実から人間を切り離すとき、何が失われるのか。
+          三島の美学と政治的限界、そして「演じること」という選択について。
+        </p>
+      </div>
+      <div class="thought-item">
+        <p class="thought-date">準備中</p>
+        <p class="thought-title">魯迅的転向と「政治という舞台」</p>
+        <p class="thought-excerpt">
+          文学から政治へ。魯迅の転向を現代に読み替えるとき、
+          自己表現と社会変革の関係はどう変わるか。
+        </p>
+      </div>
+      <div class="thought-item">
+        <p class="thought-date">準備中</p>
+        <p class="thought-title">廃棄うどんと社会実装の間にある壁</p>
+        <p class="thought-excerpt">
+          優れた研究が社会に届かない理由。予算・制度・意思決定構造の問題を、
+          一高校生研究者の視点から考える。
+        </p>
+      </div>
+    </div>
+
+    <p class="thought-soon">順次公開予定</p>
+  </div>
+</div>
+
+<!-- ── CONTACT ── -->
+<div id="page-contact" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Contact</p>
+      <h1 class="section-title">対話を、<br>歓迎します。</h1>
+    </div>
+
+    <p class="contact-intro">
+      研究・政策・音楽・思想、どんなテーマでも構いません。<br>
+      特に同世代の研究者・思想家との対話を求めています。
+    </p>
+
+    <div class="contact-links">
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">GitHub</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">X / Twitter</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">Instagram</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">Email</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>funa.</p>
+  <p>© 2025</p>
+</footer>
+
+<script>
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => {
+      a.classList.toggle('active', a.dataset.page === name);
+    });
+    const target = document.getElementById('page-' + name);
+    if (target) {
+      target.classList.add('active');
+      window.scrollTo({ top: 0 });
+    }
+  }
+
+  showPage('home');
+</script>
+</body>
+</html>
