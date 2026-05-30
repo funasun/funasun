@@ -901,41 +901,6 @@ footer p {
   </div>
 </div>
 
-
-<!-- ── CONTACT ── -->
-<div id="page-contact" class="page">
-  <div class="section">
-    <div class="section-header">
-      <p class="section-label">Contact</p>
-      <h1 class="section-title">対話を、<br>歓迎します。</h1>
-    </div>
-
-    <p class="contact-intro">
-      研究・政策・音楽・思想、どんなテーマでも構いません。<br>
-      
-    </p>
-
-    <div class="contact-links">
-      <a class="contact-row" href="#" onclick="return false;">
-        <span class="contact-row-label">GitHub</span>
-        <span class="contact-row-arrow">↗</span>
-      </a>
-      <a class="contact-row" href="#" onclick="return false;">
-        <span class="contact-row-label">X / Twitter</span>
-        <span class="contact-row-arrow">↗</span>
-      </a>
-      <a class="contact-row" href="#" onclick="return false;">
-        <span class="contact-row-label">Instagram</span>
-        <span class="contact-row-arrow">↗</span>
-      </a>
-      <a class="contact-row" href="#" onclick="return false;">
-        <span class="contact-row-label">Email</span>
-        <span class="contact-row-arrow">tsutsumufunakoshi@gmail.com</span>
-      </a>
-    </div>
-  </div>
-</div>
-
 <footer>
   <p>funa.</p>
   <p>© 2025</p>
@@ -953,7 +918,19 @@ footer p {
       window.scrollTo({ top: 0 });
     }
   }
-
+ 
+  function showArticle(slug) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => {
+      a.classList.toggle('active', a.dataset.page === 'thoughts');
+    });
+    const target = document.getElementById('page-article-' + slug);
+    if (target) {
+      target.classList.add('active');
+      window.scrollTo({ top: 0 });
+    }
+  }
+ 
   showPage('home');
 </script>
 </body>
