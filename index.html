@@ -767,9 +767,9 @@ footer p {
       <p class="section-label">Thoughts</p>
       <h1 class="section-title">思考の痕跡を、<br>言葉として残す。</h1>
     </div>
-
+ 
     <div class="thought-list">
-      <div class="thought-item">
+      <div class="thought-item" onclick="showArticle('mishima')">
         <p class="thought-date">準備中</p>
         <p class="thought-title">三島由紀夫を70%の反面教師として読む</p>
         <p class="thought-excerpt">
@@ -777,7 +777,7 @@ footer p {
           三島の美学と政治的限界、そして「演じること」という選択について。
         </p>
       </div>
-      <div class="thought-item">
+      <div class="thought-item" onclick="showArticle('rojin')">
         <p class="thought-date">準備中</p>
         <p class="thought-title">魯迅的転向と「政治という舞台」</p>
         <p class="thought-excerpt">
@@ -785,7 +785,7 @@ footer p {
           自己表現と社会変革の関係はどう変わるか。
         </p>
       </div>
-      <div class="thought-item">
+      <div class="thought-item" onclick="showArticle('udon')">
         <p class="thought-date">準備中</p>
         <p class="thought-title">廃棄うどんと社会実装の間にある壁</p>
         <p class="thought-excerpt">
@@ -794,10 +794,111 @@ footer p {
         </p>
       </div>
     </div>
-
+ 
     <p class="thought-soon">順次公開予定</p>
   </div>
 </div>
+ 
+<!-- ── CONTACT ── -->
+<div id="page-contact" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Contact</p>
+      <h1 class="section-title">対話を、<br>歓迎します。</h1>
+    </div>
+ 
+    <p class="contact-intro">
+      研究・政策・音楽・思想、どんなテーマでも構いません。<br>
+      特に同世代の研究者・思想家との対話を求めています。
+    </p>
+ 
+    <div class="contact-links">
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">GitHub</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">X / Twitter</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">Instagram</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+      <a class="contact-row" href="#" onclick="return false;">
+        <span class="contact-row-label">Email</span>
+        <span class="contact-row-arrow">↗</span>
+      </a>
+    </div>
+  </div>
+</div>
+ 
+<!-- ── ARTICLE: 三島 ── -->
+<div id="page-article-mishima" class="page">
+  <div class="section">
+    <button class="article-back" onclick="showPage('thoughts')">← Thoughts</button>
+    <p class="article-date">準備中</p>
+    <h1 class="article-title">三島由紀夫を70%の反面教師として読む</h1>
+    <div class="article-body">
+      <p>
+        三島由紀夫を読むとき、私はつねに二重の視線を持つことを意識する。
+        一方では彼の文章の圧倒的な美しさと、日本語の可能性を極限まで押し広げる力に純粋に魅了される。
+        他方では、その思想の帰結——自衛隊への決起、そして割腹——に、深い違和感と批判的な距離感を覚える。
+      </p>
+      <p>
+        私の三島評価は「70%が反面教師、30%が共鳴」だ。
+        この比率は恣意的ではない。彼の審美的・文化的直観の鋭さは本物だが、
+        それをイデオロギーとして純化し、政治的現実から切り離した瞬間に、三島は致命的な誤りを犯した。
+      </p>
+      <p class="article-wip">この記事は執筆中です。</p>
+    </div>
+  </div>
+</div>
+ 
+<!-- ── ARTICLE: 魯迅 ── -->
+<div id="page-article-rojin" class="page">
+  <div class="section">
+    <button class="article-back" onclick="showPage('thoughts')">← Thoughts</button>
+    <p class="article-date">準備中</p>
+    <h1 class="article-title">魯迅的転向と「政治という舞台」</h1>
+    <div class="article-body">
+      <p>
+        魯迅は医学を捨てた。患者の命を救うより、精神を変えることの方が根本的だと悟ったからだ。
+        この転向——実践的救済から思想的変革への移行——は、私が自分の進路を考えるときに
+        繰り返し立ち返る原型的な物語だ。
+      </p>
+      <p>
+        しかし私が魯迅から学ぶのは、転向そのものではなく、転向の論理だ。
+        「何が本当の問題か」を問い直し、より根本的な介入点を選び取る姿勢。
+        政治という舞台を選ぶのも、同じ論理によってだと思っている。
+      </p>
+      <p class="article-wip">この記事は執筆中です。</p>
+    </div>
+  </div>
+</div>
+ 
+<!-- ── ARTICLE: うどん ── -->
+<div id="page-article-udon" class="page">
+  <div class="section">
+    <button class="article-back" onclick="showPage('thoughts')">← Thoughts</button>
+    <p class="article-date">準備中</p>
+    <h1 class="article-title">廃棄うどんと社会実装の間にある壁</h1>
+    <div class="article-body">
+      <p>
+        廃棄うどんから水素を生成できる——この事実を証明することは、研究としては達成できた。
+        化学工学会で優秀学生賞もいただいた。しかし、その技術が実際に香川の廃棄物処理に
+        組み込まれる日が来るかどうかを考えると、私は楽観的になれない。
+      </p>
+      <p>
+        問題は技術ではなく、制度と意思決定の構造にある。
+        優れた研究が社会に届かない理由を、予算・規制・行政の縦割り・
+        民間インセンティブの欠如という四つの壁から分析する。
+      </p>
+      <p class="article-wip">この記事は執筆中です。</p>
+    </div>
+  </div>
+</div>
+
 
 <!-- ── CONTACT ── -->
 <div id="page-contact" class="page">
