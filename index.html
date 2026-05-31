@@ -3,125 +3,588 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portfolio</title>
+<title>funa — Portfolio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Noto+Sans+JP:wght@300;400&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 :root {
-  --bg:#f8f7f4; --text:#111; --muted:#777; --faint:#bbb; --border:#e0dedd;
-  --serif:'EB Garamond',Georgia,serif;
-  --sans:'Noto Sans JP',sans-serif;
-  --serif-jp:'Noto Serif JP',serif;
-  --max:720px; --pad:2rem;
+  --bg:       #f8f7f4;
+  --text:     #111111;
+  --muted:    #777777;
+  --faint:    #bbbbbb;
+  --border:   #e0dedd;
+  --serif:    'EB Garamond', Georgia, serif;
+  --sans:     'Noto Sans JP', sans-serif;
+  --serif-jp: 'Noto Serif JP', serif;
+  --max:      720px;
+  --pad:      2rem;
 }
-html { font-size:16px; }
-body { background:var(--bg); color:var(--text); font-family:var(--sans); font-weight:300; line-height:1.8; -webkit-font-smoothing:antialiased; }
-a { color:inherit; text-decoration:none; }
 
-header { padding:3rem var(--pad) 2rem; max-width:var(--max); margin:0 auto; display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--border); }
-.site-name { font-family:var(--serif); font-size:1.05rem; font-weight:400; letter-spacing:.02em; cursor:pointer; }
-nav { display:flex; gap:2rem; }
-nav a { font-size:.78rem; color:var(--muted); letter-spacing:.04em; cursor:pointer; transition:color .2s; border-bottom:1px solid transparent; padding-bottom:1px; }
-nav a:hover { color:var(--text); }
-nav a.active { color:var(--text); border-bottom-color:var(--text); }
+html { font-size: 16px; }
 
-.page { display:none; }
-.page.active { display:block; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
 
-/* HOME */
-#page-home { max-width:var(--max); margin:0 auto; padding:5rem var(--pad) 6rem; }
-.intro-name { font-family:var(--serif); font-size:clamp(2rem,5vw,2.8rem); font-weight:400; line-height:1.2; margin-bottom:1.5rem; }
-.intro-tagline { font-size:.9rem; color:var(--muted); margin-bottom:3rem; line-height:1.9; max-width:520px; }
-.home-section { margin-bottom:3.5rem; }
-.home-section-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:1.2rem; }
-.home-item { display:grid; grid-template-columns:1fr auto; gap:1rem; padding:.9rem 0; border-top:1px solid var(--border); cursor:pointer; transition:opacity .2s; }
-.home-item:last-child { border-bottom:1px solid var(--border); }
-.home-item:hover { opacity:.6; }
-.home-item-title { font-family:var(--serif-jp); font-size:.92rem; font-weight:300; }
-.home-item-meta { font-size:.75rem; color:var(--faint); white-space:nowrap; padding-top:.1rem; }
+a { color: inherit; text-decoration: none; }
 
-/* SECTION */
-.section { max-width:var(--max); margin:0 auto; padding:4rem var(--pad) 6rem; }
-.section-header { margin-bottom:3.5rem; padding-bottom:1.5rem; border-bottom:1px solid var(--border); }
-.section-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:1rem; }
-.section-title { font-family:var(--serif); font-size:clamp(1.6rem,3.5vw,2.2rem); font-weight:400; line-height:1.3; }
+/* ── LAYOUT ── */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
 
-/* ABOUT */
-.prose p { font-family:var(--serif-jp); font-size:.92rem; font-weight:300; line-height:2.1; margin-bottom:1.6rem; }
-.prose p strong { font-weight:400; border-bottom:1px solid var(--faint); }
-.meta-table { margin:3rem 0; border-top:1px solid var(--border); }
-.meta-row { display:grid; grid-template-columns:140px 1fr; gap:1.5rem; padding:1.1rem 0; border-bottom:1px solid var(--border); font-size:.85rem; }
-.meta-row-label { color:var(--faint); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
-.meta-row-value { font-family:var(--serif-jp); font-weight:300; line-height:1.9; }
-.reading-section { margin-top:3.5rem; }
-.reading-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:1.5rem; }
-.reading-grid { display:grid; grid-template-columns:1fr 1fr; }
-.reading-item { font-family:var(--serif-jp); font-size:.83rem; font-weight:300; color:var(--muted); padding:.65rem 0; border-bottom:1px solid var(--border); line-height:1.6; }
-.reading-item:nth-child(odd) { padding-right:1.5rem; }
-.reading-item:nth-child(even) { padding-left:1.5rem; border-left:1px solid var(--border); }
+/* ── NAV ── */
+header {
+  padding: 3rem var(--pad) 2rem;
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+}
 
-/* RESEARCH */
-.research-problem { font-family:var(--serif); font-size:1.1rem; font-style:italic; color:var(--muted); line-height:1.8; margin-bottom:2rem; padding-left:1.2rem; border-left:2px solid var(--border); white-space:pre-line; }
-.research-body p { font-family:var(--serif-jp); font-size:.9rem; font-weight:300; line-height:2.1; margin-bottom:1.4rem; }
-.keyword-list { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.8rem; }
-.keyword { font-size:.72rem; color:var(--muted); border:1px solid var(--border); padding:.25rem .7rem; border-radius:2px; }
-.awards-section { margin-top:4rem; border-top:1px solid var(--border); padding-top:2.5rem; }
-.awards-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:2rem; }
-.award-row { display:grid; grid-template-columns:90px 1fr; gap:2rem; padding:1.2rem 0; border-bottom:1px solid var(--border); }
-.award-year { font-family:var(--serif); font-size:.85rem; color:var(--faint); }
-.award-name { font-family:var(--serif-jp); font-size:.88rem; font-weight:300; line-height:1.7; margin-bottom:.2rem; }
-.award-org { font-size:.75rem; color:var(--muted); }
+.site-name {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
 
-/* MUSIC */
-.music-intro { font-family:var(--serif); font-size:1.05rem; font-style:italic; color:var(--muted); line-height:1.9; margin-bottom:3rem; }
-.instrument-list { border-top:1px solid var(--border); margin-bottom:3rem; }
-.instrument-item { display:grid; grid-template-columns:140px 1fr; gap:2rem; padding:1.8rem 0; border-bottom:1px solid var(--border); }
-.instrument-name { font-family:var(--serif); font-size:1rem; font-weight:400; }
-.instrument-desc { font-family:var(--serif-jp); font-size:.87rem; font-weight:300; color:var(--muted); line-height:2; }
-.orchestra-block { padding:2.5rem 0; border-top:1px solid var(--border); }
-.orch-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:.8rem; }
-.orch-name { font-family:var(--serif-jp); font-size:1rem; font-weight:400; margin-bottom:.3rem; }
-.orch-role { font-size:.78rem; color:var(--muted); margin-bottom:1.2rem; }
-.orch-desc { font-family:var(--serif-jp); font-size:.87rem; font-weight:300; color:var(--muted); line-height:2; max-width:540px; }
+nav {
+  display: flex;
+  gap: 2rem;
+}
 
-/* THOUGHTS */
-.thought-list { border-top:1px solid var(--border); }
-.thought-item { padding:2rem 0; border-bottom:1px solid var(--border); cursor:pointer; transition:opacity .2s; }
-.thought-item:hover { opacity:.6; }
-.thought-date { font-size:.72rem; color:var(--faint); margin-bottom:.6rem; }
-.thought-title { font-family:var(--serif-jp); font-size:1rem; font-weight:300; margin-bottom:.6rem; line-height:1.6; }
-.thought-excerpt { font-family:var(--serif-jp); font-size:.82rem; font-weight:300; color:var(--muted); line-height:1.9; }
-.thought-soon { font-size:.78rem; color:var(--faint); text-align:center; padding:4rem 0 2rem; letter-spacing:.1em; }
+nav a {
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 1px;
+}
 
-/* ARTICLE */
-.article-back { display:inline-flex; align-items:center; gap:.5rem; font-size:.75rem; color:var(--muted); cursor:pointer; margin-bottom:3rem; transition:color .2s; border:none; background:none; padding:0; letter-spacing:.06em; }
-.article-back:hover { color:var(--text); }
-.article-date { font-size:.72rem; color:var(--faint); margin-bottom:1rem; }
-.article-title { font-family:var(--serif-jp); font-size:clamp(1.4rem,3vw,1.9rem); font-weight:300; line-height:1.5; margin-bottom:2.5rem; padding-bottom:2rem; border-bottom:1px solid var(--border); }
-.article-body p { font-family:var(--serif-jp); font-size:.93rem; font-weight:300; line-height:2.3; margin-bottom:2rem; }
-.article-wip { font-size:.78rem; color:var(--faint); text-align:center; padding:4rem 0; border-top:1px solid var(--border); margin-top:3rem; letter-spacing:.1em; }
+nav a:hover { color: var(--text); }
+nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
 
-/* CONTACT */
-.contact-intro { font-family:var(--serif); font-size:1.1rem; font-style:italic; color:var(--muted); line-height:1.9; margin-bottom:3rem; max-width:480px; }
-.contact-links { border-top:1px solid var(--border); }
-.contact-row { display:flex; justify-content:space-between; align-items:center; padding:1.1rem 0; border-bottom:1px solid var(--border); cursor:pointer; transition:opacity .2s; text-decoration:none; color:inherit; }
-.contact-row:hover { opacity:.5; }
-.contact-row-label { font-size:.83rem; }
-.contact-row-arrow { font-family:var(--serif); font-size:1rem; color:var(--faint); }
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
 
-footer { max-width:var(--max); margin:0 auto; padding:2rem var(--pad) 3rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; }
-footer p { font-size:.72rem; color:var(--faint); letter-spacing:.04em; }
+/* ── HOME ── */
+#page-home {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 5rem var(--pad) 6rem;
+}
 
-@media (max-width:600px) {
-  header { flex-direction:column; gap:1.2rem; }
-  nav { gap:1.2rem; flex-wrap:wrap; }
-  .reading-grid { grid-template-columns:1fr; }
-  .reading-item:nth-child(even) { border-left:none; padding-left:0; }
-  .instrument-item { grid-template-columns:1fr; gap:.5rem; }
-  .award-row { grid-template-columns:70px 1fr; gap:1rem; }
-  .meta-row { grid-template-columns:1fr; gap:.3rem; }
-  footer { flex-direction:column; gap:.4rem; }
+.intro-name {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.01em;
+}
+
+.intro-tagline {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 3rem;
+  line-height: 1.9;
+  max-width: 520px;
+}
+
+.intro-tagline em {
+  color: var(--text);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.home-section {
+  margin-bottom: 3.5rem;
+}
+
+.home-section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1.2rem;
+}
+
+.home-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.home-item:last-child { border-bottom: 1px solid var(--border); }
+.home-item:hover { opacity: 0.6; }
+
+.home-item-title {
+  font-family: var(--serif-jp);
+  font-size: 0.92rem;
+  font-weight: 300;
+  color: var(--text);
+}
+
+.home-item-meta {
+  font-size: 0.75rem;
+  color: var(--faint);
+  white-space: nowrap;
+  padding-top: 0.1rem;
+}
+
+/* ── SECTION BASE ── */
+.section {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 4rem var(--pad) 6rem;
+}
+
+.section-header {
+  margin-bottom: 3.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+/* ── ABOUT ── */
+.prose p {
+  font-size: 0.92rem;
+  line-height: 2.1;
+  color: var(--text);
+  margin-bottom: 1.6rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.prose p:last-child { margin-bottom: 0; }
+
+.prose strong {
+  font-weight: 400;
+  border-bottom: 1px solid var(--faint);
+}
+
+.meta-table {
+  margin: 3rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.meta-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1.5rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.meta-row-label {
+  color: var(--faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 0.1rem;
+}
+
+.meta-row-value {
+  color: var(--text);
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  line-height: 1.9;
+}
+
+.reading-section {
+  margin-top: 3.5rem;
+}
+
+.reading-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1.5rem;
+}
+
+.reading-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.reading-item {
+  font-size: 0.83rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.6;
+}
+
+.reading-item:nth-child(odd) { padding-right: 1.5rem; }
+.reading-item:nth-child(even) { padding-left: 1.5rem; border-left: 1px solid var(--border); }
+
+/* ── RESEARCH ── */
+.research-block {
+  margin-bottom: 4rem;
+}
+
+.research-problem {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 2rem;
+  padding-left: 1.2rem;
+  border-left: 2px solid var(--border);
+}
+
+.research-body p {
+  font-size: 0.9rem;
+  line-height: 2.1;
+  color: var(--text);
+  margin-bottom: 1.4rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.8rem;
+}
+
+.keyword {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.7rem;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+}
+
+.awards-section {
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2.5rem;
+}
+
+.awards-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 2rem;
+}
+
+.award-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 2rem;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.award-year {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  color: var(--faint);
+  padding-top: 0.1rem;
+}
+
+.award-name {
+  font-size: 0.88rem;
+  color: var(--text);
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  line-height: 1.7;
+  margin-bottom: 0.2rem;
+}
+
+.award-org {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ── MUSIC ── */
+.music-intro {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.9;
+  margin-bottom: 3rem;
+}
+
+.instrument-list {
+  border-top: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+
+.instrument-item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 2rem;
+  padding: 1.8rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.instrument-name {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+  padding-top: 0.1rem;
+}
+
+.instrument-desc {
+  font-size: 0.87rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 2;
+}
+
+.orchestra-block {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+}
+
+.orch-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 0.8rem;
+}
+
+.orch-name {
+  font-family: var(--serif-jp);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+
+.orch-role {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+
+.orch-desc {
+  font-size: 0.87rem;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+  color: var(--muted);
+  line-height: 2;
+  max-width: 540px;
+}
+
+/* ── BLOG ── */
+.blog-list {
+  border-top: 1px solid var(--border);
+}
+
+.blog-item {
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.blog-item:hover { opacity: 0.6; }
+
+.blog-date {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin-bottom: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
+.blog-title {
+  font-family: var(--serif-jp);
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--text);
+  margin-bottom: 0.6rem;
+  line-height: 1.6;
+}
+
+.blog-excerpt {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.9;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
+.thought-soon {
+  font-size: 0.78rem;
+  color: var(--faint);
+  text-align: center;
+  padding: 4rem 0 2rem;
+  letter-spacing: 0.1em;
+}
+
+/* ── ARTICLE ── */
+.article-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  margin-bottom: 3rem;
+  transition: color 0.2s;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.article-back:hover { color: var(--text); }
+
+.article-date {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin-bottom: 1rem;
+  letter-spacing: 0.06em;
+}
+
+.article-title {
+  font-family: var(--serif-jp);
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: 300;
+  line-height: 1.5;
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.article-body p {
+  font-family: var(--serif-jp);
+  font-size: 0.93rem;
+  font-weight: 300;
+  line-height: 2.3;
+  margin-bottom: 2rem;
+}
+
+.article-wip {
+  font-size: 0.78rem;
+  color: var(--faint);
+  text-align: center;
+  padding: 4rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+  letter-spacing: 0.1em;
+}
+
+/* ── CONTACT ── */
+.contact-intro {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.9;
+  margin-bottom: 3rem;
+  max-width: 480px;
+}
+
+.contact-links {
+  border-top: 1px solid var(--border);
+}
+
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  text-decoration: none;
+}
+
+.contact-row:hover { opacity: 0.5; }
+
+.contact-row-label {
+  font-size: 0.83rem;
+  color: var(--text);
+}
+
+.contact-row-arrow {
+  font-family: var(--serif);
+  font-size: 1rem;
+  color: var(--faint);
+}
+
+/* ── FOOTER ── */
+footer {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 2rem var(--pad) 3rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+footer p {
+  font-size: 0.72rem;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  header { flex-direction: column; gap: 1.2rem; }
+  nav { gap: 1.2rem; }
+  .reading-grid { grid-template-columns: 1fr; }
+  .reading-item:nth-child(even) { border-left: none; padding-left: 0; }
+  .instrument-item { grid-template-columns: 1fr; gap: 0.5rem; }
+  .award-row { grid-template-columns: 70px 1fr; gap: 1rem; }
+  .meta-row { grid-template-columns: 1fr; gap: 0.3rem; }
+  footer { flex-direction: column; gap: 0.4rem; }
 }
 </style>
 </head>
@@ -129,28 +592,26 @@ footer p { font-size:.72rem; color:var(--faint); letter-spacing:.04em; }
 
 <header>
   <span class="site-name" id="site-name" onclick="showPage('home')"></span>
-  <nav id="main-nav"></nav>
+  <nav id="main-nav">
+    <a onclick="showPage('home')"     data-page="home">Home</a>
+    <a onclick="showPage('about')"    data-page="about">About</a>
+    <a onclick="showPage('research')" data-page="research">Research</a>
+    <a onclick="showPage('music')"    data-page="music">Music</a>
+    <a onclick="showPage('blog')"     data-page="blog">Blog</a>
+    <a onclick="showPage('contact')"  data-page="contact">Contact</a>
+  </nav>
 </header>
 
+<!-- ── HOME ── -->
 <div id="page-home" class="page active">
-  <div style="max-width:var(--max);margin:0 auto;padding:5rem 2rem 6rem;">
+  <div style="max-width:720px;margin:0 auto;padding:5rem 2rem 6rem;">
     <p class="intro-name" id="home-name"></p>
     <p class="intro-tagline" id="home-tagline"></p>
-    <div class="home-section">
-      <p class="home-section-label">Research</p>
-      <div id="home-research"></div>
-    </div>
-    <div class="home-section">
-      <p class="home-section-label">Thoughts</p>
-      <div id="home-thoughts"></div>
-    </div>
-    <div class="home-section">
-      <p class="home-section-label">Music</p>
-      <div id="home-music"></div>
-    </div>
+    <div id="home-sections"></div>
   </div>
 </div>
 
+<!-- ── ABOUT ── -->
 <div id="page-about" class="page">
   <div class="section">
     <div class="section-header">
@@ -159,29 +620,45 @@ footer p { font-size:.72rem; color:var(--faint); letter-spacing:.04em; }
     </div>
     <div class="prose" id="about-prose"></div>
     <div class="meta-table" id="about-meta"></div>
-    <div class="reading-section">
-      <p class="reading-label">現在の読書リスト</p>
-      <div class="reading-grid" id="about-books"></div>
+    <div class="awards-section">
+      <p class="awards-label">Awards &amp; Activities ( All )</p>
+      <div id="about-awards"></div>
     </div>
   </div>
 </div>
 
+<!-- ── RESEARCH ── -->
 <div id="page-research" class="page">
   <div class="section">
     <div class="section-header">
       <p class="section-label">Research</p>
       <h1 class="section-title" id="research-heading"></h1>
     </div>
-    <p class="research-problem" id="research-problem"></p>
-    <div class="research-body" id="research-body"></div>
-    <div class="keyword-list" id="research-keywords"></div>
+    <div class="research-block">
+      <p class="research-problem" id="research-problem"></p>
+      <div class="research-body" id="research-body"></div>
+      <div class="keyword-list" id="research-keywords"></div>
+    </div>
     <div class="awards-section">
-      <p class="awards-label">Awards & Activities</p>
-      <div id="awards-list"></div>
+      <p class="awards-label" id="research-awards-label"></p>
+      <div id="research-awards"></div>
     </div>
   </div>
 </div>
 
+<!-- ── BLOG ── -->
+<div id="page-blog" class="page">
+  <div class="section">
+    <div class="section-header">
+      <p class="section-label">Blog</p>
+      <h1 class="section-title" id="blog-heading"></h1>
+    </div>
+    <div class="blog-list" id="blog-list"></div>
+    <p class="thought-soon">順次公開予定</p>
+  </div>
+</div>
+
+<!-- ── MUSIC ── -->
 <div id="page-music" class="page">
   <div class="section">
     <div class="section-header">
@@ -194,27 +671,7 @@ footer p { font-size:.72rem; color:var(--faint); letter-spacing:.04em; }
   </div>
 </div>
 
-<div id="page-thoughts" class="page">
-  <div class="section">
-    <div class="section-header">
-      <p class="section-label">Thoughts</p>
-      <h1 class="section-title" id="thoughts-heading"></h1>
-    </div>
-    <div class="thought-list" id="thought-list"></div>
-    <p class="thought-soon">順次公開予定</p>
-  </div>
-</div>
-
-<div id="page-article" class="page">
-  <div class="section">
-    <button class="article-back" onclick="showPage('thoughts')">← Thoughts</button>
-    <p class="article-date" id="article-date"></p>
-    <h1 class="article-title" id="article-title"></h1>
-    <div class="article-body" id="article-body"></div>
-    <p class="article-wip">この記事は執筆中です。</p>
-  </div>
-</div>
-
+<!-- ── CONTACT ── -->
 <div id="page-contact" class="page">
   <div class="section">
     <div class="section-header">
@@ -226,135 +683,149 @@ footer p { font-size:.72rem; color:var(--faint); letter-spacing:.04em; }
   </div>
 </div>
 
+<!-- ── ARTICLE ── -->
+<div id="page-article" class="page">
+  <div class="section">
+    <button class="article-back" onclick="showPage('blog')">← blog</button>
+    <p class="article-date" id="article-date"></p>
+    <h1 class="article-title" id="article-title"></h1>
+    <div class="article-body" id="article-body"></div>
+    <p class="article-wip">この記事は執筆中です。</p>
+  </div>
+</div>
+
 <footer>
   <p id="footer-name"></p>
-  <p>© 2025</p>
+  <p id="footer-year"></p>
 </footer>
 
 <script>
-const PAGES = ['home','about','research','music','thoughts','contact'];
-const NAV_LABELS = { home:'Index', about:'About', research:'Research', music:'Music', thoughts:'Thoughts', contact:'Contact' };
-
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.page === name));
-  const t = document.getElementById('page-' + name);
-  if (t) { t.classList.add('active'); window.scrollTo({ top:0 }); }
+  document.querySelectorAll('nav a').forEach(a => {
+    a.classList.toggle('active', a.dataset.page === name);
+  });
+  const target = document.getElementById('page-' + name);
+  if (target) { target.classList.add('active'); window.scrollTo({ top: 0 }); }
 }
 
-function showArticle(slug, data) {
-  const art = data.thoughts.articles.find(a => a.slug === slug);
+function showArticle(slug) {
+  const art = window._siteData.blog.articles.find(a => a.slug === slug);
   if (!art) return;
-  document.getElementById('article-date').textContent = art.date;
+  document.getElementById('article-date').textContent  = art.date;
   document.getElementById('article-title').textContent = art.title;
-  document.getElementById('article-body').innerHTML = art.body.map(p => `<p>${p}</p>`).join('');
+  document.getElementById('article-body').innerHTML    = art.body
+    ? art.body.split('\n').map(p => `<p>${p}</p>`).join('')
+    : '';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.page === 'thoughts'));
+  document.querySelectorAll('nav a').forEach(a => {
+    a.classList.toggle('active', a.dataset.page === 'blog');
+  });
   document.getElementById('page-article').classList.add('active');
-  window.scrollTo({ top:0 });
+  window.scrollTo({ top: 0 });
 }
 
-function render(data) {
-  // Nav & header
-  document.getElementById('site-name').textContent = data.site.name;
-  document.getElementById('footer-name').textContent = data.site.name + '.';
-  document.title = data.site.name + ' — Portfolio';
-  document.getElementById('main-nav').innerHTML = PAGES.map(p =>
-    `<a onclick="showPage('${p}')" data-page="${p}">${NAV_LABELS[p]}</a>`
-  ).join('');
+function render(d) {
+  // Site
+  document.title = d.site.title;
+  document.getElementById('site-name').textContent  = d.site.name;
+  document.getElementById('footer-name').textContent = d.site.name;
+  document.getElementById('footer-year').textContent = d.site.footerYear;
 
   // Home
-  document.getElementById('home-name').textContent = data.site.displayName;
-  document.getElementById('home-tagline').textContent = data.site.tagline;
-  document.getElementById('home-research').innerHTML = data.research.awards.slice(0,3).map(a =>
-    `<div class="home-item" onclick="showPage('research')">
-      <span class="home-item-title">${a.name}</span>
-      <span class="home-item-meta">${a.year}</span>
+  document.getElementById('home-name').textContent    = d.home.name;
+  document.getElementById('home-tagline').textContent = d.home.tagline;
+  document.getElementById('home-sections').innerHTML  = d.home.sections.map(s =>
+    `<div class="home-section">
+      <p class="home-section-label">${s.label}</p>
+      ${s.items.map(i =>
+        `<div class="home-item" onclick="showPage('${i.page}')">
+          <span class="home-item-title">${i.title}</span>
+          <span class="home-item-meta">${i.meta}</span>
+        </div>`
+      ).join('')}
     </div>`
   ).join('');
-  document.getElementById('home-thoughts').innerHTML = data.thoughts.articles.slice(0,2).map(a =>
-    `<div class="home-item" onclick="showArticle('${a.slug}', siteData)">
-      <span class="home-item-title">${a.title}</span>
-      <span class="home-item-meta">${a.date}</span>
-    </div>`
-  ).join('');
-  document.getElementById('home-music').innerHTML =
-    `<div class="home-item" onclick="showPage('music')">
-      <span class="home-item-title">${data.music.orchestra.name} — ${data.music.orchestra.role}</span>
-      <span class="home-item-meta">現在</span>
-    </div>`;
 
   // About
-  document.getElementById('about-heading').innerHTML = data.about.heading.replace('\n','<br>');
-  document.getElementById('about-prose').innerHTML = data.about.paragraphs.map(p => `<p>${p}</p>`).join('');
-  document.getElementById('about-meta').innerHTML = data.about.meta.map(m =>
-    `<div class="meta-row"><span class="meta-row-label">${m.label}</span><span class="meta-row-value">${m.value}</span></div>`
+  document.getElementById('about-heading').textContent = d.about.heading;
+  document.getElementById('about-prose').innerHTML     = `<p>${d.about.prose}</p>`;
+  document.getElementById('about-meta').innerHTML      = d.about.meta.map(m =>
+    `<div class="meta-row">
+      <span class="meta-row-label">${m.label}</span>
+      <span class="meta-row-value">${m.value}</span>
+    </div>`
   ).join('');
-  document.getElementById('about-books').innerHTML = data.about.books.map(b =>
-    `<div class="reading-item">${b}</div>`
-  ).join('');
-
-  // Research
-  document.getElementById('research-heading').innerHTML = data.research.heading.replace('\n','<br>');
-  document.getElementById('research-problem').textContent = data.research.problem;
-  document.getElementById('research-body').innerHTML = data.research.paragraphs.map(p => `<p>${p}</p>`).join('');
-  document.getElementById('research-keywords').innerHTML = data.research.keywords.map(k =>
-    `<span class="keyword">${k}</span>`
-  ).join('');
-  document.getElementById('awards-list').innerHTML = data.research.awards.map(a =>
+  document.getElementById('about-awards').innerHTML = d.about.awards.map(a =>
     `<div class="award-row">
       <span class="award-year">${a.year}</span>
       <div><p class="award-name">${a.name}</p><p class="award-org">${a.org}</p></div>
     </div>`
   ).join('');
 
+  // Research
+  document.getElementById('research-heading').innerHTML    = d.research.heading;
+  document.getElementById('research-problem').innerHTML    = d.research.problem;
+  document.getElementById('research-body').innerHTML       = d.research.paragraphs.map(p => `<p>${p}</p>`).join('');
+  document.getElementById('research-keywords').innerHTML   = d.research.keywords.map(k => `<span class="keyword">${k}</span>`).join('');
+  document.getElementById('research-awards-label').textContent = d.research.awardsLabel;
+  document.getElementById('research-awards').innerHTML     = d.research.awards.map(a =>
+    `<div class="award-row">
+      <span class="award-year">${a.year}</span>
+      <div><p class="award-name">${a.name}</p><p class="award-org">${a.org}</p></div>
+    </div>`
+  ).join('');
+
+  // Blog
+  document.getElementById('blog-heading').textContent = d.blog.heading;
+  document.getElementById('blog-list').innerHTML = d.blog.articles.map(a =>
+    `<div class="blog-item" onclick="showArticle('${a.slug}')">
+      <p class="blog-date">${a.date}</p>
+      <p class="blog-title">${a.title}</p>
+      <p class="blog-excerpt">${a.excerpt}</p>
+    </div>`
+  ).join('');
+
   // Music
-  document.getElementById('music-heading').innerHTML = data.music.heading.replace('\n','<br>');
-  document.getElementById('music-intro').textContent = data.music.intro;
-  document.getElementById('instrument-list').innerHTML = data.music.instruments.map(i =>
+  document.getElementById('music-heading').textContent = d.music.heading;
+  document.getElementById('music-intro').textContent   = d.music.intro;
+  document.getElementById('instrument-list').innerHTML = d.music.instruments.map(i =>
     `<div class="instrument-item">
       <span class="instrument-name">${i.name}</span>
       <p class="instrument-desc">${i.desc}</p>
     </div>`
   ).join('');
-  const o = data.music.orchestra;
+  const o = d.music.orchestra;
   document.getElementById('orchestra-block').innerHTML =
-    `<p class="orch-label">Orchestra</p>
+    `<p class="orch-label">${o.label}</p>
      <p class="orch-name">${o.name}</p>
      <p class="orch-role">${o.role}</p>
      <p class="orch-desc">${o.desc}</p>`;
 
-  // Thoughts
-  document.getElementById('thoughts-heading').innerHTML = data.thoughts.heading.replace('\n','<br>');
-  document.getElementById('thought-list').innerHTML = data.thoughts.articles.map(a =>
-    `<div class="thought-item" onclick="showArticle('${a.slug}', siteData)">
-      <p class="thought-date">${a.date}</p>
-      <p class="thought-title">${a.title}</p>
-      <p class="thought-excerpt">${a.excerpt}</p>
-    </div>`
-  ).join('');
-
   // Contact
-  document.getElementById('contact-heading').innerHTML = data.contact.heading.replace('\n','<br>');
-  document.getElementById('contact-intro').textContent = data.contact.intro;
-  document.getElementById('contact-links').innerHTML = data.contact.links.map(l =>
-    `<a class="contact-row" href="${l.url}" target="${l.url.startsWith('mailto') ? '_self' : '_blank'}">
+  document.getElementById('contact-heading').textContent = d.contact.heading;
+  document.getElementById('contact-intro').textContent   = d.contact.intro;
+  document.getElementById('contact-links').innerHTML = d.contact.links.map(l =>
+    `<a class="contact-row" href="${l.url}"${l.url !== '#' ? ' target="_blank"' : ' onclick="return false;"'}>
       <span class="contact-row-label">${l.label}</span>
-      <span class="contact-row-arrow">↗</span>
+      <span class="contact-row-arrow">${l.arrow}</span>
     </a>`
   ).join('');
 }
 
-let siteData = null;
-
 fetch('data.json')
   .then(r => r.json())
-  .then(data => { siteData = data; render(data); showPage('home'); })
+  .then(d => {
+    window._siteData = d;
+    render(d);
+    showPage('home');
+  })
   .catch(() => {
-    document.body.innerHTML = '<div style="padding:4rem 2rem;font-family:sans-serif;color:#777;">' +
+    document.body.innerHTML =
+      '<div style="padding:4rem 2rem;font-family:sans-serif;color:#777;">' +
       '<p>⚠️ data.json が読み込めません。</p>' +
-      '<p style="margin-top:.5rem;font-size:.85rem;">GitHub Pages上では正常に動作します。ローカルで確認する場合は<br>' +
-      '<code>npx serve .</code> などのローカルサーバーを使ってください。</p></div>';
+      '<p style="margin-top:.5rem;font-size:.85rem;">ローカルで確認する場合は <code>npx serve .</code> を使ってください。<br>' +
+      'GitHub Pages 上では正常に動作します。</p></div>';
   });
 </script>
 </body>
