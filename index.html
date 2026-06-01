@@ -597,6 +597,27 @@ nav a.active {
   letter-spacing: 0.1em;
 }
 
+.article-images {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.article-images img {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--border);
+}
+
+.article-img-caption {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin-top: 0.4rem;
+  letter-spacing: 0.04em;
+  font-family: var(--serif-jp);
+}
+
 /* ── CONTACT ── */
 .contact-intro {
   font-family: var(--serif);
@@ -790,7 +811,8 @@ footer p {
     </div>
     <h1 class="article-title" id="article-title"></h1>
     <div class="article-body" id="article-body"></div>
-    <p class="article-wip">この記事は執筆中です。</p>
+    <div class="article-images" id="article-images"></div>
+    <p class="article-wip" id="article-wip">この記事は執筆中です。</p>
   </div>
 </div>
 
@@ -828,6 +850,24 @@ function showArticle(slug, from) {
   document.getElementById('article-body').innerHTML    = art.body
     ? art.body.split('\n').map(p => `<p>${p}</p>`).join('')
     : '';
+
+  // Images
+  const imagesEl = document.getElementById('article-images');
+  if (art.images && art.images.length > 0) {
+    imagesEl.innerHTML = art.images.map(img =>
+      `<div>
+        <img src="${img.src}" alt="${img.caption || ''}">
+        ${img.caption ? `<p class="article-img-caption">${img.caption}</p>` : ''}
+      </div>`
+    ).join('');
+    imagesEl.style.display = 'flex';
+  } else {
+    imagesEl.innerHTML = '';
+    imagesEl.style.display = 'none';
+  }
+
+  // article-wip: bodyがあれば非表示
+  document.getElementById('article-wip').style.display = art.body ? 'none' : 'block';
 
   // Back button destination
   const backBtn = document.getElementById('article-back-btn');
