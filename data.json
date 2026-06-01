@@ -8,28 +8,14 @@
   "home": {
     "name": "船越 温 / Tsutsumu Funakoshi",
     "tagline": "うどん県在住の高校3年生。「さぬきうどんを、次の100年へ。」をコンセプトに、年間3000トン廃棄される廃棄うどんからエネルギーを生成する研究に取り組む。",
-    "sections": [
-      {
-        "label": "Research",
-        "items": [
-          { "title": "廃棄うどんを用いた高効率水素生成プロセスの設計と最適化", "meta": "2024–2025", "page": "research" },
-          { "title": "化学工学会 第91年次大会 優秀学生賞", "meta": "2025", "page": "research" },
-          { "title": "第21回 高校環境化学賞 奨励賞", "meta": "2025", "page": "research" }
-        ]
-      },
-      {
-        "label": "Thoughts",
-        "items": [
-          { "title": "UTokyoGSC-Next 6th.", "meta": "準備中", "page": "blog" },
-          { "title": "第152代", "meta": "準備中", "page": "blog" }
-        ]
-      },
-      {
-        "label": "Music",
-        "items": [
-          { "title": "かがわ・ジュニアフィルハーモニック・オーケストラ — コンサートマスター", "meta": "現在", "page": "music" }
-        ]
-      }
+    "news": [
+      { "article": "chem-award-2026" },
+      { "article": "chem-eng-award-2026" },
+      { "article": "student-president" }
+    ],
+    "featured": [
+      { "article": "utokyo-gsc" },
+      { "article": "kjo-concertmaster" }
     ]
   },
 
@@ -39,13 +25,14 @@
     "meta": [
       { "label": "所属",     "value": "香川県立高松高等学校3年" },
       { "label": "研究内容", "value": "廃棄うどんを用いた高効率水素生成プロセスの設計と最適化" },
-      { "label": "趣味・特技","value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽 " },
+      { "label": "趣味・特技","value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽" },
       { "label": "関心領域", "value": "化学工学 / エネルギーシステム / Python / 政治哲学 / 教育" }
     ],
-    "awards": [
-      { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞",        "org": "高校環境化学賞実行委員会" },
-      { "year": "2026 / 3 / 19", "name": "化学工学会 第91年回 優秀学生賞",       "org": "公益社団法人 化学工学会" },
-      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学" }
+    "timeline": [
+      { "year": "2024 / 6",  "label": "東京大学 UTokyoGSC-Next 6th. 採択" },
+      { "year": "2025 / 12", "label": "香川県立高松高等学校 第152代生徒会長" },
+      { "year": "2026 / 3",  "label": "化学工学会 第91年会 優秀学生賞" },
+      { "year": "2026 / 6",  "label": "KJO コンサートマスター（第25回定期演奏会）" }
     ]
   },
 
@@ -60,34 +47,56 @@
     "keywords": ["水素", "SAF", "ナフサ", "エネルギーシステム", "プロセスシミュレーション", "資源循環"],
     "awardsLabel": "Awards & Activities ( Research )",
     "awards": [
-      { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞",        "org": "高校環境化学賞実行委員会" },
-      { "year": "2026 / 3 / 19", "name": "化学工学会 第91年回 優秀学生賞",       "org": "公益社団法人 化学工学会" },
-      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学" }
+      { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞",        "org": "高校環境化学賞実行委員会",  "article": "chem-award-2026" },
+      { "year": "2026 / 3 / 19", "name": "化学工学会 第91年回 優秀学生賞",       "org": "公益社団法人 化学工学会",  "article": "chem-eng-award-2026" },
+      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学",               "article": "utokyo-gsc" }
     ]
   },
 
-  "blog": {
-    "heading": "これまでの活動をブログにまとめました。",
+  "archive": {
+    "categories": ["Research", "Politics", "Music", "Leadership", "Media"],
     "articles": [
-      { "slug": "mishima", "date": "準備中", "title": "タイトル", "excerpt": "説明", "body": "" },
-      { "slug": "rojin",   "date": "準備中", "title": "タイトル", "excerpt": "説明", "body": "" },
-      { "slug": "udon",    "date": "準備中", "title": "タイトル", "excerpt": "説明", "body": "" }
+      {
+        "slug": "chem-award-2026",
+        "title": "第21回 高校環境化学賞 奨励賞",
+        "date": "2026.06.25",
+        "category": "Research",
+        "excerpt": "出島メッセ長崎にて開催された第21回高校環境化学賞にて奨励賞を受賞。廃棄うどんを用いた水素生成プロセスの研究成果を発表した。",
+        "body": ""
+      },
+      {
+        "slug": "chem-eng-award-2026",
+        "title": "化学工学会 第91年次大会 優秀学生賞",
+        "date": "2026.03.19",
+        "category": "Research",
+        "excerpt": "化学工学会 第91年次大会にて優秀学生賞を受賞。廃棄うどんからの高効率水素生成プロセスの設計と最適化について発表した。",
+        "body": ""
+      },
+      {
+        "slug": "student-president",
+        "title": "香川県立高松高等学校 第152代生徒会長",
+        "date": "2025.12.01",
+        "category": "Leadership",
+        "excerpt": "香川県立高松高等学校の第152代生徒会長に就任。",
+        "body": ""
+      },
+      {
+        "slug": "utokyo-gsc",
+        "title": "東京大学 UTokyoGSC-Next 6th. 採択",
+        "date": "2024.06.01",
+        "category": "Research",
+        "excerpt": "東京大学生産技術研究所が主催するUTokyoGSC-Nextプログラム第6期生として採択。廃棄うどんを用いた水素生成研究に取り組む。",
+        "body": ""
+      },
+      {
+        "slug": "kjo-concertmaster",
+        "title": "KJO コンサートマスター",
+        "date": "2026.01.01",
+        "category": "Music",
+        "excerpt": "かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会にてコンサートマスターを務める。",
+        "body": ""
+      }
     ]
-  },
-
-  "music": {
-    "heading": "",
-    "intro": "",
-    "instruments": [
-      { "name": "タイトル", "desc": "説明" },
-      { "name": "タイトル", "desc": "説明" }
-    ],
-    "orchestra": {
-      "label": "タイトル",
-      "name": "名前",
-      "role": "サブ",
-      "desc": "説明"
-    }
   },
 
   "contact": {

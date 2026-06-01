@@ -86,75 +86,6 @@ nav a.active {
 .page { display: none; }
 .page.active { display: block; }
 
-/* ── HOME ── */
-#page-home {
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 5rem var(--pad) 6rem;
-}
-
-.intro-name {
-  font-family: var(--serif);
-  font-size: clamp(2rem, 5vw, 2.8rem);
-  font-weight: 400;
-  line-height: 1.2;
-  margin-bottom: 1.5rem;
-  letter-spacing: 0.01em;
-}
-
-.intro-tagline {
-  font-size: 0.9rem;
-  color: var(--muted);
-  margin-bottom: 3rem;
-  line-height: 1.9;
-  max-width: 520px;
-}
-
-.intro-tagline em {
-  color: var(--text);
-  font-style: normal;
-  font-weight: 400;
-}
-
-.home-section {
-  margin-bottom: 3.5rem;
-}
-
-.home-section-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--faint);
-  margin-bottom: 1.2rem;
-}
-
-.home-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1rem;
-  padding: 0.9rem 0;
-  border-top: 1px solid var(--border);
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.home-item:last-child { border-bottom: 1px solid var(--border); }
-.home-item:hover { opacity: 0.6; }
-
-.home-item-title {
-  font-family: var(--serif-jp);
-  font-size: 0.92rem;
-  font-weight: 300;
-  color: var(--text);
-}
-
-.home-item-meta {
-  font-size: 0.75rem;
-  color: var(--faint);
-  white-space: nowrap;
-  padding-top: 0.1rem;
-}
-
 /* ── SECTION BASE ── */
 .section {
   max-width: var(--max);
@@ -184,6 +115,154 @@ nav a.active {
   letter-spacing: 0.01em;
 }
 
+/* ── HOME ── */
+#page-home {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 5rem var(--pad) 6rem;
+}
+
+.intro-name {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.01em;
+}
+
+.intro-tagline {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 4rem;
+  line-height: 1.9;
+  max-width: 520px;
+}
+
+/* ── HOME NEWS ── */
+.home-block {
+  margin-bottom: 4rem;
+}
+
+.home-block-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 1.2rem;
+}
+
+.news-item {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.news-item:last-child { border-bottom: 1px solid var(--border); }
+.news-item:hover { opacity: 0.6; }
+
+.news-date {
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  color: var(--faint);
+  padding-top: 0.15rem;
+  letter-spacing: 0.04em;
+}
+
+.news-title {
+  font-family: var(--serif-jp);
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.news-category {
+  font-size: 0.68rem;
+  color: var(--faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+}
+
+/* ── HOME PREVIEW (About / Research) ── */
+.preview-block {
+  margin-bottom: 2.5rem;
+  padding: 1.8rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-block:hover { opacity: 0.6; }
+
+.preview-block-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 0.4rem;
+}
+
+.preview-block-text {
+  font-family: var(--serif-jp);
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.preview-arrow {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  color: var(--faint);
+  flex-shrink: 0;
+  margin-left: 1.5rem;
+}
+
+/* ── HOME FEATURED ── */
+.featured-item {
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.featured-item:last-child { border-bottom: 1px solid var(--border); }
+.featured-item:hover { opacity: 0.6; }
+
+.featured-category {
+  font-size: 0.68rem;
+  color: var(--faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.featured-title {
+  font-family: var(--serif-jp);
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 0.4rem;
+}
+
+.featured-excerpt {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.8;
+  font-family: var(--serif-jp);
+  font-weight: 300;
+}
+
 /* ── ABOUT ── */
 .prose p {
   font-size: 0.92rem;
@@ -195,11 +274,6 @@ nav a.active {
 }
 
 .prose p:last-child { margin-bottom: 0; }
-
-.prose strong {
-  font-weight: 400;
-  border-bottom: 1px solid var(--faint);
-}
 
 .meta-table {
   margin: 3rem 0;
@@ -230,11 +304,14 @@ nav a.active {
   line-height: 1.9;
 }
 
-.reading-section {
+/* ── ABOUT TIMELINE ── */
+.timeline-section {
   margin-top: 3.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 2.5rem;
 }
 
-.reading-label {
+.timeline-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -242,24 +319,27 @@ nav a.active {
   margin-bottom: 1.5rem;
 }
 
-.reading-grid {
+.timeline-item {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-}
-
-.reading-item {
-  font-size: 0.83rem;
-  font-family: var(--serif-jp);
-  font-weight: 300;
-  color: var(--muted);
-  padding: 0.65rem 0;
+  grid-template-columns: 90px 1fr;
+  gap: 1.5rem;
+  padding: 0.9rem 0;
   border-bottom: 1px solid var(--border);
-  line-height: 1.6;
 }
 
-.reading-item:nth-child(odd) { padding-right: 1.5rem; }
-.reading-item:nth-child(even) { padding-left: 1.5rem; border-left: 1px solid var(--border); }
+.timeline-year {
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  color: var(--faint);
+  padding-top: 0.1rem;
+}
+
+.timeline-text {
+  font-family: var(--serif-jp);
+  font-size: 0.88rem;
+  font-weight: 300;
+  color: var(--text);
+}
 
 /* ── RESEARCH ── */
 .research-block {
@@ -322,7 +402,17 @@ nav a.active {
   gap: 2rem;
   padding: 1.2rem 0;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
+
+.award-row:hover { opacity: 0.6; }
+
+.award-row.no-link {
+  cursor: default;
+}
+
+.award-row.no-link:hover { opacity: 1; }
 
 .award-year {
   font-family: var(--serif);
@@ -345,113 +435,83 @@ nav a.active {
   color: var(--muted);
 }
 
-/* ── MUSIC ── */
-.music-intro {
-  font-family: var(--serif);
-  font-size: 1.05rem;
-  font-style: italic;
-  color: var(--muted);
-  line-height: 1.9;
-  margin-bottom: 3rem;
-}
-
-.instrument-list {
-  border-top: 1px solid var(--border);
-  margin-bottom: 3rem;
-}
-
-.instrument-item {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 2rem;
-  padding: 1.8rem 0;
+/* ── ARCHIVE ── */
+.archive-filter {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2.5rem;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
-.instrument-name {
-  font-family: var(--serif);
-  font-size: 1rem;
-  font-weight: 400;
-  color: var(--text);
-  padding-top: 0.1rem;
-}
-
-.instrument-desc {
-  font-size: 0.87rem;
-  font-family: var(--serif-jp);
-  font-weight: 300;
-  color: var(--muted);
-  line-height: 2;
-}
-
-.orchestra-block {
-  padding: 2.5rem 0;
-  border-top: 1px solid var(--border);
-  margin-top: 1rem;
-}
-
-.orch-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.filter-btn {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   color: var(--faint);
-  margin-bottom: 0.8rem;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
 }
 
-.orch-name {
-  font-family: var(--serif-jp);
-  font-size: 1rem;
-  font-weight: 400;
+.filter-btn:hover { color: var(--text); }
+.filter-btn.active {
   color: var(--text);
-  margin-bottom: 0.3rem;
+  border-bottom-color: var(--text);
 }
 
-.orch-role {
-  font-size: 0.78rem;
-  color: var(--muted);
-  margin-bottom: 1.2rem;
-}
-
-.orch-desc {
-  font-size: 0.87rem;
-  font-family: var(--serif-jp);
-  font-weight: 300;
-  color: var(--muted);
-  line-height: 2;
-  max-width: 540px;
-}
-
-/* ── BLOG ── */
-.blog-list {
+.archive-list {
   border-top: 1px solid var(--border);
 }
 
-.blog-item {
-  padding: 2rem 0;
+.archive-item {
+  padding: 1.8rem 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: opacity 0.2s;
 }
 
-.blog-item:hover { opacity: 0.6; }
+.archive-item:hover { opacity: 0.6; }
 
-.blog-date {
-  font-size: 0.72rem;
-  color: var(--faint);
+.archive-item-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
   margin-bottom: 0.6rem;
-  letter-spacing: 0.06em;
 }
 
-.blog-title {
+.archive-date {
+  font-size: 0.72rem;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+  font-family: var(--serif);
+}
+
+.archive-category {
+  font-size: 0.65rem;
+  color: var(--faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+}
+
+.archive-title {
   font-family: var(--serif-jp);
   font-size: 1rem;
   font-weight: 300;
   color: var(--text);
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
   line-height: 1.6;
 }
 
-.blog-excerpt {
+.archive-excerpt {
   font-size: 0.82rem;
   color: var(--muted);
   line-height: 1.9;
@@ -459,11 +519,11 @@ nav a.active {
   font-weight: 300;
 }
 
-.thought-soon {
-  font-size: 0.78rem;
+.archive-empty {
+  font-size: 0.8rem;
   color: var(--faint);
   text-align: center;
-  padding: 4rem 0 2rem;
+  padding: 4rem 0;
   letter-spacing: 0.1em;
 }
 
@@ -485,11 +545,28 @@ nav a.active {
 
 .article-back:hover { color: var(--text); }
 
+.article-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .article-date {
   font-size: 0.72rem;
   color: var(--faint);
-  margin-bottom: 1rem;
   letter-spacing: 0.06em;
+  font-family: var(--serif);
+}
+
+.article-cat {
+  font-size: 0.65rem;
+  color: var(--faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
 }
 
 .article-title {
@@ -578,13 +655,14 @@ footer p {
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   header { flex-direction: column; gap: 1.2rem; }
-  nav { gap: 1.2rem; }
-  .reading-grid { grid-template-columns: 1fr; }
-  .reading-item:nth-child(even) { border-left: none; padding-left: 0; }
-  .instrument-item { grid-template-columns: 1fr; gap: 0.5rem; }
+  nav { gap: 1.2rem; flex-wrap: wrap; }
+  .news-item { grid-template-columns: 80px 1fr; gap: 1rem; }
+  .timeline-item { grid-template-columns: 80px 1fr; gap: 1rem; }
   .award-row { grid-template-columns: 70px 1fr; gap: 1rem; }
   .meta-row { grid-template-columns: 1fr; gap: 0.3rem; }
   footer { flex-direction: column; gap: 0.4rem; }
+  .archive-filter { gap: 0; }
+  .filter-btn { padding: 0.6rem 0.8rem; }
 }
 </style>
 </head>
@@ -593,12 +671,11 @@ footer p {
 <header>
   <span class="site-name" id="site-name" onclick="showPage('home')"></span>
   <nav id="main-nav">
-    <a onclick="showPage('home')"     data-page="home">Home</a>
-    <a onclick="showPage('about')"    data-page="about">About</a>
-    <a onclick="showPage('research')" data-page="research">Research</a>
-    <a onclick="showPage('music')"    data-page="music">Music</a>
-    <a onclick="showPage('blog')"     data-page="blog">Blog</a>
-    <a onclick="showPage('contact')"  data-page="contact">Contact</a>
+    <a onclick="showPage('home')"    data-page="home">Home</a>
+    <a onclick="showPage('about')"   data-page="about">About</a>
+    <a onclick="showPage('research')"data-page="research">Research</a>
+    <a onclick="showPage('archive')" data-page="archive">Archive</a>
+    <a onclick="showPage('contact')" data-page="contact">Contact</a>
   </nav>
 </header>
 
@@ -607,7 +684,36 @@ footer p {
   <div style="max-width:720px;margin:0 auto;padding:5rem 2rem 6rem;">
     <p class="intro-name" id="home-name"></p>
     <p class="intro-tagline" id="home-tagline"></p>
-    <div id="home-sections"></div>
+
+    <!-- News -->
+    <div class="home-block">
+      <p class="home-block-label">News</p>
+      <div id="home-news"></div>
+    </div>
+
+    <!-- About Preview -->
+    <div class="preview-block" onclick="showPage('about')">
+      <div>
+        <p class="preview-block-label">About</p>
+        <p class="preview-block-text">研究・政治・芸術を守備範囲とする高校生</p>
+      </div>
+      <span class="preview-arrow">→</span>
+    </div>
+
+    <!-- Research Preview -->
+    <div class="preview-block" onclick="showPage('research')">
+      <div>
+        <p class="preview-block-label">Research</p>
+        <p class="preview-block-text">廃棄うどんを用いた高効率水素生成プロセスの設計と最適化</p>
+      </div>
+      <span class="preview-arrow">→</span>
+    </div>
+
+    <!-- Featured -->
+    <div class="home-block" style="margin-top:1rem;">
+      <p class="home-block-label">Featured</p>
+      <div id="home-featured"></div>
+    </div>
   </div>
 </div>
 
@@ -620,9 +726,9 @@ footer p {
     </div>
     <div class="prose" id="about-prose"></div>
     <div class="meta-table" id="about-meta"></div>
-    <div class="awards-section">
-      <p class="awards-label">Awards &amp; Activities ( All )</p>
-      <div id="about-awards"></div>
+    <div class="timeline-section">
+      <p class="timeline-label">Timeline</p>
+      <div id="about-timeline"></div>
     </div>
   </div>
 </div>
@@ -643,35 +749,22 @@ footer p {
       <p class="awards-label" id="research-awards-label"></p>
       <div id="research-awards"></div>
     </div>
-     <div style="margin-top:3rem; padding-top:2rem; border-top:1px solid var(--border);">
+    <div style="margin-top:3rem; padding-top:2rem; border-top:1px solid var(--border);">
       <p style="font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--faint); margin-bottom:1.5rem;">研究ポスター</p>
       <img src="images/poster.png" alt="研究ポスター" style="width:100%;">
     </div>
   </div>
 </div>
 
-<!-- ── BLOG ── -->
-<div id="page-blog" class="page">
+<!-- ── ARCHIVE ── -->
+<div id="page-archive" class="page">
   <div class="section">
     <div class="section-header">
-      <p class="section-label">Blog</p>
-      <h1 class="section-title" id="blog-heading"></h1>
+      <p class="section-label">Archive</p>
+      <h1 class="section-title">活動記録</h1>
     </div>
-    <div class="blog-list" id="blog-list"></div>
-    <p class="thought-soon">順次公開予定</p>
-  </div>
-</div>
-
-<!-- ── MUSIC ── -->
-<div id="page-music" class="page">
-  <div class="section">
-    <div class="section-header">
-      <p class="section-label">Music</p>
-      <h1 class="section-title" id="music-heading"></h1>
-    </div>
-    <p class="music-intro" id="music-intro"></p>
-    <div class="instrument-list" id="instrument-list"></div>
-    <div class="orchestra-block" id="orchestra-block"></div>
+    <div class="archive-filter" id="archive-filter"></div>
+    <div class="archive-list" id="archive-list"></div>
   </div>
 </div>
 
@@ -690,8 +783,11 @@ footer p {
 <!-- ── ARTICLE ── -->
 <div id="page-article" class="page">
   <div class="section">
-    <button class="article-back" onclick="showPage('blog')">← blog</button>
-    <p class="article-date" id="article-date"></p>
+    <button class="article-back" id="article-back-btn">← archive</button>
+    <div class="article-meta">
+      <span class="article-date" id="article-date"></span>
+      <span class="article-cat" id="article-cat"></span>
+    </div>
     <h1 class="article-title" id="article-title"></h1>
     <div class="article-body" id="article-body"></div>
     <p class="article-wip">この記事は執筆中です。</p>
@@ -704,6 +800,11 @@ footer p {
 </footer>
 
 <script>
+// ── State ──
+let _currentFilter = 'All';
+let _articleFrom   = 'archive'; // 'archive' | 'home'
+
+// ── Navigation ──
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => {
@@ -713,43 +814,107 @@ function showPage(name) {
   if (target) { target.classList.add('active'); window.scrollTo({ top: 0 }); }
 }
 
-function showArticle(slug) {
-  const art = window._siteData.blog.articles.find(a => a.slug === slug);
+// ── Article ──
+function showArticle(slug, from) {
+  const d   = window._siteData;
+  const art = d.archive.articles.find(a => a.slug === slug);
   if (!art) return;
+
+  _articleFrom = from || 'archive';
+
   document.getElementById('article-date').textContent  = art.date;
+  document.getElementById('article-cat').textContent   = art.category;
   document.getElementById('article-title').textContent = art.title;
   document.getElementById('article-body').innerHTML    = art.body
     ? art.body.split('\n').map(p => `<p>${p}</p>`).join('')
     : '';
+
+  // Back button destination
+  const backBtn = document.getElementById('article-back-btn');
+  if (_articleFrom === 'home') {
+    backBtn.textContent = '← home';
+    backBtn.onclick = () => showPage('home');
+  } else {
+    backBtn.textContent = '← archive';
+    backBtn.onclick = () => showPage('archive');
+  }
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => {
-    a.classList.toggle('active', a.dataset.page === 'blog');
+    a.classList.toggle('active', a.dataset.page === 'archive');
   });
   document.getElementById('page-article').classList.add('active');
   window.scrollTo({ top: 0 });
 }
 
+// ── Archive filter ──
+function setFilter(cat) {
+  _currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === cat);
+  });
+  renderArchiveList();
+}
+
+function renderArchiveList() {
+  const d        = window._siteData;
+  const articles = d.archive.articles;
+  const filtered = _currentFilter === 'All'
+    ? articles
+    : articles.filter(a => a.category === _currentFilter);
+
+  const container = document.getElementById('archive-list');
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="archive-empty">記事はまだありません。</p>`;
+    return;
+  }
+  container.innerHTML = filtered.map(a =>
+    `<div class="archive-item" onclick="showArticle('${a.slug}','archive')">
+      <div class="archive-item-meta">
+        <span class="archive-date">${a.date}</span>
+        <span class="archive-category">${a.category}</span>
+      </div>
+      <p class="archive-title">${a.title}</p>
+      <p class="archive-excerpt">${a.excerpt}</p>
+    </div>`
+  ).join('');
+}
+
+// ── Render ──
 function render(d) {
   // Site
   document.title = d.site.title;
-  document.getElementById('site-name').textContent  = d.site.name;
+  document.getElementById('site-name').textContent   = d.site.name;
   document.getElementById('footer-name').textContent = d.site.name;
   document.getElementById('footer-year').textContent = d.site.footerYear;
 
-  // Home
+  // Home name / tagline
   document.getElementById('home-name').textContent    = d.home.name;
   document.getElementById('home-tagline').textContent = d.home.tagline;
-  document.getElementById('home-sections').innerHTML  = d.home.sections.map(s =>
-    `<div class="home-section">
-      <p class="home-section-label">${s.label}</p>
-      ${s.items.map(i =>
-        `<div class="home-item" onclick="showPage('${i.page}')">
-          <span class="home-item-title">${i.title}</span>
-          <span class="home-item-meta">${i.meta}</span>
-        </div>`
-      ).join('')}
-    </div>`
-  ).join('');
+
+  // Home News — slugからarchive記事を参照
+  document.getElementById('home-news').innerHTML = d.home.news.map(ref => {
+    const art = d.archive.articles.find(a => a.slug === ref.article);
+    if (!art) return '';
+    return `<div class="news-item" onclick="showArticle('${art.slug}','home')">
+      <span class="news-date">${art.date}</span>
+      <div>
+        <p class="news-title">${art.title}</p>
+        <p class="news-category">${art.category}</p>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Home Featured — slugからarchive記事を参照
+  document.getElementById('home-featured').innerHTML = d.home.featured.map(ref => {
+    const art = d.archive.articles.find(a => a.slug === ref.article);
+    if (!art) return '';
+    return `<div class="featured-item" onclick="showArticle('${art.slug}','home')">
+      <p class="featured-category">${art.category}</p>
+      <p class="featured-title">${art.title}</p>
+      <p class="featured-excerpt">${art.excerpt}</p>
+    </div>`;
+  }).join('');
 
   // About
   document.getElementById('about-heading').textContent = d.about.heading;
@@ -760,10 +925,10 @@ function render(d) {
       <span class="meta-row-value">${m.value}</span>
     </div>`
   ).join('');
-  document.getElementById('about-awards').innerHTML = d.about.awards.map(a =>
-    `<div class="award-row">
-      <span class="award-year">${a.year}</span>
-      <div><p class="award-name">${a.name}</p><p class="award-org">${a.org}</p></div>
+  document.getElementById('about-timeline').innerHTML = d.about.timeline.map(t =>
+    `<div class="timeline-item">
+      <span class="timeline-year">${t.year}</span>
+      <span class="timeline-text">${t.label}</span>
     </div>`
   ).join('');
 
@@ -773,38 +938,25 @@ function render(d) {
   document.getElementById('research-body').innerHTML       = d.research.paragraphs.map(p => `<p>${p}</p>`).join('');
   document.getElementById('research-keywords').innerHTML   = d.research.keywords.map(k => `<span class="keyword">${k}</span>`).join('');
   document.getElementById('research-awards-label').textContent = d.research.awardsLabel;
-  document.getElementById('research-awards').innerHTML     = d.research.awards.map(a =>
-    `<div class="award-row">
+  document.getElementById('research-awards').innerHTML     = d.research.awards.map(a => {
+    const hasLink = !!a.article;
+    return `<div class="award-row${hasLink ? '' : ' no-link'}"${hasLink ? ` onclick="showArticle('${a.article}','archive')"` : ''}>
       <span class="award-year">${a.year}</span>
-      <div><p class="award-name">${a.name}</p><p class="award-org">${a.org}</p></div>
-    </div>`
+      <div>
+        <p class="award-name">${a.name}</p>
+        <p class="award-org">${a.org}</p>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Archive filter buttons
+  const categories = ['All', ...d.archive.categories];
+  document.getElementById('archive-filter').innerHTML = categories.map(cat =>
+    `<button class="filter-btn${cat === 'All' ? ' active' : ''}" data-cat="${cat}" onclick="setFilter('${cat}')">${cat}</button>`
   ).join('');
 
-  // Blog
-  document.getElementById('blog-heading').textContent = d.blog.heading;
-  document.getElementById('blog-list').innerHTML = d.blog.articles.map(a =>
-    `<div class="blog-item" onclick="showArticle('${a.slug}')">
-      <p class="blog-date">${a.date}</p>
-      <p class="blog-title">${a.title}</p>
-      <p class="blog-excerpt">${a.excerpt}</p>
-    </div>`
-  ).join('');
-
-  // Music
-  document.getElementById('music-heading').textContent = d.music.heading;
-  document.getElementById('music-intro').textContent   = d.music.intro;
-  document.getElementById('instrument-list').innerHTML = d.music.instruments.map(i =>
-    `<div class="instrument-item">
-      <span class="instrument-name">${i.name}</span>
-      <p class="instrument-desc">${i.desc}</p>
-    </div>`
-  ).join('');
-  const o = d.music.orchestra;
-  document.getElementById('orchestra-block').innerHTML =
-    `<p class="orch-label">${o.label}</p>
-     <p class="orch-name">${o.name}</p>
-     <p class="orch-role">${o.role}</p>
-     <p class="orch-desc">${o.desc}</p>`;
+  // Archive list (初期表示)
+  renderArchiveList();
 
   // Contact
   document.getElementById('contact-heading').textContent = d.contact.heading;
