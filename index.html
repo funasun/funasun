@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Noto+Sans+JP:wght@300;400&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
 :root {
   --bg:       #f8f7f4;
   --text:     #111111;
@@ -21,9 +21,9 @@
   --max:      720px;
   --pad:      2rem;
 }
-
+ 
 html { font-size: 16px; }
-
+ 
 body {
   background: var(--bg);
   color: var(--text);
@@ -32,16 +32,16 @@ body {
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
 }
-
+ 
 a { color: inherit; text-decoration: none; }
-
+ 
 /* ── LAYOUT ── */
 .container {
   max-width: var(--max);
   margin: 0 auto;
   padding: 0 var(--pad);
 }
-
+ 
 /* ── NAV ── */
 header {
   padding: 3rem var(--pad) 2rem;
@@ -52,7 +52,7 @@ header {
   align-items: baseline;
   border-bottom: 1px solid var(--border);
 }
-
+ 
 .site-name {
   font-family: var(--serif);
   font-size: 1.05rem;
@@ -60,12 +60,12 @@ header {
   letter-spacing: 0.02em;
   cursor: pointer;
 }
-
+ 
 nav {
   display: flex;
   gap: 2rem;
 }
-
+ 
 nav a {
   font-size: 0.78rem;
   color: var(--muted);
@@ -75,30 +75,30 @@ nav a {
   border-bottom: 1px solid transparent;
   padding-bottom: 1px;
 }
-
+ 
 nav a:hover { color: var(--text); }
 nav a.active {
   color: var(--text);
   border-bottom-color: var(--text);
 }
-
+ 
 /* ── PAGES ── */
 .page { display: none; }
 .page.active { display: block; }
-
+ 
 /* ── SECTION BASE ── */
 .section {
   max-width: var(--max);
   margin: 0 auto;
   padding: 4rem var(--pad) 6rem;
 }
-
+ 
 .section-header {
   margin-bottom: 3.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
-
+ 
 .section-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -106,7 +106,7 @@ nav a.active {
   color: var(--faint);
   margin-bottom: 1rem;
 }
-
+ 
 .section-title {
   font-family: var(--serif);
   font-size: clamp(1.6rem, 3.5vw, 2.2rem);
@@ -114,14 +114,14 @@ nav a.active {
   line-height: 1.3;
   letter-spacing: 0.01em;
 }
-
+ 
 /* ── HOME ── */
 #page-home {
   max-width: var(--max);
   margin: 0 auto;
   padding: 5rem var(--pad) 6rem;
 }
-
+ 
 .intro-name {
   font-family: var(--serif);
   font-size: clamp(2rem, 5vw, 2.8rem);
@@ -130,7 +130,7 @@ nav a.active {
   margin-bottom: 1.5rem;
   letter-spacing: 0.01em;
 }
-
+ 
 .intro-tagline {
   font-size: 0.9rem;
   color: var(--muted);
@@ -138,12 +138,12 @@ nav a.active {
   line-height: 1.9;
   max-width: 520px;
 }
-
+ 
 /* ── HOME NEWS ── */
 .home-block {
   margin-bottom: 4rem;
 }
-
+ 
 .home-block-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -151,7 +151,7 @@ nav a.active {
   color: var(--faint);
   margin-bottom: 1.2rem;
 }
-
+ 
 .news-item {
   display: grid;
   grid-template-columns: 90px 1fr;
@@ -161,10 +161,10 @@ nav a.active {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-
+ 
 .news-item:last-child { border-bottom: 1px solid var(--border); }
 .news-item:hover { opacity: 0.6; }
-
+ 
 .news-date {
   font-family: var(--serif);
   font-size: 0.78rem;
@@ -172,7 +172,7 @@ nav a.active {
   padding-top: 0.15rem;
   letter-spacing: 0.04em;
 }
-
+ 
 .news-title {
   font-family: var(--serif-jp);
   font-size: 0.9rem;
@@ -180,7 +180,7 @@ nav a.active {
   color: var(--text);
   line-height: 1.6;
 }
-
+ 
 .news-category {
   font-size: 0.68rem;
   color: var(--faint);
@@ -188,7 +188,7 @@ nav a.active {
   text-transform: uppercase;
   margin-top: 0.3rem;
 }
-
+ 
 /* ── HOME PREVIEW (About / Research) ── */
 .preview-block {
   margin-bottom: 2.5rem;
@@ -201,9 +201,9 @@ nav a.active {
   justify-content: space-between;
   align-items: center;
 }
-
+ 
 .preview-block:hover { opacity: 0.6; }
-
+ 
 .preview-block-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -211,14 +211,14 @@ nav a.active {
   color: var(--faint);
   margin-bottom: 0.4rem;
 }
-
+ 
 .preview-block-text {
   font-family: var(--serif-jp);
   font-size: 0.88rem;
   color: var(--muted);
   line-height: 1.7;
 }
-
+ 
 .preview-arrow {
   font-family: var(--serif);
   font-size: 1.2rem;
@@ -226,7 +226,7 @@ nav a.active {
   flex-shrink: 0;
   margin-left: 1.5rem;
 }
-
+ 
 /* ── HOME FEATURED ── */
 .featured-item {
   padding: 1.5rem 0;
@@ -234,10 +234,10 @@ nav a.active {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-
+ 
 .featured-item:last-child { border-bottom: 1px solid var(--border); }
 .featured-item:hover { opacity: 0.6; }
-
+ 
 .featured-category {
   font-size: 0.68rem;
   color: var(--faint);
@@ -245,7 +245,7 @@ nav a.active {
   text-transform: uppercase;
   margin-bottom: 0.4rem;
 }
-
+ 
 .featured-title {
   font-family: var(--serif-jp);
   font-size: 0.95rem;
@@ -254,7 +254,7 @@ nav a.active {
   line-height: 1.6;
   margin-bottom: 0.4rem;
 }
-
+ 
 .featured-excerpt {
   font-size: 0.8rem;
   color: var(--muted);
@@ -262,7 +262,7 @@ nav a.active {
   font-family: var(--serif-jp);
   font-weight: 300;
 }
-
+ 
 /* ── ABOUT ── */
 .prose p {
   font-size: 0.92rem;
@@ -272,14 +272,14 @@ nav a.active {
   font-family: var(--serif-jp);
   font-weight: 300;
 }
-
+ 
 .prose p:last-child { margin-bottom: 0; }
-
+ 
 .meta-table {
   margin: 3rem 0;
   border-top: 1px solid var(--border);
 }
-
+ 
 .meta-row {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -288,7 +288,7 @@ nav a.active {
   border-bottom: 1px solid var(--border);
   font-size: 0.85rem;
 }
-
+ 
 .meta-row-label {
   color: var(--faint);
   font-size: 0.72rem;
@@ -296,21 +296,21 @@ nav a.active {
   text-transform: uppercase;
   padding-top: 0.1rem;
 }
-
+ 
 .meta-row-value {
   color: var(--text);
   font-family: var(--serif-jp);
   font-weight: 300;
   line-height: 1.9;
 }
-
+ 
 /* ── ABOUT TIMELINE ── */
 .timeline-section {
   margin-top: 3.5rem;
   border-top: 1px solid var(--border);
   padding-top: 2.5rem;
 }
-
+ 
 .timeline-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -318,7 +318,7 @@ nav a.active {
   color: var(--faint);
   margin-bottom: 1.5rem;
 }
-
+ 
 .timeline-item {
   display: grid;
   grid-template-columns: 90px 1fr;
@@ -326,26 +326,26 @@ nav a.active {
   padding: 0.9rem 0;
   border-bottom: 1px solid var(--border);
 }
-
+ 
 .timeline-year {
   font-family: var(--serif);
   font-size: 0.78rem;
   color: var(--faint);
   padding-top: 0.1rem;
 }
-
+ 
 .timeline-text {
   font-family: var(--serif-jp);
   font-size: 0.88rem;
   font-weight: 300;
   color: var(--text);
 }
-
+ 
 /* ── RESEARCH ── */
 .research-block {
   margin-bottom: 4rem;
 }
-
+ 
 .research-problem {
   font-family: var(--serif);
   font-size: 1.1rem;
@@ -356,7 +356,7 @@ nav a.active {
   padding-left: 1.2rem;
   border-left: 2px solid var(--border);
 }
-
+ 
 .research-body p {
   font-size: 0.9rem;
   line-height: 2.1;
@@ -365,14 +365,14 @@ nav a.active {
   font-family: var(--serif-jp);
   font-weight: 300;
 }
-
+ 
 .keyword-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1.8rem;
 }
-
+ 
 .keyword {
   font-size: 0.72rem;
   color: var(--muted);
@@ -381,13 +381,13 @@ nav a.active {
   border-radius: 2px;
   letter-spacing: 0.06em;
 }
-
+ 
 .awards-section {
   margin-top: 4rem;
   border-top: 1px solid var(--border);
   padding-top: 2.5rem;
 }
-
+ 
 .awards-label {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
@@ -395,7 +395,7 @@ nav a.active {
   color: var(--faint);
   margin-bottom: 2rem;
 }
-
+ 
 .award-row {
   display: grid;
   grid-template-columns: 90px 1fr;
@@ -405,22 +405,22 @@ nav a.active {
   cursor: pointer;
   transition: opacity 0.2s;
 }
-
+ 
 .award-row:hover { opacity: 0.6; }
-
+ 
 .award-row.no-link {
   cursor: default;
 }
-
+ 
 .award-row.no-link:hover { opacity: 1; }
-
+ 
 .award-year {
   font-family: var(--serif);
   font-size: 0.85rem;
   color: var(--faint);
   padding-top: 0.1rem;
 }
-
+ 
 .award-name {
   font-size: 0.88rem;
   color: var(--text);
@@ -429,12 +429,12 @@ nav a.active {
   line-height: 1.7;
   margin-bottom: 0.2rem;
 }
-
+ 
 .award-org {
   font-size: 0.75rem;
   color: var(--muted);
 }
-
+ 
 /* ── ARCHIVE ── */
 .archive-filter {
   display: flex;
@@ -443,7 +443,7 @@ nav a.active {
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
-
+ 
 .filter-btn {
   font-size: 0.72rem;
   letter-spacing: 0.08em;
@@ -458,40 +458,40 @@ nav a.active {
   border-left: none;
   border-right: none;
 }
-
+ 
 .filter-btn:hover { color: var(--text); }
 .filter-btn.active {
   color: var(--text);
   border-bottom-color: var(--text);
 }
-
+ 
 .archive-list {
   border-top: 1px solid var(--border);
 }
-
+ 
 .archive-item {
   padding: 1.8rem 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: opacity 0.2s;
 }
-
+ 
 .archive-item:hover { opacity: 0.6; }
-
+ 
 .archive-item-meta {
   display: flex;
   gap: 1rem;
   align-items: center;
   margin-bottom: 0.6rem;
 }
-
+ 
 .archive-date {
   font-size: 0.72rem;
   color: var(--faint);
   letter-spacing: 0.06em;
   font-family: var(--serif);
 }
-
+ 
 .archive-category {
   font-size: 0.65rem;
   color: var(--faint);
@@ -501,7 +501,7 @@ nav a.active {
   padding: 0.15rem 0.5rem;
   border-radius: 2px;
 }
-
+ 
 .archive-title {
   font-family: var(--serif-jp);
   font-size: 1rem;
@@ -510,7 +510,7 @@ nav a.active {
   margin-bottom: 0.5rem;
   line-height: 1.6;
 }
-
+ 
 .archive-excerpt {
   font-size: 0.82rem;
   color: var(--muted);
@@ -518,7 +518,7 @@ nav a.active {
   font-family: var(--serif-jp);
   font-weight: 300;
 }
-
+ 
 .archive-empty {
   font-size: 0.8rem;
   color: var(--faint);
@@ -526,7 +526,7 @@ nav a.active {
   padding: 4rem 0;
   letter-spacing: 0.1em;
 }
-
+ 
 /* ── ARTICLE ── */
 .article-back {
   display: inline-flex;
@@ -542,23 +542,23 @@ nav a.active {
   background: none;
   padding: 0;
 }
-
+ 
 .article-back:hover { color: var(--text); }
-
+ 
 .article-meta {
   display: flex;
   gap: 1rem;
   align-items: center;
   margin-bottom: 1rem;
 }
-
+ 
 .article-date {
   font-size: 0.72rem;
   color: var(--faint);
   letter-spacing: 0.06em;
   font-family: var(--serif);
 }
-
+ 
 .article-cat {
   font-size: 0.65rem;
   color: var(--faint);
@@ -568,7 +568,7 @@ nav a.active {
   padding: 0.15rem 0.5rem;
   border-radius: 2px;
 }
-
+ 
 .article-title {
   font-family: var(--serif-jp);
   font-size: clamp(1.4rem, 3vw, 1.9rem);
@@ -578,7 +578,7 @@ nav a.active {
   padding-bottom: 2rem;
   border-bottom: 1px solid var(--border);
 }
-
+ 
 .article-body p {
   font-family: var(--serif-jp);
   font-size: 0.93rem;
@@ -586,7 +586,7 @@ nav a.active {
   line-height: 2.3;
   margin-bottom: 2rem;
 }
-
+ 
 .article-wip {
   font-size: 0.78rem;
   color: var(--faint);
@@ -596,29 +596,72 @@ nav a.active {
   margin-top: 3rem;
   letter-spacing: 0.1em;
 }
-
-/* ── 汎用画像表示スタイル ── */
-.article-images, .page-images {
+ 
+.article-images {
   margin-top: 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-
-.article-images img, .page-images img {
+ 
+.article-images img {
   width: 100%;
   display: block;
   border: 1px solid var(--border);
 }
-
-.article-img-caption, .page-img-caption {
+ 
+.article-img-caption {
   font-size: 0.72rem;
   color: var(--faint);
   margin-top: 0.4rem;
   letter-spacing: 0.04em;
   font-family: var(--serif-jp);
 }
-
+ 
+/* ── SHARED IMAGE HELPERS ── */
+.img-top {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+ 
+.img-bottom {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--border);
+  margin-top: 2rem;
+}
+ 
+.img-side-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+ 
+.img-side-wrap img {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--border);
+}
+ 
+.img-caption {
+  font-size: 0.72rem;
+  color: var(--faint);
+  margin-top: 0.4rem;
+  letter-spacing: 0.04em;
+  font-family: var(--serif-jp);
+}
+ 
+.img-block {
+  margin-bottom: 1.2rem;
+}
+ 
+@media (max-width: 600px) {
+  .img-side-wrap { grid-template-columns: 1fr; }
+}
+ 
 /* ── CONTACT ── */
 .contact-intro {
   font-family: var(--serif);
@@ -629,11 +672,11 @@ nav a.active {
   margin-bottom: 3rem;
   max-width: 480px;
 }
-
+ 
 .contact-links {
   border-top: 1px solid var(--border);
 }
-
+ 
 .contact-row {
   display: flex;
   justify-content: space-between;
@@ -644,20 +687,20 @@ nav a.active {
   transition: opacity 0.2s;
   text-decoration: none;
 }
-
+ 
 .contact-row:hover { opacity: 0.5; }
-
+ 
 .contact-row-label {
   font-size: 0.83rem;
   color: var(--text);
 }
-
+ 
 .contact-row-arrow {
   font-family: var(--serif);
   font-size: 1rem;
   color: var(--faint);
 }
-
+ 
 /* ── FOOTER ── */
 footer {
   max-width: var(--max);
@@ -667,13 +710,13 @@ footer {
   display: flex;
   justify-content: space-between;
 }
-
+ 
 footer p {
   font-size: 0.72rem;
   color: var(--faint);
   letter-spacing: 0.04em;
 }
-
+ 
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   header { flex-direction: column; gap: 1.2rem; }
@@ -689,7 +732,7 @@ footer p {
 </style>
 </head>
 <body>
-
+ 
 <header>
   <span class="site-name" id="site-name" onclick="showPage('home')"></span>
   <nav id="main-nav">
@@ -700,19 +743,21 @@ footer p {
     <a onclick="showPage('contact')" data-page="contact">Contact</a>
   </nav>
 </header>
-
+ 
 <!-- ── HOME ── -->
 <div id="page-home" class="page active">
   <div style="max-width:720px;margin:0 auto;padding:5rem 2rem 6rem;">
+    <div id="home-img-top"></div>
     <p class="intro-name" id="home-name"></p>
     <p class="intro-tagline" id="home-tagline"></p>
-
+    <div id="home-img-bottom"></div>
+ 
     <!-- News -->
     <div class="home-block">
       <p class="home-block-label">News</p>
       <div id="home-news"></div>
     </div>
-
+ 
     <!-- About Preview -->
     <div class="preview-block" onclick="showPage('about')">
       <div>
@@ -721,7 +766,7 @@ footer p {
       </div>
       <span class="preview-arrow">→</span>
     </div>
-
+ 
     <!-- Research Preview -->
     <div class="preview-block" onclick="showPage('research')">
       <div>
@@ -730,40 +775,39 @@ footer p {
       </div>
       <span class="preview-arrow">→</span>
     </div>
-
+ 
     <!-- Featured -->
     <div class="home-block" style="margin-top:1rem;">
       <p class="home-block-label">Featured</p>
       <div id="home-featured"></div>
     </div>
-    
-    <!-- Home 動的画像エリア -->
-    <div class="page-images" id="home-images"></div>
   </div>
 </div>
-
+ 
 <!-- ── ABOUT ── -->
 <div id="page-about" class="page">
   <div class="section">
+    <div id="about-img-top"></div>
     <div class="section-header">
       <p class="section-label">About</p>
       <h1 class="section-title" id="about-heading"></h1>
     </div>
-    <div class="prose" id="about-prose"></div>
+    <div id="about-body-wrap">
+      <div class="prose" id="about-prose"></div>
+    </div>
+    <div id="about-img-bottom"></div>
     <div class="meta-table" id="about-meta"></div>
     <div class="timeline-section">
       <p class="timeline-label">Timeline</p>
       <div id="about-timeline"></div>
     </div>
-    
-    <!-- About 動的画像エリア (jigazo.png 等を表示) -->
-    <div class="page-images" id="about-images"></div>
   </div>
 </div>
-
+ 
 <!-- ── RESEARCH ── -->
 <div id="page-research" class="page">
   <div class="section">
+    <div id="research-img-top"></div>
     <div class="section-header">
       <p class="section-label">Research</p>
       <h1 class="section-title" id="research-heading"></h1>
@@ -773,21 +817,18 @@ footer p {
       <div class="research-body" id="research-body"></div>
       <div class="keyword-list" id="research-keywords"></div>
     </div>
+    <div id="research-img-bottom"></div>
     <div class="awards-section">
       <p class="awards-label" id="research-awards-label"></p>
       <div id="research-awards"></div>
     </div>
-    
-    <!-- Research 動的画像エリア -->
-    <div class="page-images" id="research-images"></div>
-
     <div style="margin-top:3rem; padding-top:2rem; border-top:1px solid var(--border);">
       <p style="font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--faint); margin-bottom:1.5rem;">研究ポスター</p>
       <img src="images/poster.png" alt="研究ポスター" style="width:100%;">
     </div>
   </div>
 </div>
-
+ 
 <!-- ── ARCHIVE ── -->
 <div id="page-archive" class="page">
   <div class="section">
@@ -797,12 +838,9 @@ footer p {
     </div>
     <div class="archive-filter" id="archive-filter"></div>
     <div class="archive-list" id="archive-list"></div>
-    
-    <!-- Archive 動的画像エリア -->
-    <div class="page-images" id="archive-images"></div>
   </div>
 </div>
-
+ 
 <!-- ── CONTACT ── -->
 <div id="page-contact" class="page">
   <div class="section">
@@ -810,14 +848,13 @@ footer p {
       <p class="section-label">Contact</p>
       <h1 class="section-title" id="contact-heading"></h1>
     </div>
+    <div id="contact-img-top"></div>
     <p class="contact-intro" id="contact-intro"></p>
+    <div id="contact-img-bottom"></div>
     <div class="contact-links" id="contact-links"></div>
-    
-    <!-- Contact 動的画像エリア -->
-    <div class="page-images" id="contact-images"></div>
   </div>
 </div>
-
+ 
 <!-- ── ARTICLE ── -->
 <div id="page-article" class="page">
   <div class="section">
@@ -826,23 +863,58 @@ footer p {
       <span class="article-date" id="article-date"></span>
       <span class="article-cat" id="article-cat"></span>
     </div>
+    <div id="article-img-top"></div>
     <h1 class="article-title" id="article-title"></h1>
     <div class="article-body" id="article-body"></div>
-    <div class="article-images" id="article-images"></div>
+    <div id="article-img-bottom"></div>
     <p class="article-wip" id="article-wip">この記事は執筆中です。</p>
   </div>
 </div>
-
+ 
 <footer>
   <p id="footer-name"></p>
   <p id="footer-year"></p>
 </footer>
-
+ 
 <script>
+// ── Image renderer ──
+function renderImages(imgs, topId, bottomId, sideBodyId) {
+  const top    = imgs.filter(i => i.position === 'top');
+  const side   = imgs.filter(i => i.position === 'side');
+  const bottom = imgs.filter(i => !i.position || i.position === 'bottom');
+ 
+  const imgBlock = (i) =>
+    `<div class="img-block">
+      <img src="${i.src}" alt="${i.caption || ''}" style="width:100%;display:block;border:1px solid var(--border);">
+      ${i.caption ? `<p class="img-caption">${i.caption}</p>` : ''}
+    </div>`;
+ 
+  // top
+  const topEl = document.getElementById(topId);
+  if (topEl) topEl.innerHTML = top.map(imgBlock).join('');
+ 
+  // bottom
+  const botEl = document.getElementById(bottomId);
+  if (botEl) botEl.innerHTML = bottom.map(imgBlock).join('');
+ 
+  // side (About専用)
+  if (sideBodyId && side.length > 0) {
+    const wrap = document.getElementById('about-body-wrap');
+    if (wrap) {
+      wrap.className = 'img-side-wrap';
+      const proseEl = document.getElementById(sideBodyId);
+      const proseHTML = proseEl ? proseEl.outerHTML : '';
+      wrap.innerHTML =
+        `<div>${side.map(imgBlock).join('')}</div>` +
+        `<div id="${sideBodyId}">${proseEl ? proseEl.innerHTML : ''}</div>`;
+    }
+  }
+}
+ 
 // ── State ──
 let _currentFilter = 'All';
 let _articleFrom   = 'archive'; // 'archive' | 'home'
-
+ 
 // ── Navigation ──
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -852,47 +924,28 @@ function showPage(name) {
   const target = document.getElementById('page-' + name);
   if (target) { target.classList.add('active'); window.scrollTo({ top: 0 }); }
 }
-
-// ── 共通画像描画関数 ──
-function renderImages(images, containerId, captionClass = 'page-img-caption') {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  if (images && images.length > 0) {
-    container.innerHTML = images.map(img =>
-      `<div>
-        <img src="${img.src}" alt="${img.caption || ''}">
-        ${img.caption ? `<p class="${captionClass}">${img.caption}</p>` : ''}
-      </div>`
-    ).join('');
-    container.style.display = 'flex';
-  } else {
-    container.innerHTML = '';
-    container.style.display = 'none';
-  }
-}
-
+ 
 // ── Article ──
 function showArticle(slug, from) {
   const d   = window._siteData;
   const art = d.archive.articles.find(a => a.slug === slug);
   if (!art) return;
-
+ 
   _articleFrom = from || 'archive';
-
+ 
   document.getElementById('article-date').textContent  = art.date;
   document.getElementById('article-cat').textContent   = art.category;
   document.getElementById('article-title').textContent = art.title;
   document.getElementById('article-body').innerHTML    = art.body
     ? art.body.split('\n').map(p => `<p>${p}</p>`).join('')
     : '';
-
-  // Article用共通画像処理を流用
-  renderImages(art.images, 'article-images', 'article-img-caption');
-
+ 
+  // Images
+  renderImages(art.images || [], 'article-img-top', 'article-img-bottom', null);
+ 
   // article-wip: bodyがあれば非表示
   document.getElementById('article-wip').style.display = art.body ? 'none' : 'block';
-
+ 
   // Back button destination
   const backBtn = document.getElementById('article-back-btn');
   if (_articleFrom === 'home') {
@@ -902,7 +955,7 @@ function showArticle(slug, from) {
     backBtn.textContent = '← archive';
     backBtn.onclick = () => showPage('archive');
   }
-
+ 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => {
     a.classList.toggle('active', a.dataset.page === 'archive');
@@ -910,7 +963,7 @@ function showArticle(slug, from) {
   document.getElementById('page-article').classList.add('active');
   window.scrollTo({ top: 0 });
 }
-
+ 
 // ── Archive filter ──
 function setFilter(cat) {
   _currentFilter = cat;
@@ -919,14 +972,14 @@ function setFilter(cat) {
   });
   renderArchiveList();
 }
-
+ 
 function renderArchiveList() {
   const d        = window._siteData;
   const articles = d.archive.articles;
   const filtered = _currentFilter === 'All'
     ? articles
     : articles.filter(a => a.category === _currentFilter);
-
+ 
   const container = document.getElementById('archive-list');
   if (filtered.length === 0) {
     container.innerHTML = `<p class="archive-empty">記事はまだありません。</p>`;
@@ -943,7 +996,7 @@ function renderArchiveList() {
     </div>`
   ).join('');
 }
-
+ 
 // ── Render ──
 function render(d) {
   // Site
@@ -951,11 +1004,12 @@ function render(d) {
   document.getElementById('site-name').textContent   = d.site.name;
   document.getElementById('footer-name').textContent = d.site.name;
   document.getElementById('footer-year').textContent = d.site.footerYear;
-
+ 
   // Home name / tagline
+  renderImages(d.home.images || [], 'home-img-top', 'home-img-bottom', null);
   document.getElementById('home-name').textContent    = d.home.name;
   document.getElementById('home-tagline').textContent = d.home.tagline;
-
+ 
   // Home News — slugからarchive記事を参照
   document.getElementById('home-news').innerHTML = d.home.news.map(ref => {
     const art = d.archive.articles.find(a => a.slug === ref.article);
@@ -968,7 +1022,7 @@ function render(d) {
       </div>
     </div>`;
   }).join('');
-
+ 
   // Home Featured — slugからarchive記事を参照
   document.getElementById('home-featured').innerHTML = d.home.featured.map(ref => {
     const art = d.archive.articles.find(a => a.slug === ref.article);
@@ -979,8 +1033,9 @@ function render(d) {
       <p class="featured-excerpt">${art.excerpt}</p>
     </div>`;
   }).join('');
-
+ 
   // About
+  renderImages(d.about.images || [], 'about-img-top', 'about-img-bottom', 'about-prose');
   document.getElementById('about-heading').textContent = d.about.heading;
   document.getElementById('about-prose').innerHTML     = `<p>${d.about.prose}</p>`;
   document.getElementById('about-meta').innerHTML      = d.about.meta.map(m =>
@@ -995,8 +1050,9 @@ function render(d) {
       <span class="timeline-text">${t.label}</span>
     </div>`
   ).join('');
-
+ 
   // Research
+  renderImages(d.research.images || [], 'research-img-top', 'research-img-bottom', null);
   document.getElementById('research-heading').innerHTML    = d.research.heading;
   document.getElementById('research-problem').innerHTML    = d.research.problem;
   document.getElementById('research-body').innerHTML       = d.research.paragraphs.map(p => `<p>${p}</p>`).join('');
@@ -1012,24 +1068,18 @@ function render(d) {
       </div>
     </div>`;
   }).join('');
-
-  // 各ページの動的画像レンダリング（データがあれば自動で描画されます）
-  renderImages(d.home.images, 'home-images');
-  renderImages(d.about.images, 'about-images'); // Aboutのプロフィール画像バグ対応
-  renderImages(d.research.images, 'research-images');
-  renderImages(d.archive.images, 'archive-images');
-  renderImages(d.contact.images, 'contact-images');
-
+ 
   // Archive filter buttons
   const categories = ['All', ...d.archive.categories];
   document.getElementById('archive-filter').innerHTML = categories.map(cat =>
     `<button class="filter-btn${cat === 'All' ? ' active' : ''}" data-cat="${cat}" onclick="setFilter('${cat}')">${cat}</button>`
   ).join('');
-
+ 
   // Archive list (初期表示)
   renderArchiveList();
-
+ 
   // Contact
+  renderImages(d.contact.images || [], 'contact-img-top', 'contact-img-bottom', null);
   document.getElementById('contact-heading').textContent = d.contact.heading;
   document.getElementById('contact-intro').textContent   = d.contact.intro;
   document.getElementById('contact-links').innerHTML = d.contact.links.map(l =>
@@ -1039,7 +1089,7 @@ function render(d) {
     </a>`
   ).join('');
 }
-
+ 
 fetch('data.json')
   .then(r => r.json())
   .then(d => {
