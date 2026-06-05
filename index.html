@@ -881,6 +881,12 @@ footer p {
 </footer>
  
 <script>
+// ── Markdown link parser ──
+function parseLinks(text) {
+  return text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener" style="color:var(--text);border-bottom:1px solid var(--faint);padding-bottom:1px;">$1</a>');
+}
+
 // ── Image renderer ──
 function renderImages(imgs, topId, bottomId, sideBodyId) {
   const top    = imgs.filter(i => i.position === 'top');
@@ -941,7 +947,7 @@ function showArticle(slug, from) {
   document.getElementById('article-cat').textContent   = art.category;
   document.getElementById('article-title').textContent = art.title;
   document.getElementById('article-body').innerHTML    = art.body
-    ? art.body.split('\n').map(p => `<p>${p}</p>`).join('')
+    ? art.body.split('\n').map(p => `<p>${parseLinks(p)}</p>`).join('')
     : '';
  
   // Images
@@ -1041,7 +1047,7 @@ function render(d) {
   // About
   renderImages(d.about.images || [], 'about-img-top', 'about-img-bottom', 'about-prose');
   document.getElementById('about-heading').textContent = d.about.heading;
-  document.getElementById('about-prose').innerHTML     = `<p>${d.about.prose}</p>`;
+  document.getElementById('about-prose').innerHTML     = `<p>${parseLinks(d.about.prose)}</p>`;
   document.getElementById('about-meta').innerHTML      = d.about.meta.map(m =>
     `<div class="meta-row">
       <span class="meta-row-label">${m.label}</span>
@@ -1086,12 +1092,19 @@ function render(d) {
   renderImages(d.contact.images || [], 'contact-img-top', 'contact-img-bottom', null);
   document.getElementById('contact-heading').textContent = d.contact.heading;
   document.getElementById('contact-intro').textContent   = d.contact.intro;
-  document.getElementById('contact-links').innerHTML = d.contact.links.map(l =>
-    `<a class="contact-row" href="${l.url}"${l.url !== '#' ? ' target="_blank"' : ' onclick="return false;"'}>
+  document.getElementById('contact-links').innerHTML = d.contact.links.map(l => {
+    const arrow = l.arrow || '';
+    // arrowがメールアドレスなら mailto:、urlがhttp(s)なら外部リンク、それ以外は無効
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(arrow);
+    const isUrl   = /^https?:\/\//.test(l.url);
+    const href    = isEmail ? `mailto:${arrow}` : isUrl ? l.url : '#';
+    const target  = (isEmail || !isUrl) ? '' : ' target="_blank"';
+    const onclick = href === '#' ? ' onclick="return false;"' : '';
+    return `<a class="contact-row" href="${href}"${target}${onclick}>
       <span class="contact-row-label">${l.label}</span>
-      <span class="contact-row-arrow">${l.arrow}</span>
-    </a>`
-  ).join('');
+      <span class="contact-row-arrow">${arrow}</span>
+    </a>`;
+  }).join('');
 }
  
 fetch('data.json')
