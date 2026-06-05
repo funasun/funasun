@@ -1093,14 +1093,14 @@ function render(d) {
   document.getElementById('contact-heading').textContent = d.contact.heading;
   document.getElementById('contact-intro').textContent   = d.contact.intro;
   document.getElementById('contact-links').innerHTML = d.contact.links.map(l => {
-    const arrow = l.arrow || '';
-    // arrowがメールアドレスなら mailto:、urlがhttp(s)なら外部リンク、それ以外は無効
+    const arrow   = l.arrow || '';
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(arrow);
     const isUrl   = /^https?:\/\//.test(l.url);
     const href    = isEmail ? `mailto:${arrow}` : isUrl ? l.url : '#';
-    const target  = (isEmail || !isUrl) ? '' : ' target="_blank"';
-    const onclick = href === '#' ? ' onclick="return false;"' : '';
-    return `<a class="contact-row" href="${href}"${target}${onclick}>
+    const attrs   = isUrl ? ' target="_blank" rel="noopener"'
+                  : isEmail ? ''
+                  : ' onclick="return false;"';
+    return `<a class="contact-row" href="${href}"${attrs}>
       <span class="contact-row-label">${l.label}</span>
       <span class="contact-row-arrow">${arrow}</span>
     </a>`;
