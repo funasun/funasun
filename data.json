@@ -145,9 +145,9 @@
     "heading": "Contact me",
     "intro": "皆様からのご意見をお待ちしております。",
     "links": [
-      { "label": "GitHub",     "url": "#", "arrow": "↗" },
-      { "label": "X / Twitter","url": "#", "arrow": "↗" },
-      { "label": "Instagram",  "url": "#", "arrow": "↗" },
+      { "label": "GitHub",     "url": "https://github.com/funasun/", "arrow": "funasun" },
+      { "label": "X / Twitter","url": "https://x.com/funa_sun273", "arrow": "funa_sun273" },
+      { "label": "Instagram",  "url": "https://www.instagram.com/funa_sun273/?hl=ja", "arrow": "funa_sun273" },
       { "label": "Email",      "url": "#", "arrow": "tsutsumufunakoshi@gmail.com" }
     ]
   }
