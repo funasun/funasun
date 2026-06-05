@@ -14,7 +14,7 @@
       { "article": "student-president" }
     ],
     "featured": [
-      { "article": "utokyo-gsc" },
+      { "article": "utokyo-gsc2" },
       { "article": "kjo-concertmaster" }
     ]
   },
@@ -52,7 +52,7 @@
     "awards": [
       { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞",        "org": "高校環境化学賞実行委員会",  "article": "chem-award-2026" },
       { "year": "2026 / 3 / 19", "name": "化学工学会 第91年会 優秀学生賞",       "org": "公益社団法人 化学工学会",  "article": "chem-eng-award-2026" },
-      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学",               "article": "utokyo-gsc" }
+      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学",               "article": "utokyo-gsc2" }
     ]
   },
 
@@ -142,7 +142,15 @@
         "body": "本日付けで、香川県立高松高等学校第152代生徒会長に就任いたしました。信任選挙では、84.6%の信任票をいただきました。"
       },
       {
-        "slug": "utokyo-gsc",
+        "slug": "utokyo-gsc3",
+        "title": "UTokyoGSC-Next 第三段階に合格",
+        "date": "2025.03",
+        "category": "Research",
+        "excerpt": "UTokyoGSC-Next 第三段階に合格しました。",
+        "body": "東京大学次世代教育オフィスが主催する、UTokyoGSC-Nextの第二段階に合格しました。東京大学 生産技術研究所 Aziz研究室にご指導いただき研究を進めていきます。[UTokyoGSC-Next公式サイト](https://gsc.iis.u-tokyo.ac.jp/)"
+      },
+      {
+        "slug": "utokyo-gsc2",
         "title": "東京大学 UTokyoGSC-Next 6th. 採択",
         "date": "2024.06",
         "category": "Research",
