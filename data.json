@@ -44,14 +44,7 @@
       "東京大学生産技術研究所Aziz研究室（現・東北大学）の指導のもと、\n廃棄うどんからの高効率水素生成プロセスを設計・最適化。\n反応条件・収率・プロセス経済性の観点から体系的な最適化を行った。",
       "現在は水素生成に加え、SAF、ナフサ生成の研究にも取り組む。"
     ],
-    "keywords": [
-      "水素",
-      "SAF",
-      "ナフサ",
-      "エネルギーシステム",
-      "プロセスシミュレーション",
-      "資源循環"
-    ],
+    "keywords": ["水素", "SAF", "ナフサ", "エネルギーシステム", "プロセスシミュレーション", "資源循環"],
     "awardsLabel": "Awards & Activities ( Research )",
     "awards": [
       { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞", "org": "高校環境化学賞実行委員会", "article": "chem-award-2026" },
@@ -60,13 +53,7 @@
     ]
   },
   "archive": {
-    "categories": [
-      "Research",
-      "Politics",
-      "Music",
-      "Leadership",
-      "Media"
-    ],
+    "categories": ["Research", "Politics", "Music", "Leadership", "Media"],
     "articles": [
       {
         "slug": "kjo-concertmaster",
@@ -74,7 +61,7 @@
         "date": "2026.08.30",
         "category": "Music",
         "excerpt": "かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会にてコンサートマスターを務める。",
-        "body": "8月30日に予定されている「かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会」にて、コンサートマスターを務める予定です。ぜひお越し下さい。<br>[KJO公式サイト](https://kenminhall.com/visitors/kjo/)"
+        "body": "8月30日に予定されている「かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会」にて、コンサートマスターを務める予定です。ぜひお越し下さい。<br>[KJO公式サイト](https://kenminhall.com/visitors/kjo/)",
         "images": [
           { "src": "images/kjo-teien26.webp", "caption": "演奏会チラシ" }
         ]
@@ -85,7 +72,7 @@
         "date": "2026.08.30",
         "category": "Politics",
         "excerpt": "主権者教育のアプリを開発・公開",
-        "body": "近年、若者の低投票率が大きな社会問題となっています。<br>その原因は単なる政治への無関心ではなく、”関心はあるが、政治がわからない（わかりにくい）ことだと考えます。<br>そこで、有権者として、選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。<br>[主権者教育アプリ](https://funasun273.xsrv.jp/)",
+        "body": "近年、若者の低投票率が大きな社会問題となっています。<br>その原因は単なる政治への無関心ではなく、\u201c関心はあるが、政治がわからない（わかりにくい）ことだと考えます。<br>そこで、有権者として、選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。<br>[主権者教育アプリ](https://funasun273.xsrv.jp/)",
         "images": [
           { "src": "images/seiji-app1.webp", "caption": "アプリ画面①", "layout": "row" },
           { "src": "images/seiji-app2.webp", "caption": "アプリ画面②", "layout": "row" }
@@ -97,7 +84,7 @@
         "date": "2026.06.25",
         "category": "Research",
         "excerpt": "第21回高校環境化学賞にて奨励賞を受賞。",
-        "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。"
+        "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。",
         "images": [
           { "src": "images/kankyo1.webp", "caption": "看板とともに", "layout": "row" },
           { "src": "images/kankyo.webp", "caption": "ポスターとともに", "layout": "row" }
