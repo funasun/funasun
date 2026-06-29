@@ -1,10 +1,5 @@
 {
-  "site": {
-    "name": "funa_sun",
-    "title": "船越温/Tsutsumu Funakoshi official website",
-    "footerYear": "© 2026"
-  },
-
+  "site": { "name": "funa_sun", "title": "船越温/Tsutsumu Funakoshi official website", "footerYear": "© 2026" },
   "home": {
     "name": "船越 温 / Tsutsumu Funakoshi",
     "tagline": "うどん県在住の高校3年生。「さぬきうどんを、次の100年へ。」をコンセプトに、年間3000トン廃棄される廃棄うどんからエネルギーを生成する研究に取り組む。",
@@ -18,31 +13,29 @@
       { "article": "kjo-concertmaster" }
     ]
   },
-
   "about": {
     "images": [
-          { "src": "images/jigazo.png", "position": "top" }
-        ],
+      { "src": "images/jigazo.png", "position": "top" }
+    ],
     "heading": "船越 温 / Tsutsumu Funakoshi",
     "prose": "うどん県在住の高校3年生。<br>\n廃棄うどんを活用した水素、SAF、ナフサ生成研究に取り組む。<br>\n香川県立高松高等学校第152代生徒会長を経験。<br>\nかがわジュニア・フィルハーモニック・オーケストラ（KJO）に所属。第25回定期演奏会ではコンサートマスターを務める。（予定）",
     "meta": [
-      { "label": "所属",     "value": "香川県立高松高等学校3年" },
+      { "label": "所属", "value": "香川県立高松高等学校3年" },
       { "label": "研究内容", "value": "廃棄うどんを用いた高効率水素生成プロセスの設計と最適化" },
-      { "label": "趣味・特技","value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽" },
+      { "label": "趣味・特技", "value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽" },
       { "label": "関心領域", "value": "化学工学 / エネルギーシステム / Python / 政治哲学 / 教育" }
     ],
     "timeline": [
-      { "year": "2026 / 8",  "label": "KJO コンサートマスター（第25回定期演奏会）" },
-      { "year": "2026 / 3",  "label": "化学工学会 第91年会 優秀学生賞" },
-      { "year": "2025 / 12",  "label": "第38回高松高校第九演奏会 ソリスト" },
-      { "year": "2025 / 9",  "label": "香川ジュニア音楽コンクール 銀賞" },
-      { "year": "2025 / 7",  "label": "高校生MIRAI万博 第一部" },
+      { "year": "2026 / 8", "label": "KJO コンサートマスター（第25回定期演奏会）" },
+      { "year": "2026 / 3", "label": "化学工学会 第91年会 優秀学生賞" },
+      { "year": "2025 / 12", "label": "第38回高松高校第九演奏会 ソリスト" },
+      { "year": "2025 / 9", "label": "香川ジュニア音楽コンクール 銀賞" },
+      { "year": "2025 / 7", "label": "高校生MIRAI万博 第一部" },
       { "year": "2025 / 12", "label": "香川県立高松高等学校 第152代生徒会長" },
-      { "year": "2025 / 3",  "label": "東京大学 UTokyoGSC-Next 第三段階合格" },
-      { "year": "2024 / 6",  "label": "東京大学 UTokyoGSC-Next 6th. 採択" }
+      { "year": "2025 / 3", "label": "東京大学 UTokyoGSC-Next 第三段階合格" },
+      { "year": "2024 / 6", "label": "東京大学 UTokyoGSC-Next 6th. 採択" }
     ]
   },
-
   "research": {
     "heading": "廃棄物を資源へ。<br>地域から世界のエネルギー問題へ。",
     "problem": "エネルギーとしてのポテンシャルを持つ廃棄うどん。<br>\n年間3000トン以上がそのまま廃棄されている。",
@@ -51,17 +44,29 @@
       "東京大学生産技術研究所Aziz研究室（現・東北大学）の指導のもと、\n廃棄うどんからの高効率水素生成プロセスを設計・最適化。\n反応条件・収率・プロセス経済性の観点から体系的な最適化を行った。",
       "現在は水素生成に加え、SAF、ナフサ生成の研究にも取り組む。"
     ],
-    "keywords": ["水素", "SAF", "ナフサ", "エネルギーシステム", "プロセスシミュレーション", "資源循環"],
+    "keywords": [
+      "水素",
+      "SAF",
+      "ナフサ",
+      "エネルギーシステム",
+      "プロセスシミュレーション",
+      "資源循環"
+    ],
     "awardsLabel": "Awards & Activities ( Research )",
     "awards": [
-      { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞",        "org": "高校環境化学賞実行委員会",  "article": "chem-award-2026" },
-      { "year": "2026 / 3 / 19", "name": "化学工学会 第91年会 優秀学生賞",       "org": "公益社団法人 化学工学会",  "article": "chem-eng-award-2026" },
-      { "year": "2024 / 6 -",   "name": "東京大学UTokyoGSC-Next 6th. 採択",    "org": "東京大学",               "article": "utokyo-gsc2" }
+      { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞", "org": "高校環境化学賞実行委員会", "article": "chem-award-2026" },
+      { "year": "2026 / 3 / 19", "name": "化学工学会 第91年会 優秀学生賞", "org": "公益社団法人 化学工学会", "article": "chem-eng-award-2026" },
+      { "year": "2024 / 6 -", "name": "東京大学UTokyoGSC-Next 6th. 採択", "org": "東京大学", "article": "utokyo-gsc2" }
     ]
   },
-
   "archive": {
-    "categories": ["Research", "Politics", "Music", "Leadership", "Media"],
+    "categories": [
+      "Research",
+      "Politics",
+      "Music",
+      "Leadership",
+      "Media"
+    ],
     "articles": [
       {
         "slug": "kjo-concertmaster",
@@ -77,12 +82,16 @@
         "date": "2026.08.30",
         "category": "Politics",
         "excerpt": "主権者教育のアプリを開発・公開",
-        "body": "近年、若者の低投票率が大きな社会問題となっています。<br>その原因は単なる政治への無関心ではなく、”関心はあるが、政治がわからない（わかりにくい）ことだと考えます。<br>そこで、有権者として、選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。<br>[主権者教育アプリ](https://funasun273.xsrv.jp/)"
+        "body": "近年、若者の低投票率が大きな社会問題となっています。<br>その原因は単なる政治への無関心ではなく、”関心はあるが、政治がわからない（わかりにくい）ことだと考えます。<br>そこで、有権者として、選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。<br>[主権者教育アプリ](https://funasun273.xsrv.jp/)",
+        "images": [
+          { "src": "images/seiji-app1.png", "caption": "アプリ画面①", "layout": "row" },
+          { "src": "images/seiji-app2.png", "caption": "アプリ画面②", "layout": "row" }
+        ]
       },
       {
         "slug": "chem-award-2026",
         "title": "第21回 高校環境化学賞 奨励賞",
-        "date": "2026.05.12",
+        "date": "2026.06.25",
         "category": "Research",
         "excerpt": "第21回高校環境化学賞にて奨励賞を受賞。",
         "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。"
@@ -182,15 +191,14 @@
       }
     ]
   },
-
   "contact": {
     "heading": "Contact me",
     "intro": "皆様からのご意見をお待ちしております。",
     "links": [
-      { "label": "GitHub",     "url": "https://github.com/funasun/", "arrow": "funasun" },
-      { "label": "X / Twitter","url": "https://x.com/funa_sun273", "arrow": "funa_sun273" },
-      { "label": "Instagram",  "url": "https://www.instagram.com/funa_sun273/?hl=ja", "arrow": "funa_sun273" },
-      { "label": "Email",      "url": "#", "arrow": "tsutsumufunakoshi@gmail.com" }
+      { "label": "GitHub", "url": "https://github.com/funasun/", "arrow": "funasun" },
+      { "label": "X / Twitter", "url": "https://x.com/funa_sun273", "arrow": "funa_sun273" },
+      { "label": "Instagram", "url": "https://www.instagram.com/funa_sun273/?hl=ja", "arrow": "funa_sun273" },
+      { "label": "Email", "url": "#", "arrow": "tsutsumufunakoshi@gmail.com" }
     ]
   }
 }
