@@ -661,9 +661,22 @@ nav a.active {
 .img-block {
   margin-bottom: 1.2rem;
 }
- 
+
+.img-row-wrap {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.img-row-wrap .img-block {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 @media (max-width: 600px) {
   .img-side-wrap { grid-template-columns: 1fr; }
+  .img-row-wrap { flex-direction: column; }
 }
  
 /* ── CONTACT ── */
@@ -892,20 +905,30 @@ function renderImages(imgs, topId, bottomId, sideBodyId) {
   const top    = imgs.filter(i => i.position === 'top');
   const side   = imgs.filter(i => i.position === 'side');
   const bottom = imgs.filter(i => !i.position || i.position === 'bottom');
- 
+
   const imgBlock = (i) =>
     `<div class="img-block">
       <img src="${i.src}" alt="${i.caption || ''}" style="width:100%;display:block;border:1px solid var(--border);">
       ${i.caption ? `<p class="img-caption">${i.caption}</p>` : ''}
     </div>`;
- 
+
+  const renderGroup = (group, el) => {
+    if (!el) return;
+    const layout = group.find(i => i.layout)?.layout;
+    if (layout === 'row') {
+      el.innerHTML = `<div class="img-row-wrap">${group.map(imgBlock).join('')}</div>`;
+    } else {
+      el.innerHTML = group.map(imgBlock).join('');
+    }
+  };
+
   // top
   const topEl = document.getElementById(topId);
-  if (topEl) topEl.innerHTML = top.map(imgBlock).join('');
- 
+  renderGroup(top, topEl);
+
   // bottom
   const botEl = document.getElementById(bottomId);
-  if (botEl) botEl.innerHTML = bottom.map(imgBlock).join('');
+  renderGroup(bottom, botEl);
  
   // side (About専用)
   if (sideBodyId && side.length > 0) {
