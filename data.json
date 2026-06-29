@@ -75,6 +75,9 @@
         "category": "Music",
         "excerpt": "かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会にてコンサートマスターを務める。",
         "body": "8月30日に予定されている「かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会」にて、コンサートマスターを務める予定です。ぜひお越し下さい。<br>[KJO公式サイト](https://kenminhall.com/visitors/kjo/)"
+        "images": [
+          { "src": "images/kjo-teien26.webp", "caption": "演奏会チラシ" }
+        ]
       },
       {
         "slug": "seiji-app",
@@ -95,6 +98,10 @@
         "category": "Research",
         "excerpt": "第21回高校環境化学賞にて奨励賞を受賞。",
         "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。"
+        "images": [
+          { "src": "images/kankyo1.webp", "caption": "看板とともに", "layout": "row" },
+          { "src": "images/kankyo.webp", "caption": "ポスターとともに", "layout": "row" }
+        ]
       },
       {
         "slug": "chem-eng-award-2026",
