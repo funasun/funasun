@@ -360,6 +360,8 @@ nav a.active {
   padding-left: 1.2rem;
   border-left: 2px solid var(--border);
 }
+
+.research-problem .reveal-line { display: block; }
  
 .research-body p {
   font-size: 0.9rem;
@@ -893,6 +895,8 @@ footer p {
   <p id="footer-year"></p>
 </footer>
  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
 // ── Markdown link parser ──
 function parseLinks(text) {
@@ -944,6 +948,95 @@ function renderImages(imgs, topId, bottomId, sideBodyId) {
   }
 }
  
+// ── Scroll reveal animations ──
+const _reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let _archiveST = [];
+
+function revealNewsItems() {
+  const items = document.querySelectorAll('#home-news .news-item');
+  if (!items.length) return;
+  gsap.from(items, {
+    opacity: 0,
+    y: 16,
+    duration: 0.6,
+    ease: 'power2.out',
+    stagger: 0.08,
+    scrollTrigger: { trigger: '#home-news', start: 'top 85%', once: true }
+  });
+}
+
+function revealAbout() {
+  const img = document.querySelector('#about-img-top img');
+  if (img) {
+    gsap.from(img, {
+      opacity: 0,
+      scale: 1.04,
+      duration: 0.9,
+      ease: 'power2.out',
+      scrollTrigger: { trigger: img, start: 'top 85%', once: true }
+    });
+  }
+  const paras = document.querySelectorAll('#about-prose p');
+  if (paras.length) {
+    gsap.from(paras, {
+      opacity: 0,
+      y: 14,
+      duration: 0.6,
+      ease: 'power2.out',
+      stagger: 0.12,
+      scrollTrigger: { trigger: '#about-prose', start: 'top 85%', once: true }
+    });
+  }
+}
+
+function revealResearchProblem() {
+  const el = document.getElementById('research-problem');
+  if (!el) return;
+  const lines = el.innerHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return;
+  el.innerHTML = lines.map(l => `<span class="reveal-line">${l}</span>`).join('');
+  gsap.from(el.querySelectorAll('.reveal-line'), {
+    opacity: 0,
+    y: 10,
+    duration: 0.7,
+    ease: 'power2.out',
+    stagger: 0.25,
+    scrollTrigger: { trigger: el, start: 'top 85%', once: true }
+  });
+}
+
+function revealArchiveItems() {
+  _archiveST.forEach(t => t.kill());
+  _archiveST = [];
+  const items = document.querySelectorAll('#archive-list .archive-item');
+  if (!items.length) return;
+  const anim = gsap.fromTo(items,
+    { opacity: 0, y: 16 },
+    {
+      opacity: 1, y: 0,
+      duration: 0.5,
+      ease: 'power2.out',
+      stagger: 0.06,
+      scrollTrigger: { trigger: '#archive-list', start: 'top 90%', once: true }
+    }
+  );
+  if (anim.scrollTrigger) _archiveST.push(anim.scrollTrigger);
+}
+
+function initScrollReveals() {
+  if (_reduceMotion || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+  gsap.registerPlugin(ScrollTrigger);
+  revealNewsItems();
+  revealAbout();
+  revealResearchProblem();
+  revealArchiveItems();
+}
+
+function refreshScrollTriggers() {
+  if (typeof ScrollTrigger === 'undefined') return;
+  requestAnimationFrame(() => ScrollTrigger.refresh());
+}
+
 // ── State ──
 let _currentFilter = 'All';
 let _articleFrom   = 'archive'; // 'archive' | 'home'
@@ -956,6 +1049,7 @@ function showPage(name) {
   });
   const target = document.getElementById('page-' + name);
   if (target) { target.classList.add('active'); window.scrollTo({ top: 0 }); }
+  refreshScrollTriggers();
 }
  
 // ── Article ──
@@ -995,6 +1089,7 @@ function showArticle(slug, from) {
   });
   document.getElementById('page-article').classList.add('active');
   window.scrollTo({ top: 0 });
+  refreshScrollTriggers();
 }
  
 // ── Archive filter ──
@@ -1028,6 +1123,7 @@ function renderArchiveList() {
       <p class="archive-excerpt">${a.excerpt}</p>
     </div>`
   ).join('');
+  revealArchiveItems();
 }
  
 // ── Render ──
@@ -1135,6 +1231,7 @@ fetch('data.json')
   .then(d => {
     window._siteData = d;
     render(d);
+    initScrollReveals();
     showPage('home');
   })
   .catch(() => {
