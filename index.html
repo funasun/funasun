@@ -362,6 +362,10 @@ nav a.active {
 }
 
 .research-problem .reveal-line { display: block; }
+
+/* Reveal safety: elements are only pre-hidden once GSAP has taken control.
+   If scripts fail, everything stays visible. GSAP sets inline opacity itself,
+   so no CSS pre-hiding is needed — this block is intentionally minimal. */
  
 .research-body p {
   font-size: 0.9rem;
@@ -896,6 +900,7 @@ footer p {
 </footer>
  
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
 // ── Markdown link parser ──
 function parseLinks(text) {
@@ -947,59 +952,88 @@ function renderImages(imgs, topId, bottomId, sideBodyId) {
   }
 }
  
-// ── Reveal animations (play when a page becomes active, not scroll-position-based) ──
+// ── Scroll-linked reveal animations ──
 const _reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let _pageTriggers = [];
 
-function revealHomeIntro() {
-  const name = document.getElementById('home-name');
-  const tagline = document.getElementById('home-tagline');
-  const els = [name, tagline].filter(Boolean);
-  if (els.length) gsap.from(els, { opacity: 0, y: 28, duration: 1.0, ease: 'power3.out', stagger: 0.15 });
+// Register a scroll-linked reveal for a set of elements.
+// Elements start hidden and animate in when they scroll into view.
+// If an element is already in view when registered, ScrollTrigger fires immediately.
+function scrollReveal(elements, opts) {
+  const els = Array.from(elements).filter(Boolean);
+  if (!els.length) return;
+  const o = opts || {};
+  const anim = gsap.fromTo(els,
+    { opacity: 0, y: o.y != null ? o.y : 28, scale: o.scale != null ? o.scale : 1 },
+    {
+      opacity: 1, y: 0, scale: 1,
+      duration: o.duration != null ? o.duration : 0.8,
+      ease: o.ease || 'power3.out',
+      stagger: o.stagger != null ? o.stagger : 0.12,
+      scrollTrigger: {
+        trigger: o.trigger || els[0],
+        start: o.start || 'top 88%',
+        toggleActions: 'play none none none'
+      }
+    }
+  );
+  if (anim.scrollTrigger) _pageTriggers.push(anim.scrollTrigger);
+  return anim;
 }
 
-function revealNewsItems() {
-  const items = document.querySelectorAll('#home-news .news-item');
-  if (!items.length) return;
-  gsap.from(items, { opacity: 0, y: 32, duration: 0.8, ease: 'power3.out', stagger: 0.13, delay: 0.2 });
-}
-
-function revealAbout() {
-  const img = document.querySelector('#about-img-top img');
-  if (img) gsap.from(img, { opacity: 0, y: 40, scale: 1.08, duration: 1.1, ease: 'power3.out' });
-  const paras = document.querySelectorAll('#about-prose p');
-  if (paras.length) {
-    gsap.from(paras, { opacity: 0, y: 30, duration: 0.9, ease: 'power3.out', stagger: 0.18, delay: img ? 0.3 : 0 });
-  }
-}
-
-function revealResearchProblem() {
+// Split the research pull-quote into per-line spans (once)
+function splitResearchLines() {
   const el = document.getElementById('research-problem');
-  if (!el) return;
-  if (!el.querySelector('.reveal-line')) {
-    const lines = el.innerHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(Boolean);
-    if (lines.length >= 2) el.innerHTML = lines.map(l => `<span class="reveal-line">${l}</span>`).join('');
-  }
-  const lineEls = el.querySelectorAll('.reveal-line');
-  if (lineEls.length) {
-    gsap.from(lineEls, { opacity: 0, y: 24, duration: 0.9, ease: 'power3.out', stagger: 0.35 });
-  } else {
-    gsap.from(el, { opacity: 0, y: 24, duration: 0.9, ease: 'power3.out' });
-  }
+  if (!el || el.querySelector('.reveal-line')) return;
+  const lines = el.innerHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(Boolean);
+  if (lines.length >= 2) el.innerHTML = lines.map(l => `<span class="reveal-line">${l}</span>`).join('');
 }
 
-function revealArchiveItems() {
-  const items = document.querySelectorAll('#archive-list .archive-item');
-  if (!items.length) return;
-  gsap.fromTo(items, { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.1 });
+// Kill triggers from the previously shown page so positions recalc cleanly
+function clearPageTriggers() {
+  _pageTriggers.forEach(t => t.kill());
+  _pageTriggers = [];
 }
 
-// Called from showPage() whenever the given page becomes active
+// Build scroll-linked reveals for whichever page just became active
 function playPageReveal(name) {
-  if (_reduceMotion || typeof gsap === 'undefined') return;
-  if (name === 'home') { revealHomeIntro(); revealNewsItems(); }
-  else if (name === 'about') revealAbout();
-  else if (name === 'research') revealResearchProblem();
-  else if (name === 'archive') revealArchiveItems();
+  if (_reduceMotion || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+  clearPageTriggers();
+
+  if (name === 'home') {
+    scrollReveal([document.getElementById('home-name'), document.getElementById('home-tagline')],
+      { y: 24, duration: 1.0, stagger: 0.15 });
+    scrollReveal(document.querySelectorAll('#home-news .news-item'),
+      { trigger: '#home-news', y: 32, stagger: 0.13 });
+    scrollReveal(document.querySelectorAll('#home-featured .featured-item'),
+      { trigger: '#home-featured', y: 28, stagger: 0.1 });
+  } else if (name === 'about') {
+    scrollReveal([document.querySelector('#about-img-top img')],
+      { y: 40, scale: 1.06, duration: 1.1 });
+    scrollReveal(document.querySelectorAll('#about-prose p'),
+      { trigger: '#about-prose', y: 28, stagger: 0.15 });
+  } else if (name === 'research') {
+    splitResearchLines();
+    const lines = document.querySelectorAll('#research-problem .reveal-line');
+    scrollReveal(lines.length ? lines : [document.getElementById('research-problem')],
+      { trigger: '#research-problem', y: 24, duration: 0.9, stagger: 0.3 });
+    scrollReveal(document.querySelectorAll('#research-body p'),
+      { trigger: '#research-body', y: 24, stagger: 0.12 });
+  } else if (name === 'archive') {
+    scrollReveal(document.querySelectorAll('#archive-list .archive-item'),
+      { trigger: '#archive-list', y: 32, stagger: 0.1 });
+  }
+
+  requestAnimationFrame(() => ScrollTrigger.refresh());
+}
+
+// Re-run archive reveals when the filtered list changes
+function revealArchiveItems() {
+  if (_reduceMotion || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+  clearPageTriggers();
+  scrollReveal(document.querySelectorAll('#archive-list .archive-item'),
+    { trigger: '#archive-list', y: 32, stagger: 0.1 });
+  requestAnimationFrame(() => ScrollTrigger.refresh());
 }
 
 // ── State ──
