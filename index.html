@@ -950,18 +950,25 @@ function renderImages(imgs, topId, bottomId, sideBodyId) {
 // ── Reveal animations (play when a page becomes active, not scroll-position-based) ──
 const _reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+function revealHomeIntro() {
+  const name = document.getElementById('home-name');
+  const tagline = document.getElementById('home-tagline');
+  const els = [name, tagline].filter(Boolean);
+  if (els.length) gsap.from(els, { opacity: 0, y: 28, duration: 1.0, ease: 'power3.out', stagger: 0.15 });
+}
+
 function revealNewsItems() {
   const items = document.querySelectorAll('#home-news .news-item');
   if (!items.length) return;
-  gsap.from(items, { opacity: 0, y: 16, duration: 0.6, ease: 'power2.out', stagger: 0.08, delay: 0.15 });
+  gsap.from(items, { opacity: 0, y: 32, duration: 0.8, ease: 'power3.out', stagger: 0.13, delay: 0.2 });
 }
 
 function revealAbout() {
   const img = document.querySelector('#about-img-top img');
-  if (img) gsap.from(img, { opacity: 0, scale: 1.04, duration: 0.8, ease: 'power2.out' });
+  if (img) gsap.from(img, { opacity: 0, y: 40, scale: 1.08, duration: 1.1, ease: 'power3.out' });
   const paras = document.querySelectorAll('#about-prose p');
   if (paras.length) {
-    gsap.from(paras, { opacity: 0, y: 14, duration: 0.6, ease: 'power2.out', stagger: 0.12, delay: img ? 0.2 : 0 });
+    gsap.from(paras, { opacity: 0, y: 30, duration: 0.9, ease: 'power3.out', stagger: 0.18, delay: img ? 0.3 : 0 });
   }
 }
 
@@ -974,22 +981,23 @@ function revealResearchProblem() {
   }
   const lineEls = el.querySelectorAll('.reveal-line');
   if (lineEls.length) {
-    gsap.from(lineEls, { opacity: 0, y: 10, duration: 0.6, ease: 'power2.out', stagger: 0.25 });
+    gsap.from(lineEls, { opacity: 0, y: 24, duration: 0.9, ease: 'power3.out', stagger: 0.35 });
   } else {
-    gsap.from(el, { opacity: 0, y: 10, duration: 0.6, ease: 'power2.out' });
+    gsap.from(el, { opacity: 0, y: 24, duration: 0.9, ease: 'power3.out' });
   }
 }
 
 function revealArchiveItems() {
   const items = document.querySelectorAll('#archive-list .archive-item');
   if (!items.length) return;
-  gsap.fromTo(items, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', stagger: 0.06 });
+  gsap.fromTo(items, { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.1 });
 }
 
 // Called from showPage() whenever the given page becomes active
 function playPageReveal(name) {
   if (_reduceMotion || typeof gsap === 'undefined') return;
-  if (name === 'about') revealAbout();
+  if (name === 'home') { revealHomeIntro(); revealNewsItems(); }
+  else if (name === 'about') revealAbout();
   else if (name === 'research') revealResearchProblem();
   else if (name === 'archive') revealArchiveItems();
 }
@@ -1187,7 +1195,6 @@ fetch('data.json')
   .then(d => {
     window._siteData = d;
     render(d);
-    if (!_reduceMotion && typeof gsap !== 'undefined') revealNewsItems();
     showPage('home');
   })
   .catch(() => {
