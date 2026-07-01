@@ -27,6 +27,8 @@
     ],
     "timeline": [
       { "year": "2026 / 8", "label": "KJO コンサートマスター（第25回定期演奏会）" },
+      { "year": "2026 / 7", "label": "社会共創コンテスト2026 グランプリ（最高賞）" },
+      { "year": "2026 / 6", "label": "第21回 高校環境化学賞 奨励賞" },
       { "year": "2026 / 3", "label": "化学工学会 第91年会 優秀学生賞" },
       { "year": "2025 / 12", "label": "第38回高松高校第九演奏会 ソリスト" },
       { "year": "2025 / 9", "label": "香川ジュニア音楽コンクール 銀賞" },
@@ -47,6 +49,7 @@
     "keywords": ["水素", "SAF", "ナフサ", "エネルギーシステム", "プロセスシミュレーション", "資源循環"],
     "awardsLabel": "Awards & Activities ( Research )",
     "awards": [
+      { "year": "2026 / 7 / 1", "name": "社会共創コンテスト　グランプリ（最高賞）", "org": "愛媛大学社会共創学部", "article": "shakai-kyoso-2026" },
       { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞", "org": "高校環境化学賞実行委員会", "article": "chem-award-2026" },
       { "year": "2026 / 3 / 19", "name": "化学工学会 第91年会 優秀学生賞", "org": "公益社団法人 化学工学会", "article": "chem-eng-award-2026" },
       { "year": "2024 / 6 -", "name": "東京大学UTokyoGSC-Next 6th. 採択", "org": "東京大学", "article": "utokyo-gsc2" }
@@ -64,6 +67,17 @@
         "body": "8月30日に予定されている「かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会」にて、コンサートマスターを務める予定です。ぜひお越し下さい。<br>[KJO公式サイト](https://kenminhall.com/visitors/kjo/)",
         "images": [
           { "src": "images/kjo-teien26.webp", "caption": "演奏会チラシ" }
+        ]
+      },
+      {
+        "slug": "shakai-kyoso-2026",
+        "title": "愛媛大学　社会共創コンテスト　グランプリ受賞",
+        "date": "2026.07.01",
+        "category": "Research",
+        "excerpt": "社会共創コンテスト2026にてグランプリ（最高賞）を受賞。",
+        "body": "愛媛大学主催 社会共創コンテスト2026において、最高賞であるグランプリを受賞いたしました。<br>7月22日（水）に愛媛大学で行われる表彰式に参加します。<br>[受賞結果ページ](https://www.cri.ehime-u.ac.jp/contest/archive/2026-2/)",
+        "images": [
+          { "src": "images/kyoso.webp", "caption": "受賞結果ページ" }
         ]
       },
       {
@@ -88,6 +102,17 @@
         "images": [
           { "src": "images/kankyo1.webp", "caption": "看板とともに", "layout": "row" },
           { "src": "images/kankyo2.webp", "caption": "ポスターとともに", "layout": "row" }
+        ]
+      },
+      {
+        "slug": "kansha-lab",
+        "title": "東京大学 苷蔗研訪問",
+        "date": "2026.06.24",
+        "category": "Research",
+        "excerpt": "東京大学 化学システム工学科 苷蔗研究室を訪問。",
+        "body": "東大・化シスの苷蔗研を訪問しました。<br>午前はゼミに参加させていただき、午後は先生直々に研究室ツアーと研究分野の紹介をいただきました。<br>「社会のための研究」ならマテリアル、プロセス、機械のどの分野にも挑戦できるという点に魅力を感じました。<br>苷蔗研の皆様ありがとうございました",
+        "images": [
+          { "src": "images/kansha.webp", "caption": "苷蔗先生（左）とともに"}
         ]
       },
       {
