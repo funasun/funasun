@@ -77,8 +77,8 @@
         "excerpt": "税金・法律・行政のアプリを開発・公開",
         "body": "所得税、住民税、社会保険料etc.と我々が納めないといけない税金は多くあります。<br>納税や行政手続きといった社会制度に関わることは\u201c生活していく上で必須だが難しい。<br>そこで、生活していく上で必要な税金・法律・行政手続きを直観的に調べられるアプリを作りました。<br>[生活制度ナビ](https://seikatsu-app.vercel.app/)",
         "images": [
-          { "src": "images/seiji-app1.webp", "caption": "アプリ画面①", "layout": "row" },
-          { "src": "images/seiji-app2.webp", "caption": "アプリ画面②", "layout": "row" }
+          { "src": "images/seikatsu1.webp", "caption": "アプリ画面①", "layout": "row" },
+          { "src": "images/seikatsu2.webp", "caption": "アプリ画面②", "layout": "row" }
         ]
       },
       {
