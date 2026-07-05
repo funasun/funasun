@@ -61,9 +61,9 @@
     "items": [
       { "title": "主権者教育アプリ", "type": "Web App", "status": "live", "description": "選挙や政治参加に必要な知識を、ゲーム感覚で学べる主権者教育アプリ。", "thumbnail": "images/seiji-app1.webp", "liveUrl": "https://funasun273.xsrv.jp/", "repoUrl": "" },
       { "title": "生活制度ナビ", "type": "Web App", "status": "wip", "description": "税・社会保険・契約・行政手続きなど、社会に出て必要になる制度を平易に翻訳するアプリ。", "thumbnail": "images/seikatsu-app1.webp", "liveUrl": "https://seikatsu-app.vercel.app/", "repoUrl": "" },
-      { "title": "名刺管理アプリ", "type": "Web App", "status": "live", "description": "ここに説明文を書く。この項目をコピーして作品を追加できます。", "thumbnail": "", "liveUrl": "", "repoUrl": "" },
+      { "title": "名刺管理アプリ", "type": "Web App", "status": "live", "description": "煩雑な名刺管理をこのアプリひとつで！", "thumbnail": "", "liveUrl": "", "repoUrl": "" },
       { "title": "あやがわの夏", "type": "Game", "status": "wip", "description": "私の故郷・綾川町を舞台としたゲーム。綾川町に来たことがない人でも懐かしい気持ちになります。", "thumbnail": "", "liveUrl": "https://funasun.github.io/ayagawa-natsu/", "repoUrl": "" },
-      { "title": "OPARATION BLACKOUT", "type": "Game", "status": "wip", "description": "世界を救え！。", "thumbnail": "", "liveUrl": "https://op-blackout.vercel.app/", "repoUrl": "" }
+      { "title": "OPARATION BLACKOUT", "type": "Game", "status": "wip", "description": "世界を救え！", "thumbnail": "", "liveUrl": "https://op-blackout.vercel.app/", "repoUrl": "" }
     ]
   },
   "archive": {
