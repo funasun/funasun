@@ -23,10 +23,12 @@
       { "label": "所属", "value": "香川県立高松高等学校3年" },
       { "label": "研究内容", "value": "廃棄うどんを用いた高効率水素生成プロセスの設計と最適化" },
       { "label": "趣味・特技", "value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽" },
-      { "label": "関心領域", "value": "化学工学 / エネルギーシステム / Python / 政治哲学 / 教育" }
+      { "label": "関心領域", "value": "化学工学 / エネルギーシステム / 哲学 / 政治 / 教育" }
     ],
     "timeline": [
       { "year": "2026 / 8", "label": "KJO コンサートマスター（第25回定期演奏会）" },
+      { "year": "2026 / 7", "label": "社会共創コンテスト2026 グランプリ（最高賞）" },
+      { "year": "2026 / 6", "label": "第21回 高校環境化学賞 奨励賞" },
       { "year": "2026 / 3", "label": "化学工学会 第91年会 優秀学生賞" },
       { "year": "2025 / 12", "label": "第38回高松高校第九演奏会 ソリスト" },
       { "year": "2025 / 9", "label": "香川ジュニア音楽コンクール 銀賞" },
@@ -47,6 +49,7 @@
     "keywords": ["水素", "SAF", "ナフサ", "エネルギーシステム", "プロセスシミュレーション", "資源循環"],
     "awardsLabel": "Awards & Activities ( Research )",
     "awards": [
+      { "year": "2026 / 7 / 1", "name": "社会共創コンテスト　グランプリ（最高賞）", "org": "愛媛大学社会共創学部", "article": "shakai-kyoso-2026" },
       { "year": "2026 / 6 / 25", "name": "第21回 高校環境化学賞 奨励賞", "org": "高校環境化学賞実行委員会", "article": "chem-award-2026" },
       { "year": "2026 / 3 / 19", "name": "化学工学会 第91年会 優秀学生賞", "org": "公益社団法人 化学工学会", "article": "chem-eng-award-2026" },
       { "year": "2024 / 6 -", "name": "東京大学UTokyoGSC-Next 6th. 採択", "org": "東京大学", "article": "utokyo-gsc2" }
@@ -77,10 +80,33 @@
           { "src": "images/kjo-teien26.webp", "caption": "演奏会チラシ" }
         ]
       },
+       {
+        "slug": "seikatsu-app",
+        "title": "生活制度ナビ",
+        "date": "2026.07.05",
+        "category": "Politics",
+        "excerpt": "税金・法律・行政のアプリを開発・公開",
+        "body": "所得税、住民税、社会保険料etc.と我々が納めないといけない税金は多くあります。<br>納税や行政手続きといった社会制度に関わることは\u201c生活していく上で必須だが難しい。<br>そこで、生活していく上で必要な税金・法律・行政手続きを直観的に調べられるアプリを作りました。<br>[生活制度ナビ](https://seikatsu-app.vercel.app/)",
+        "images": [
+          { "src": "images/seikatsu-app1.webp", "caption": "アプリ画面①", "layout": "row" },
+          { "src": "images/seikatsu-app2.webp", "caption": "アプリ画面②", "layout": "row" }
+        ]
+      },
+      {
+        "slug": "shakai-kyoso-2026",
+        "title": "愛媛大学　社会共創コンテスト　グランプリ受賞",
+        "date": "2026.07.01",
+        "category": "Research",
+        "excerpt": "社会共創コンテスト2026にてグランプリ（最高賞）を受賞。",
+        "body": "愛媛大学主催 社会共創コンテスト2026において、最高賞であるグランプリを受賞いたしました。<br>7月22日（水）に愛媛大学で行われる表彰式に参加します。<br>[受賞結果ページ](https://www.cri.ehime-u.ac.jp/contest/archive/2026-2/)",
+        "images": [
+          { "src": "images/kyoso.webp", "caption": "受賞結果ページ" }
+        ]
+      },
       {
         "slug": "seiji-app",
         "title": "主権者教育アプリ",
-        "date": "2026.08.30",
+        "date": "2026.06.30",
         "category": "Politics",
         "excerpt": "主権者教育のアプリを開発・公開",
         "body": "近年、若者の低投票率が大きな社会問題となっています。<br>その原因は単なる政治への無関心ではなく、\u201c関心はあるが、政治がわからない（わかりにくい）ことだと考えます。<br>そこで、有権者として、選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。<br>[主権者教育アプリ](https://funasun273.xsrv.jp/)",
@@ -98,7 +124,18 @@
         "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。",
         "images": [
           { "src": "images/kankyo1.webp", "caption": "看板とともに", "layout": "row" },
-          { "src": "images/kankyo.webp", "caption": "ポスターとともに", "layout": "row" }
+          { "src": "images/kankyo2.webp", "caption": "ポスターとともに", "layout": "row" }
+        ]
+      },
+      {
+        "slug": "kansha-lab",
+        "title": "東京大学 苷蔗研訪問",
+        "date": "2026.06.24",
+        "category": "Research",
+        "excerpt": "東京大学 化学システム工学科 苷蔗研究室を訪問。",
+        "body": "東大・化シスの苷蔗研を訪問しました。<br>午前はゼミに参加させていただき、午後は先生直々に研究室ツアーと研究分野の紹介をいただきました。<br>「社会のための研究」ならマテリアル、プロセス、機械のどの分野にも挑戦できるという点に魅力を感じました。<br>苷蔗研の皆様ありがとうございました",
+        "images": [
+          { "src": "images/kansha.webp", "caption": "苷蔗先生（左）とともに"}
         ]
       },
       {
