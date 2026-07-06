@@ -1,0 +1,10 @@
+{
+  "name": "portfolio-v2",
+  "version": "1.0.0",
+  "private": true,
+  "description": "船越温 ポートフォリオサイト（tsutsumufunakoshi.com）",
+  "scripts": {
+    "build": "node build.js",
+    "serve": "node build.js && npx -y serve dist"
+  }
+}

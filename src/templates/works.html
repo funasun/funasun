@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+{{HEAD}}
+</head>
+<body class="p-works">
+<div id="top"></div>
+{{NAV}}
+
+<header style="padding: 20vh 7vw 6vh; max-width: 1180px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 18px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Works — 開発</p>
+  <h1 data-reveal style="margin: 0 0 22px; font: 600 clamp(40px, 5vw, 72px)/1.3 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1.1s ease .1s, transform 1.1s ease .1s">アプリとゲーム、9本<span style="color: var(--accent, #6f8cff)">。</span></h1>
+  <p data-reveal style="margin: 0; font: 300 15px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.6); opacity: calc(var(--r, 0)); transition: opacity 1.2s ease .2s">個人で開発した Web アプリとゲーム。教科書は眠い。ゲームなら手が動く。</p>
+</header>
+
+<main style="padding: 0 7vw 14vh; max-width: 1180px; margin: 0 auto; box-sizing: border-box">
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 40px">
+    <button class="chip on" data-filter="All">すべて</button>
+    <button class="chip" data-filter="Web App">Web App</button>
+    <button class="chip" data-filter="Game">Game</button>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px">
+{{WORK_CARDS}}
+  </div>
+</main>
+
+{{FOOTER}}
+<script src="js/site.js"></script>
+</body>
+</html>

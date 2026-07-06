@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+{{HEAD}}
+</head>
+<body class="p-about">
+<div id="top"></div>
+{{NAV}}
+
+<main>
+<header data-m="stack" style="padding: 20vh 7vw 10vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box; display: grid; grid-template-columns: 1fr 300px; grid-template-areas: 'a b' 'c b'; gap: 34px 60px; align-items: center">
+  <div style="grid-area: a">
+    <p data-reveal style="margin: 0 0 18px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">About</p>
+    <h1 data-reveal style="margin: 0; font: 600 clamp(40px, 5vw, 72px)/1.3 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1.1s ease .1s, transform 1.1s ease .1s">船越 温<span style="color: var(--accent, #6f8cff)">。</span></h1>
+  </div>
+  <div data-reveal data-m="photo" style="grid-area: b; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 30px)); transition: opacity 1.2s ease .2s, transform 1.2s ease .2s; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); height: 380px">
+    <img src="images/jigazo.webp" alt="船越温のポートレート" style="width: 100%; height: 100%; object-fit: cover; object-position: top">
+  </div>
+  <p data-reveal style="grid-area: c; margin: 0; font: 300 15px/2.3 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.68); max-width: 560px; text-wrap: pretty; opacity: calc(var(--r, 0)); transition: opacity 1.2s ease .25s">{{ABOUT_PROSE}}</p>
+</header>
+
+<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <div style="display: flex; flex-direction: column">
+{{META_ROWS}}
+  </div>
+</section>
+
+<section style="padding: 0 7vw 16vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 50px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Timeline — 歩み</p>
+  <div id="timeline-track" style="position: relative; padding-left: 36px">
+    <span style="position: absolute; left: 5px; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.12)"></span>
+    <span style="position: absolute; left: 5px; top: 0; width: 1px; height: calc(var(--tl, 0) * 100%); background: linear-gradient(rgba(111,140,255,.9), rgba(111,140,255,.3))"></span>
+    <div style="display: flex; flex-direction: column; gap: 34px">
+{{TIMELINE_ITEMS}}
+    </div>
+  </div>
+</section>
+
+<section style="border-top: 1px solid rgba(255,255,255,.08); padding: 10vh 7vw; text-align: center">
+  <p style="margin: 0 0 24px; font: 500 clamp(18px, 2vw, 26px)/1.9 'Noto Serif JP', serif; letter-spacing: .1em">経歴より、動いているものを見てほしい。</p>
+  <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap">
+    <a href="research.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent, #6f8cff); text-decoration: none">研究を読む　→</a>
+    <a href="archive.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent, #6f8cff); text-decoration: none">活動記録を見る　→</a>
+  </div>
+</section>
+</main>
+
+{{FOOTER}}
+<script src="js/site.js"></script>
+</body>
+</html>

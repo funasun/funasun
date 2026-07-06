@@ -1,0 +1,573 @@
+{
+  "_note": "ソースオブトゥルース。元サイト tsutsumufunakoshi.com の data.json 互換スキーマ＋リニューアルで追加したフィールド。ビルド時に各ページの HTML へ静的に展開される。",
+  "site": {
+    "name": "funa_sun",
+    "title": "船越温/Tsutsumu Funakoshi official website",
+    "url": "https://tsutsumufunakoshi.com",
+    "footerYear": "© 2026"
+  },
+  "home": {
+    "name": "船越 温 / Tsutsumu Funakoshi",
+    "tagline": "うどん県在住の高校3年生。「さぬきうどんを、次の100年へ。」をコンセプトに、年間3000トン廃棄される廃棄うどんからエネルギーを生成する研究に取り組む。",
+    "pillarPhotos": {
+      "_note": "各柱の背景写真。src に images/ からのパスを入れると表示、空文字なら黒プレースホルダーのまま",
+      "research": {
+        "src": "",
+        "alt": "研究活動の写真"
+      },
+      "politics": {
+        "src": "",
+        "alt": "政治活動の写真"
+      },
+      "governance": {
+        "src": "",
+        "alt": "生徒会活動の写真"
+      },
+      "music": {
+        "src": "",
+        "alt": "音楽活動の写真"
+      }
+    },
+    "newsItems": [
+      {
+        "date": "2026.08.30",
+        "cat": "音楽",
+        "title": "KJO 第25回定期演奏会 コンサートマスター（予定）"
+      },
+      {
+        "date": "2026.07.05",
+        "cat": "開発",
+        "title": "「生活制度ナビ」を公開"
+      },
+      {
+        "date": "2026.07.01",
+        "cat": "研究",
+        "title": "社会共創コンテスト2026 グランプリ（最高賞）受賞"
+      }
+    ],
+    "gameTiles": [
+      {
+        "title": "主権者教育アプリ",
+        "desc": "選挙と政治参加を、ゲーム感覚で学ぶ。",
+        "tilt": "-1.2deg"
+      },
+      {
+        "title": "生活制度ナビ",
+        "desc": "税・行政手続きを平易な言葉に翻訳。",
+        "tilt": "0.8deg"
+      },
+      {
+        "title": "時渡り草子",
+        "desc": "平安時代で暮らして日本史を学ぶ。",
+        "tilt": "-0.6deg"
+      },
+      {
+        "title": "哲学思想",
+        "desc": "プレイヤー自身が思想史を旅する。",
+        "tilt": "1.1deg"
+      },
+      {
+        "title": "あやがわの夏",
+        "desc": "故郷・綾川町を舞台にしたゲーム。",
+        "tilt": "-0.9deg"
+      }
+    ]
+  },
+  "about": {
+    "images": [
+      {
+        "src": "images/jigazo.webp",
+        "position": "top"
+      }
+    ],
+    "heading": "船越 温 / Tsutsumu Funakoshi",
+    "prose": "うどん県在住の高校3年生。廃棄うどんを活用した水素、SAF、ナフサ生成研究に取り組む。香川県立高松高等学校第152代生徒会長を経験。かがわジュニア・フィルハーモニック・オーケストラ（KJO）に所属。第25回定期演奏会ではコンサートマスターを務める（予定）。",
+    "meta": [
+      {
+        "label": "所属",
+        "value": "香川県立高松高等学校3年"
+      },
+      {
+        "label": "研究内容",
+        "value": "廃棄うどんを用いた高効率水素生成プロセスの設計と最適化"
+      },
+      {
+        "label": "趣味・特技",
+        "value": "ヴァイオリン / チェロ / フルート / ピアノ / 声楽"
+      },
+      {
+        "label": "関心領域",
+        "value": "化学工学 / エネルギーシステム / 哲学 / 政治 / 教育"
+      }
+    ],
+    "timeline": [
+      {
+        "year": "2026 / 8",
+        "label": "KJO コンサートマスター（第25回定期演奏会・予定）"
+      },
+      {
+        "year": "2026 / 7",
+        "label": "社会共創コンテスト2026 グランプリ（最高賞）"
+      },
+      {
+        "year": "2026 / 6",
+        "label": "第21回 高校環境化学賞 奨励賞"
+      },
+      {
+        "year": "2026 / 3",
+        "label": "化学工学会 第91年会 優秀学生賞"
+      },
+      {
+        "year": "2025 / 12",
+        "label": "第38回高松高校第九演奏会 ソリスト"
+      },
+      {
+        "year": "2025 / 9",
+        "label": "香川ジュニア音楽コンクール 銀賞"
+      },
+      {
+        "year": "2025 / 7",
+        "label": "高校生MIRAI万博 第一部"
+      },
+      {
+        "year": "2025 / 5",
+        "label": "香川県立高松高等学校 第152代生徒会長"
+      },
+      {
+        "year": "2025 / 3",
+        "label": "東京大学 UTokyoGSC-Next 第三段階合格"
+      },
+      {
+        "year": "2024 / 6",
+        "label": "東京大学 UTokyoGSC-Next 6th. 採択"
+      }
+    ]
+  },
+  "research": {
+    "heading": "廃棄物を資源へ。地域から世界のエネルギー問題へ。",
+    "problem": "エネルギーとしてのポテンシャルを持つ廃棄うどん。年間3000トン以上が、そのまま廃棄されている。",
+    "stats": [
+      {
+        "value": 3000,
+        "suffix": "トン+",
+        "label": "香川県の年間うどん廃棄量"
+      },
+      {
+        "value": 230,
+        "suffix": "玉",
+        "label": "県民1人あたりの年間うどん消費量"
+      },
+      {
+        "value": 800,
+        "suffix": "軒+",
+        "label": "県内のうどん店"
+      }
+    ],
+    "story": [
+      "全国的に知られる「さぬきうどん」の本場、香川県。県民1人当たりの年間うどん消費量は230玉、県内には800軒を超えるうどん屋が存在する。その一方で、製造工程で生じる切れ端や、提供後に廃棄される麺などにより、香川県では年間3,000トン以上のうどんが廃棄されている。廃棄うどんはデンプンを多く含み、本来エネルギー源となり得るにもかかわらず、十分に活用されないまま失われている。",
+      "この廃棄うどんに着目し、バイオマスとしての水素生成ポテンシャルを探求。地域固有の廃棄物問題と、社会全体のエネルギー転換を結びつける研究として設計した。",
+      "東京大学生産技術研究所 Aziz研究室（現・東北大学）の指導のもと、廃棄うどんからの高効率水素生成プロセスを設計・最適化。反応条件・収率・プロセス経済性の観点から体系的な最適化を行った。現在は水素生成に加え、SAF、ナフサ生成の研究にも取り組む。"
+    ],
+    "poster": "images/poster.webp",
+    "keywords": [
+      "水素",
+      "SAF",
+      "ナフサ",
+      "エネルギーシステム",
+      "プロセスシミュレーション",
+      "資源循環"
+    ],
+    "awards": [
+      {
+        "year": "2026 / 7",
+        "name": "社会共創コンテスト2026 グランプリ（最高賞）",
+        "org": "愛媛大学社会共創学部"
+      },
+      {
+        "year": "2026 / 6",
+        "name": "第21回 高校環境化学賞 奨励賞",
+        "org": "高校環境化学賞実行委員会"
+      },
+      {
+        "year": "2026 / 3",
+        "name": "化学工学会 第91年会 優秀学生賞",
+        "org": "公益社団法人 化学工学会"
+      },
+      {
+        "year": "2024 / 6 -",
+        "name": "東京大学 UTokyoGSC-Next 6th. 採択",
+        "org": "東京大学"
+      }
+    ]
+  },
+  "worksItems": [
+    {
+      "title": "主権者教育アプリ",
+      "type": "Web App",
+      "status": "live",
+      "description": "選挙や政治参加に必要な知識を、ゲーム感覚で学べる主権者教育アプリ。",
+      "thumbnail": "images/seiji-app1.webp",
+      "liveUrl": "https://funasun273.xsrv.jp/"
+    },
+    {
+      "title": "生活制度ナビ",
+      "type": "Web App",
+      "status": "wip",
+      "description": "税・社会保険・契約・行政手続きなど、社会に出て必要になる制度を平易に翻訳するアプリ。",
+      "thumbnail": "images/seikatsu-app1.webp",
+      "liveUrl": "https://seikatsu-app.vercel.app/"
+    },
+    {
+      "title": "名刺管理アプリ",
+      "type": "Web App",
+      "status": "live",
+      "description": "煩雑な名刺管理をこのアプリひとつで！",
+      "thumbnail": "",
+      "liveUrl": ""
+    },
+    {
+      "title": "あやがわの夏",
+      "type": "Game",
+      "status": "wip",
+      "description": "私の故郷・綾川町を舞台としたゲーム。綾川町に来たことがない人でも懐かしい気持ちになります。",
+      "thumbnail": "",
+      "liveUrl": "https://funasun.github.io/ayagawa-natsu/"
+    },
+    {
+      "title": "OPARATION BLACKOUT",
+      "type": "Game",
+      "status": "wip",
+      "description": "世界を救え！",
+      "thumbnail": "",
+      "liveUrl": "https://op-blackout.vercel.app/"
+    },
+    {
+      "title": "時渡り草子",
+      "type": "Game",
+      "status": "wip",
+      "description": "令和のプレイヤーが平安時代で暮らしながら、日本史を体験して学ぶ歴史ゲーム。",
+      "thumbnail": "",
+      "liveUrl": "https://funasun.github.io/history-game/"
+    },
+    {
+      "title": "物語体験",
+      "type": "Game",
+      "status": "wip",
+      "description": "無人島に漂着した少年たちの暮らしを生き抜くサバイバルゲーム。ジュール・ヴェルヌの原作をもとに。",
+      "thumbnail": "",
+      "liveUrl": "https://funasun.github.io/novel-game/"
+    },
+    {
+      "title": "伝記",
+      "type": "Game",
+      "status": "wip",
+      "description": "ベートーヴェンの生涯を追体験する伝記ゲーム。",
+      "thumbnail": "",
+      "liveUrl": "https://funasun.github.io/denki-game/"
+    },
+    {
+      "title": "哲学思想",
+      "type": "Game",
+      "status": "wip",
+      "description": "プレイヤー自身が思想史を旅する哲学ゲーム。思考プロセスを大事にする高校倫理の授業。",
+      "thumbnail": "",
+      "liveUrl": "https://funasun.github.io/philosophy-game/"
+    }
+  ],
+  "articles": [
+    {
+      "slug": "kjo-concertmaster",
+      "title": "KJO コンサートマスター",
+      "date": "2026.08.30",
+      "category": "Music",
+      "excerpt": "KJO 第25回定期演奏会にてコンサートマスターを務める。",
+      "body": "8月30日に予定されている「かがわ・ジュニアフィルハーモニック・オーケストラ（KJO）第25回定期演奏会」にて、コンサートマスターを務める予定です。ぜひお越し下さい。",
+      "links": [
+        {
+          "label": "KJO公式サイト",
+          "url": "https://kenminhall.com/visitors/kjo/"
+        }
+      ],
+      "images": [
+        {
+          "src": "images/kjo-teien26.webp",
+          "caption": "演奏会チラシ"
+        }
+      ]
+    },
+    {
+      "slug": "seikatsu-app",
+      "title": "生活制度ナビ",
+      "date": "2026.07.05",
+      "category": "Politics",
+      "excerpt": "税金・法律・行政のアプリを開発・公開。",
+      "body": "納税や行政手続きといった社会制度に関わることは、生活していく上で必須だが難しい。そこで、生活していく上で必要な税金・法律・行政手続きを直観的に調べられるアプリを作りました。",
+      "links": [
+        {
+          "label": "生活制度ナビ",
+          "url": "https://seikatsu-app.vercel.app/"
+        }
+      ],
+      "images": [
+        {
+          "src": "images/seikatsu-app1.webp",
+          "caption": "アプリ画面①"
+        },
+        {
+          "src": "images/seikatsu-app2.webp",
+          "caption": "アプリ画面②"
+        }
+      ]
+    },
+    {
+      "slug": "shakai-kyoso-2026",
+      "title": "愛媛大学 社会共創コンテスト グランプリ受賞",
+      "date": "2026.07.01",
+      "category": "Research",
+      "excerpt": "社会共創コンテスト2026にてグランプリ（最高賞）を受賞。",
+      "body": "愛媛大学主催 社会共創コンテスト2026において、最高賞であるグランプリを受賞いたしました。7月22日（水）に愛媛大学で行われる表彰式に参加します。",
+      "links": [
+        {
+          "label": "受賞結果ページ",
+          "url": "https://www.cri.ehime-u.ac.jp/contest/archive/2026-2/"
+        }
+      ],
+      "images": [
+        {
+          "src": "images/kyoso.webp",
+          "caption": "受賞結果ページ"
+        }
+      ]
+    },
+    {
+      "slug": "seiji-app",
+      "title": "主権者教育アプリ",
+      "date": "2026.06.30",
+      "category": "Politics",
+      "excerpt": "主権者教育のアプリを開発・公開。",
+      "body": "若者の低投票率の原因は、単なる無関心ではなく「関心はあるが、政治がわからない（わかりにくい）」ことだと考えます。そこで、有権者として選挙を通じて政治に参画する際に必要なことを学べるアプリを作りました。",
+      "links": [
+        {
+          "label": "主権者教育アプリ",
+          "url": "https://funasun273.xsrv.jp/"
+        }
+      ],
+      "images": [
+        {
+          "src": "images/seiji-app1.webp",
+          "caption": "アプリ画面①"
+        },
+        {
+          "src": "images/seiji-app2.webp",
+          "caption": "アプリ画面②"
+        }
+      ]
+    },
+    {
+      "slug": "chem-award-2026",
+      "title": "第21回 高校環境化学賞 奨励賞",
+      "date": "2026.06.25",
+      "category": "Research",
+      "excerpt": "第21回高校環境化学賞にて奨励賞を受賞。",
+      "body": "6月25日に環境化学物質合同大会で開催された高校環境化学賞最終審査の結果、第21回高校環境化学賞にて奨励賞を受賞しました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/kankyo1.webp",
+          "caption": "看板とともに"
+        },
+        {
+          "src": "images/kankyo2.webp",
+          "caption": "ポスターとともに"
+        }
+      ]
+    },
+    {
+      "slug": "kansha-lab",
+      "title": "東京大学 苷蔗研訪問",
+      "date": "2026.06.24",
+      "category": "Research",
+      "excerpt": "東京大学 化学システム工学科 苷蔗研究室を訪問。",
+      "body": "東大・化シスの苷蔗研を訪問しました。午前はゼミに参加させていただき、午後は先生直々に研究室ツアーと研究分野の紹介をいただきました。「社会のための研究」ならマテリアル、プロセス、機械のどの分野にも挑戦できるという点に魅力を感じました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/kansha.webp",
+          "caption": "苷蔗先生（左）とともに"
+        }
+      ]
+    },
+    {
+      "slug": "chem-eng-award-2026",
+      "title": "化学工学会 第91年次大会 優秀学生賞",
+      "date": "2026.03.19",
+      "category": "Research",
+      "excerpt": "化学工学会 第91年次大会にて優秀学生賞を受賞。",
+      "body": "化学工学会 第91年次大会にて唯一の高校生参加者としてポスター発表を行いました。また、審査の結果「優秀学生賞」をいただきました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/kakou.webp",
+          "caption": "看板"
+        },
+        {
+          "src": "images/hyosho.webp",
+          "caption": "表彰式"
+        }
+      ]
+    },
+    {
+      "slug": "no9-2025",
+      "title": "第38回高松高校第九演奏会 バリトンソロ",
+      "date": "2025.12.11",
+      "category": "Music",
+      "excerpt": "第38回高松高校第九演奏会でバリトンソロを務めました。",
+      "body": "第38回高松高校第九演奏会でバリトンソロという大役を務めさせていただきました。当日は、1000名を超える高高生、地域の方と一緒に L.v.Beethoven: 交響曲第9番を演奏しました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/daiku-solo.webp",
+          "caption": "冒頭のバリトンソロの様子"
+        }
+      ]
+    },
+    {
+      "slug": "diet-tamaki",
+      "title": "玉木雄一郎議員訪問",
+      "date": "2025.10.24",
+      "category": "Politics",
+      "excerpt": "国民民主党党首 玉木雄一郎議員の許を訪問しました。",
+      "body": "国政及びイデオロギーを学ぶべく、国民民主党党首・衆議院議員である玉木雄一郎先生の許を訪問いたしました。政治・教育・イデオロギーに関する対談の後、国会施設の案内を賜りました。対談では特に、憲法9条及び103万円の壁（当時）について伺いました。高松高校の先輩として『校内におけるスマホ使用に関する校則』の在り方も諮詢致しました。その後、第219回国会（臨時会）内閣総理大臣所信表明を傍聴しました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/tamaki.webp",
+          "caption": "玉木雄一郎先生（左）"
+        },
+        {
+          "src": "images/diet.webp",
+          "caption": "国会議事堂"
+        }
+      ]
+    },
+    {
+      "slug": "diet-ogawa",
+      "title": "小川淳也議員訪問",
+      "date": "2025.10.21",
+      "category": "Politics",
+      "excerpt": "中道改革連合党首 小川淳也議員の許を訪問しました。",
+      "body": "国政及びイデオロギーを学ぶべく、中道改革連合党首・衆議院議員である小川淳也先生の許を訪ねました。政治・教育・イデオロギーについて対談させていただいたのち、国会を案内していただきました。第219回国会（臨時会）における首班指名選挙を傍聴し、日本初となる女性首相が誕生する瞬間に立ち会うことができました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/ogawa.webp",
+          "caption": "小川淳也先生（左）"
+        },
+        {
+          "src": "images/diet-curry.webp",
+          "caption": "カツカレー"
+        }
+      ]
+    },
+    {
+      "slug": "junior2025",
+      "title": "香川ジュニア音楽コンクール 銀賞受賞",
+      "date": "2025.09.21",
+      "category": "Music",
+      "excerpt": "第41回香川ジュニア音楽コンクールで銀賞を受賞しました。",
+      "body": "第41回香川ジュニア音楽コンクールの声楽部門 高校2年の部において、銀賞を受賞いたしました。",
+      "links": [
+        {
+          "label": "審査結果",
+          "url": "https://kagawa-music.com/result2025kjmc/"
+        }
+      ],
+      "images": [
+        {
+          "src": "images/junior.webp",
+          "caption": "賞状と共に"
+        }
+      ]
+    },
+    {
+      "slug": "expo2025",
+      "title": "高校生MIRAI万博での発表",
+      "date": "2025.07.31",
+      "category": "Leadership",
+      "excerpt": "『高校生MIRAI万博 第一部』で発表しました。",
+      "body": "数回に渡る選考の末、三菱みらい育成財団主催『高校生MIRAI万博 第一部』の代表に選んでいただき、7月31日に関西・大阪万博2025の Women's Pavilion にて発表を行いました。",
+      "links": [],
+      "images": [
+        {
+          "src": "images/expo2025.webp",
+          "caption": "高校生未来万博の様子"
+        }
+      ]
+    },
+    {
+      "slug": "student-president",
+      "title": "香川県立高松高等学校 第152代生徒会長",
+      "date": "2025.05.15",
+      "category": "Leadership",
+      "excerpt": "香川県立高松高等学校の第152代生徒会長に就任。",
+      "body": "香川県立高松高等学校第152代生徒会長に就任いたしました。学校のルールの側から、生徒の生活を作り直していきます。",
+      "links": [],
+      "images": []
+    },
+    {
+      "slug": "utokyo-gsc3",
+      "title": "UTokyoGSC-Next 第三段階に合格",
+      "date": "2025.03",
+      "category": "Research",
+      "excerpt": "UTokyoGSC-Next 第三段階に合格しました。",
+      "body": "東京大学次世代教育オフィスが主催する UTokyoGSC-Next の第三段階に合格しました。東京大学 生産技術研究所 Aziz研究室にご指導いただき研究を進めていきます。",
+      "links": [
+        {
+          "label": "UTokyoGSC-Next公式サイト",
+          "url": "https://gsc.iis.u-tokyo.ac.jp/"
+        }
+      ],
+      "images": []
+    },
+    {
+      "slug": "utokyo-gsc2",
+      "title": "東京大学 UTokyoGSC-Next 6th. 採択",
+      "date": "2024.06",
+      "category": "Research",
+      "excerpt": "UTokyoGSC-Next の第二段階に合格。",
+      "body": "東京大学次世代教育オフィスが主催する UTokyoGSC-Next の第二段階に合格しました。実際に東大の研究室で研究できる第三段階の合格を目指して頑張ります。",
+      "links": [
+        {
+          "label": "UTokyoGSC-Next公式サイト",
+          "url": "https://gsc.iis.u-tokyo.ac.jp/"
+        }
+      ],
+      "images": []
+    }
+  ],
+  "contact": {
+    "email": "tsutsumufunakoshi@gmail.com",
+    "links": [
+      {
+        "label": "GitHub",
+        "url": "https://github.com/funasun/",
+        "arrow": "funasun"
+      },
+      {
+        "label": "X / Twitter",
+        "url": "https://x.com/funa_sun273",
+        "arrow": "funa_sun273"
+      },
+      {
+        "label": "Instagram",
+        "url": "https://www.instagram.com/funa_sun273/",
+        "arrow": "funa_sun273"
+      },
+      {
+        "label": "Email",
+        "url": "mailto:tsutsumufunakoshi@gmail.com",
+        "arrow": "tsutsumufunakoshi@gmail.com"
+      }
+    ]
+  }
+}
