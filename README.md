@@ -26,13 +26,75 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
                      chrome --headless --window-size=1200,630 --screenshot=src/images/og.png og-src.html
 ```
 
-## コンテンツ更新
+## コンテンツ更新（共通フロー）
 
-すべて `src/data.json` を編集 → `node build.js` → push（Actions が自動デプロイ）。テンプレート HTML を触る必要はありません。
+1. 下記のページ別ガイドに従って `src/data.json`（またはテンプレート）を編集
+2. `node build.js` でビルド（`npm run serve` でローカルプレビュー）
+3. `git add . && git commit -m "変更内容" && git push` → Actions が自動デプロイ
 
-### 記事を追加する（Archive）
+ほとんどのコンテンツは `src/data.json` に集約されていますが、**Home の文章だけは例外**で、スクロール演出と一体のためテンプレート `src/templates/index.html` に直接書かれています。
 
-`articles` 配列の**先頭**にオブジェクトを追記:
+## ページ別更新ガイド
+
+### Home（index.html）
+
+**文章の書き換え** → `src/templates/index.html` を直接編集。各セクションは `id` で探せる（エディタで検索）:
+
+| 内容 | 探し方 |
+|---|---|
+| ヒーロー「高校生。ただし、少し欲張りな。」 | `id="top"` のブロック内 |
+| 導入の4行（廃棄うどんで水素を作る。…）と「バラバラに見える。」 | ヒーローの次の `data-scene` ブロック |
+| 柱01 研究（見出し・説明文・実績2行） | `id="research"` |
+| 柱02 政治 | `id="politics"` |
+| 柱03 制度設計 | `id="governance"` |
+| ゲーム帯の見出し「研究と、政治と、制度設計。」 | `id="works"` |
+| 柱04 音楽 | `id="music"` |
+| About ティザーの紹介文 | `id="about"` |
+
+※ タグの中の日本語テキストだけを書き換えること。`style="…"` や `data-seg="…"` などの属性は演出用なので触らない。
+
+**data.json 側にあるもの**（`home` キー配下）:
+
+| 内容 | data.json のキー |
+|---|---|
+| News 3件（Home 下部） | `home.newsItems` — 新しいものを先頭に、3件程度を維持 |
+| ゲーム帯のカード5枚 | `home.gameTiles`（title / desc / tilt） |
+| 柱の背景写真 | `home.pillarPhotos`（後述） |
+| meta description・JSON-LD 用の自己紹介文 | `home.tagline`（ページには表示されない） |
+
+### About（about.html）
+
+すべて `src/data.json` の `about` 配下:
+
+- 紹介文: `about.prose`（改行はそのまま反映）
+- 見出し: `about.heading`
+- 所属などのメタ表: `about.meta`（label / value の配列）
+- 経歴タイムライン: `about.timeline` — 新しいものを先頭に
+- ポートレート写真: `about.images[0].src`
+
+### Research（research.html）
+
+すべて `src/data.json` の `research` 配下:
+
+- 見出し・課題文: `research.heading` / `research.problem`
+- 数字カウンター3つ: `research.stats`（value / suffix / label）
+- 本文3段落: `research.story`（文字列の配列）
+- ポスター画像: `research.poster`
+- キーワードタグ: `research.keywords`
+- 受賞歴: `research.awards`（year / name / org）— 新しいものを先頭に
+
+### Works（works.html）
+
+`src/data.json` の `worksItems` 配列に追記:
+
+- `type` は `Web App` か `Game`（フィルタに使われる）
+- `status` は `live`（公開中）か `wip`（開発中）
+- `liveUrl` が空文字ならリンクなしカードになる
+- `thumbnail` が空文字なら「app screenshot」プレースホルダー
+
+### Archive（archive.html）— 記事を追加する
+
+`src/data.json` の `articles` 配列の**先頭**にオブジェクトを追記:
 
 ```json
 {
@@ -42,18 +104,24 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
   "category": "Research",
   "excerpt": "一覧の行に出る短い説明。",
   "body": "本文。改行はそのまま反映される。",
-  "figures": [{ "src": "images/example.webp", "caption": "写真の説明" }],
+  "images": [{ "src": "images/example.webp", "caption": "写真の説明" }],
   "links": [{ "label": "関連リンク", "url": "https://..." }]
 }
 ```
 
 - `category` は `Research` / `Politics` / `Music` / `Leadership` のいずれか（フィルタに使われる）
 - `date` の年で自動的に年グループへ振り分けられる
-- `figures` / `links` は不要なら省略可
+- `images` / `links` は**キー自体は必須**。写真やリンクがなければ空配列 `[]` にする（省略するとビルドが落ちる）
 - `slug` はページ内リンク（`archive.html#slug`）と旧 `?p=` リダイレクトの両方に使われる。ユニークにすること
 - 大きな出来事なら `home.newsItems`（Home の News 3件）と `about.timeline` にも追記する
 
-### 写真を追加する
+### 全ページ共通
+
+- メール・SNS リンク: `contact`（フッターと Contact 表示に使用）
+- サイトタイトル・URL: `site`
+- ナビ / フッターの HTML 自体: `src/partials/nav.html` / `src/partials/footer.html`
+
+## 写真の追加（共通）
 
 1. 画像を `src/images/` に置く（webp 推奨。`cwebp -q 82 in.jpg -o out.webp` などで変換）
 2. data.json から `images/ファイル名.webp` で参照する
@@ -62,7 +130,7 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
 
 | 場所 | data.json のキー |
 |---|---|
-| 記事の写真 | `articles[].figures[].src` |
+| 記事の写真 | `articles[].images[].src` |
 | Home 柱セクションの背景写真 | `home.pillarPhotos.{research,politics,governance,music}.src` |
 | Works のサムネイル | `worksItems[].thumbnail`（空文字なら「app screenshot」プレースホルダー） |
 | About のポートレート | `about.images[0].src` |
@@ -86,17 +154,6 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
 - `src` が空文字なら従来どおり黒のプレースホルダー
 - 横長・高解像度（1600px 以上目安）の写真が向いている
 
-### Works（アプリ・ゲーム）を追加する
-
-`worksItems` 配列に追記。`type` は `Web App` か `Game`、`status` は `live`（公開中）か `wip`（開発中）、`liveUrl` が空ならリンクなしカードになる。
-
-### その他の更新箇所
-
-- News（Home 下部の3件）: `home.newsItems` — 新しいものを先頭に、3件程度を維持
-- 経歴タイムライン: `about.timeline` — 新しいものを先頭に
-- 受賞（Research ページ）: `research.awards`
-- メール・SNS: `contact`
-
 ## 未撮影素材の差し替え
 
 黒プレースホルダーのままの箇所:
@@ -106,34 +163,7 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
 
 ## デプロイ
 
-`main` に push すると GitHub Actions（`.github/workflows/deploy.yml`）が `node build.js` → GitHub Pages へデプロイ。リポジトリ設定で **Settings → Pages → Source: GitHub Actions** を選択しておくこと。
-
-### 初回プッシュ手順
-
-**このフォルダ（portfolio-v2）をリポジトリのルートにすること**（`.github/workflows/` がルートにないと Actions が動かない）。
-
-```sh
-# 1. GitHub でリポジトリを新規作成（README 等は追加しない・空のまま）
-
-# 2. このフォルダを git リポジトリ化してコミット
-cd portfolio-v2
-git init
-git add .
-git commit -m "Initial commit"
-
-# 3. リモートを登録して push
-git branch -M main
-git remote add origin https://github.com/funasun/リポジトリ名.git
-git push -u origin main
-```
-
-push 後に GitHub 上で:
-
-1. **Settings → Pages → Build and deployment → Source** を「**GitHub Actions**」に変更
-2. **Actions** タブでワークフローが緑になるのを確認（初回は Pages 設定前に失敗していたら「Re-run jobs」）
-3. `https://funasun.github.io/リポジトリ名/` で表示確認
-
-### 2回目以降の更新
+リポジトリは `github.com/funasun/funasun`（Pages Source は「GitHub Actions」設定済み）。`main` に push すると GitHub Actions（`.github/workflows/deploy.yml`）が `node build.js` → GitHub Pages へデプロイする。
 
 ```sh
 node build.js        # ローカルで確認（npm run serve でプレビュー）
@@ -142,7 +172,7 @@ git commit -m "変更内容"
 git push
 ```
 
-push するだけで自動デプロイされる。`dist/` は .gitignore 済みなのでコミットされない（Actions がサーバー側でビルドする）。
+push するだけで自動デプロイされる。`dist/` は .gitignore 済みなのでコミットされない（Actions がサーバー側でビルドする）。デプロイ状況は GitHub の **Actions** タブで確認できる。
 
 ### カスタムドメイン
 
