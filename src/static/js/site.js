@@ -63,67 +63,84 @@
       sceneList.push({
         el: scene,
         nodes: specs,
-        lp: null // last progress written to the DOM (dedupe writes)
+        dp: null, // displayed progress（スクロール目標へ滑らかに追従する現在値）
+        lp: null  // last progress written to the DOM (dedupe writes)
       });
     });
     var vh = window.innerHeight;
     var raf = null;
-    // Apple の製品ページと同じ「完全スクロール連動」:
-    // 演出の状態は常にスクロール位置だけで決まる純粋な関数（可逆）。
-    // 途中で止めればその状態のまま、逆戻りすれば正確に巻き戻る。
-    // 自走ループは持たず、スクロールイベント 1 回につき最大 1 フレームだけ
-    // 更新する（iPhone Safari の負荷・クラッシュ対策）。
-    var update = function () {
+    var last = 0;   // 前フレームのタイムスタンプ（フレームレート非依存の減衰用）
+    var tlDp = null; // timeline track の表示値
+    // Apple の製品ページと同じ挙動:
+    // ・演出の「目標」は常にスクロール位置だけで決まる（可逆・スナップしない）。
+    //   途中で止めればその位置の状態で落ち着き、逆戻りすれば正確に巻き戻る。
+    // ・ただし表示上の進行度 dp を毎フレーム「目標へ一定割合だけ」近づける
+    //   減衰（ダンピング）を掛ける。これで速いフリックでも一気に飛ばず、
+    //   スクロールの速さに依存しない滑らかな進み方になる。
+    // ・dp が目標に追いついたらループを止める（自走し続けない＝負荷・電池対策）。
+    var TAU = 80; // ms。大きいほど滑らか（重い）、小さいほどスクロール直結（軽い）
+    var writeScene = function (sc, p) {
+      var pr = Number(p.toFixed(4));
+      if (pr === sc.lp) return; // 変化なし → 書かない
+      sc.lp = pr;
+      sc.el.style.setProperty('--p', pr);
+      var nodes = sc.nodes;
+      for (var j = 0; j < nodes.length; j++) {
+        var n = nodes[j];
+        var k = seg(p, n.s);
+        var ko = seg(p, n.o);
+        var kd = seg(p, n.d);
+        if (k !== null) { var wk = Number(k.toFixed(3)); if (wk !== n.wk) { n.wk = wk; n.el.style.setProperty('--k', wk); } }
+        if (ko !== null) { var wko = Number(ko.toFixed(3)); if (wko !== n.wko) { n.wko = wko; n.el.style.setProperty('--ko', wko); } }
+        if (kd !== null) { var wkd = Number(kd.toFixed(3)); if (wkd !== n.wkd) { n.wkd = wkd; n.el.style.setProperty('--kd', wkd); } }
+      }
+    };
+    var tick = function (now) {
       raf = null;
-      // 毎フレーム最新のビューポート高さを読む。モバイルのアドレスバー開閉で
-      // innerHeight が変わっても（resize が遅れて発火しても）スクラブがずれない。
+      // dt をクランプ（タブ復帰などの巨大 dt で一気に飛ぶのを防ぐ）
+      var dt = last ? Math.min(64, now - last) : 16.7;
+      last = now;
+      var alpha = 1 - Math.exp(-dt / TAU); // 経過時間ベース＝120Hz でも 60Hz でも同じ体感
       vh = window.innerHeight;
+      var moving = false;
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
-        // Skip scenes fully outside the viewport — their frozen state isn't
-        // visible, and values are recomputed from scratch on re-entry.
-        if (rect.bottom < 0 || rect.top > vh) continue;
         var total = sc.el.offsetHeight - vh;
-        var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-        var pr = Number(p.toFixed(4));
-        if (pr === sc.lp) continue; // progress unchanged → nothing to write
-        sc.lp = pr;
-        sc.el.style.setProperty('--p', pr);
-        var nodes = sc.nodes;
-        for (var j = 0; j < nodes.length; j++) {
-          var n = nodes[j];
-          var k = seg(p, n.s);
-          var ko = seg(p, n.o);
-          var kd = seg(p, n.d);
-          if (k !== null) {
-            var wk = Number(k.toFixed(3));
-            if (wk !== n.wk) { n.wk = wk; n.el.style.setProperty('--k', wk); }
-          }
-          if (ko !== null) {
-            var wko = Number(ko.toFixed(3));
-            if (wko !== n.wko) { n.wko = wko; n.el.style.setProperty('--ko', wko); }
-          }
-          if (kd !== null) {
-            var wkd = Number(kd.toFixed(3));
-            if (wkd !== n.wkd) { n.wkd = wkd; n.el.style.setProperty('--kd', wkd); }
-          }
+        var target = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
+        // 画面外のシーンは見えないので即座に目標へスナップ（再表示時に飛ばない）
+        if (rect.bottom < 0 || rect.top > vh) { sc.dp = target; continue; }
+        if (sc.dp === null) {
+          sc.dp = target; // 初回はアニメせず即確定
+        } else {
+          sc.dp += (target - sc.dp) * alpha;
+          if (Math.abs(target - sc.dp) < 0.0004) sc.dp = target; // 収束したら固定
+          else moving = true; // まだ追従中 → 次フレームも回す
         }
+        writeScene(sc, sc.dp);
       }
       if (tl) {
         var r = tl.getBoundingClientRect();
-        var tp = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
-        tl.style.setProperty('--tl', tp.toFixed(4));
+        var ttarget = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
+        if (tlDp === null) { tlDp = ttarget; }
+        else {
+          tlDp += (ttarget - tlDp) * alpha;
+          if (Math.abs(ttarget - tlDp) < 0.0004) tlDp = ttarget;
+          else moving = true;
+        }
+        tl.style.setProperty('--tl', tlDp.toFixed(4));
       }
+      if (moving) raf = requestAnimationFrame(tick); // 追従が終わるまで回す
     };
     var onScroll = function () {
-      if (!raf) raf = requestAnimationFrame(update);
+      if (!raf) { last = 0; raf = requestAnimationFrame(tick); }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', function () {
       vh = window.innerHeight;
-      // force recompute on next frame (dimensions changed)
-      for (var i = 0; i < sceneList.length; i++) sceneList[i].lp = null;
+      // 寸法が変わったので次フレームで即座に目標へスナップし直す
+      for (var i = 0; i < sceneList.length; i++) { sceneList[i].dp = null; sceneList[i].lp = null; }
+      tlDp = null;
       onScroll();
     });
     onScroll();
