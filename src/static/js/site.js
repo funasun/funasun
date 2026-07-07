@@ -44,34 +44,66 @@
       if (!(b > a)) return 1; // degenerate "0,0" => always on
       return smooth((p - a) / (b - a));
     };
-    var raf = null;
-    var onScroll = function () {
-      if (raf) return;
-      raf = requestAnimationFrame(function () {
-        raf = null;
-        scenes.forEach(function (scene) {
-          var total = scene.offsetHeight - window.innerHeight;
-          var rect = scene.getBoundingClientRect();
-          var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-          scene.style.setProperty('--p', p.toFixed(4));
-          scene.querySelectorAll('[data-seg], [data-out], [data-dim]').forEach(function (el) {
-            var k = seg(p, el.getAttribute('data-seg'));
-            var ko = seg(p, el.getAttribute('data-out'));
-            var kd = seg(p, el.getAttribute('data-dim'));
-            if (k !== null) el.style.setProperty('--k', k.toFixed(4));
-            if (ko !== null) el.style.setProperty('--ko', ko.toFixed(4));
-            if (kd !== null) el.style.setProperty('--kd', kd.toFixed(4));
-          });
+    // Cache each scene's animated descendants once (querySelectorAll every frame
+    // is what made mobile Safari crash with "問題が繰り返し発生しました").
+    var sceneList = [];
+    scenes.forEach(function (scene) {
+      var nodes = scene.querySelectorAll('[data-seg], [data-out], [data-dim]');
+      var specs = [];
+      nodes.forEach(function (el) {
+        specs.push({
+          el: el,
+          s: el.getAttribute('data-seg'),
+          o: el.getAttribute('data-out'),
+          d: el.getAttribute('data-dim'),
+          lp: -1 // last progress applied to this scene (dedupe writes)
         });
-        if (tl) {
-          var r = tl.getBoundingClientRect();
-          var tp = Math.min(1, Math.max(0, (window.innerHeight * 0.82 - r.top) / r.height));
-          tl.style.setProperty('--tl', tp.toFixed(4));
-        }
       });
+      sceneList.push({ el: scene, nodes: specs, lp: -1 });
+    });
+    var vh = window.innerHeight;
+    var raf = null;
+    var update = function () {
+      raf = null;
+      for (var i = 0; i < sceneList.length; i++) {
+        var sc = sceneList[i];
+        var rect = sc.el.getBoundingClientRect();
+        // Skip scenes fully outside the viewport — their frozen state isn't
+        // visible, and re-entering recomputes from scratch.
+        if (rect.bottom < 0 || rect.top > vh) continue;
+        var total = sc.el.offsetHeight - vh;
+        var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
+        var pr = Number(p.toFixed(4));
+        if (pr === sc.lp) continue; // progress unchanged → nothing to write
+        sc.lp = pr;
+        sc.el.style.setProperty('--p', p.toFixed(4));
+        var nodes = sc.nodes;
+        for (var j = 0; j < nodes.length; j++) {
+          var n = nodes[j];
+          var k = seg(p, n.s);
+          var ko = seg(p, n.o);
+          var kd = seg(p, n.d);
+          if (k !== null) n.el.style.setProperty('--k', k.toFixed(4));
+          if (ko !== null) n.el.style.setProperty('--ko', ko.toFixed(4));
+          if (kd !== null) n.el.style.setProperty('--kd', kd.toFixed(4));
+        }
+      }
+      if (tl) {
+        var r = tl.getBoundingClientRect();
+        var tp = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
+        tl.style.setProperty('--tl', tp.toFixed(4));
+      }
+    };
+    var onScroll = function () {
+      if (!raf) raf = requestAnimationFrame(update);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', function () {
+      vh = window.innerHeight;
+      // force recompute on next frame (dimensions changed)
+      for (var i = 0; i < sceneList.length; i++) sceneList[i].lp = -1;
+      onScroll();
+    });
     onScroll();
   }
 

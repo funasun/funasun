@@ -127,6 +127,12 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
   [data-m="ystick"] { position: static !important; border-bottom: 1px solid rgba(255,255,255,.14); padding-bottom: 8px; }
   /* 柱写真の上のグラデーション: モバイルでは文字が下寄せなので縦方向に切り替える */
   [data-m="shade"] { background: linear-gradient(180deg, rgba(6,6,8,.4) 0%, rgba(6,6,8,.62) 40%, rgba(6,6,8,.92) 78%, rgba(6,6,8,.96) 100%) !important; }
+  /* Home 導入の4行: モバイルでは大きすぎて左右が見切れるので縮小＋インデント解除 */
+  [data-m="intro"] { font-size: clamp(18px, 5vw, 26px) !important; margin-left: 0 !important; }
+  /* 列を画面幅に固定（非表示の「バラバラに見える。」が字間拡大で列を広げ中央寄せで見切れるのを防ぐ） */
+  [data-m="introwrap"] { width: 100% !important; box-sizing: border-box !important; }
+  /* 「ヴァイオリン、チェロ、…」等の読点区切りの見出し: 単語途中で折り返さず読点で改行 */
+  [data-m="jbreak"] { word-break: keep-all; overflow-wrap: anywhere; }
   /* フッター: モバイルは Sitemap / Links を横並び2列に。名前と Contact（長いメール）は全幅 */
   [data-m="fgrid"] { grid-template-columns: 1fr 1fr !important; gap: 34px 20px !important; }
   [data-m="fgrid"] > div:nth-child(1) { grid-column: 1 / -1; }

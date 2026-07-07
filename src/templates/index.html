@@ -32,11 +32,11 @@
 
 <div data-scene style="height: 400vh; position: relative">
   <div style="position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center">
-    <div style="display: flex; flex-direction: column; gap: clamp(22px, 3.6vh, 38px); padding: 0 24px">
-      <p data-seg="0.04,0.14" data-dim="0.68,0.8" style="margin: 0 0 0 0; font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 1) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 1)) * -60px))">廃棄うどんで水素を作る。</p>
-      <p data-seg="0.19,0.29" data-dim="0.68,0.8" style="margin: 0 0 0 clamp(20px, 4vw, 70px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * 60px))">議員と対談する。</p>
-      <p data-seg="0.34,0.44" data-dim="0.68,0.8" style="margin: 0 0 0 clamp(10px, 2vw, 34px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * -60px))">生徒会長を務める。</p>
-      <p data-seg="0.49,0.59" data-dim="0.68,0.8" style="margin: 0 0 0 clamp(30px, 6vw, 100px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * 60px))">色んな楽器を弾く。</p>
+    <div data-m="introwrap" style="display: flex; flex-direction: column; gap: clamp(22px, 3.6vh, 38px); padding: 0 24px">
+      <p data-seg="0.04,0.14" data-dim="0.68,0.8" data-m="intro" style="margin: 0 0 0 0; font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 1) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 1)) * -60px))">廃棄うどんで水素を作る。</p>
+      <p data-seg="0.19,0.29" data-dim="0.68,0.8" data-m="intro" style="margin: 0 0 0 clamp(20px, 4vw, 70px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * 60px))">議員と対談する。</p>
+      <p data-seg="0.34,0.44" data-dim="0.68,0.8" data-m="intro" style="margin: 0 0 0 clamp(10px, 2vw, 34px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * -60px))">生徒会長を務める。</p>
+      <p data-seg="0.49,0.59" data-dim="0.68,0.8" data-m="intro" style="margin: 0 0 0 clamp(30px, 6vw, 100px); font: 500 clamp(24px, 2.9vw, 42px)/1.5 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--k, 0) * (1 - var(--kd, 0) * .78)); transform: translateX(calc((1 - var(--k, 0)) * 60px))">色んな楽器を弾く。</p>
       <p data-seg="0.76,0.9" style="margin: clamp(14px, 2.6vh, 26px) 0 0; font: 600 clamp(30px, 3.6vw, 54px)/1.5 'Noto Serif JP', serif; letter-spacing: calc(.08em + (1 - var(--k, 0)) * .4em); opacity: var(--k, 0); white-space: nowrap">バラバラに見える。</p>
     </div>
   </div>
@@ -209,7 +209,7 @@
     </div>
     <div style="position: absolute; left: 7vw; right: 7vw; bottom: 11vh; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px">
       <p data-seg="0.34,0.42" style="margin: 0; font: italic 500 clamp(14px, 1.3vw, 17px) 'EB Garamond', serif; letter-spacing: .3em; text-transform: uppercase; color: rgba(244,244,245,.6); opacity: var(--k, 1); transform: translateY(calc((1 - var(--k, 1)) * 20px))">Another face — もう一つの顔</p>
-      <h2 data-seg="0.4,0.5" style="margin: 0; font: 600 clamp(34px, 4vw, 60px)/1.4 'Noto Serif JP', serif; letter-spacing: .04em; opacity: var(--k, 1); transform: translateY(calc((1 - var(--k, 1)) * 30px))">ヴァイオリン、チェロ、フルート、声楽。</h2>
+      <h2 data-seg="0.4,0.5" data-m="jbreak" style="margin: 0; font: 600 clamp(34px, 4vw, 60px)/1.4 'Noto Serif JP', serif; letter-spacing: .04em; opacity: var(--k, 1); transform: translateY(calc((1 - var(--k, 1)) * 30px))">ヴァイオリン、チェロ、フルート、声楽。</h2>
       <p data-seg="0.5,0.6" style="margin: 0; font: 300 clamp(14px, 1.2vw, 16px)/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.68); opacity: var(--k, 0); transform: translateY(calc((1 - var(--k, 0)) * 26px))">教養と感性を磨く。</p>
       <div data-seg="0.56,0.64" style="display: flex; align-items: flex-end; gap: 5px; height: 30px; opacity: var(--k, 0)">
         <span style="width: 3px; height: 26px; background: rgba(244,244,245,.65); transform-origin: bottom; animation: eq 1.1s ease-in-out -0.2s infinite alternate"></span>

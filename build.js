@@ -108,10 +108,20 @@ function newsRows() {
     </a>`).join('\n');
 }
 
+// " / " 区切りの値は、各項目を折り返し禁止にして区切りでのみ改行させる
+// （モバイルで「ヴァイオリン」等が単語の途中で不自然に折り返すのを防ぐ）
+function metaValue(v) {
+  if (v.indexOf(' / ') === -1) return esc(v);
+  return v
+    .split(' / ')
+    .map((s) => `<span style="white-space: nowrap">${esc(s)}</span>`)
+    .join('<span style="color: rgba(244,244,245,.4)"> / </span>');
+}
+
 function metaRows() {
   return data.about.meta.map((m) => `    <div data-reveal data-m="stack6" class="rline" style="position: relative; display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: 20px 6px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
       <span style="font: 500 13px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.5)">${esc(m.label)}</span>
-      <span style="font: 300 14.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.8)">${esc(m.value)}</span>
+      <span style="font: 300 14.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.8)">${metaValue(m.value)}</span>
     </div>`).join('\n');
 }
 

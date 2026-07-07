@@ -131,11 +131,14 @@ og-src.html          OG 画像の生成元。変更したら headless Chrome で
 - `slug` はページ内リンク（`archive.html#slug`）と旧 `?p=` リダイレクトの両方に使われる。ユニークにすること
 - 大きな出来事なら `home.newsItems`（Home の News 3件）と `about.timeline` にも追記する
 
-### 全ページ共通
+### 全ページ共通（フッター・ナビ）
 
-- メール・SNS リンク: `contact`（フッターと Contact 表示に使用）
-- サイトタイトル・URL: `site`
-- ナビ / フッターの HTML 自体: `src/partials/nav.html` / `src/partials/footer.html`
+これらは data.json ではなく **partial の HTML** に直接書かれている:
+
+- メールアドレス・SNS リンク: `src/partials/footer.html`（`contact` キーではなくフッター内に直書き）
+- フッターの見出し「話しましょう。」やコピー「社会のためのイノベーション。」: `src/partials/footer.html`
+- ナビのリンク: `src/partials/nav.html`
+- サイトタイトル・URL・description 用データ: `src/data.json` の `site` / `contact`
 
 ## 写真の追加（共通）
 
