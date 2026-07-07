@@ -94,9 +94,12 @@ function gameTiles() {
     const work = data.worksItems.find((w) => w.title === g.title);
     const url = (work && work.liveUrl) || '';
     const linkAttrs = url ? `href="${esc(url)}" target="_blank" rel="noopener"` : 'href="works.html"';
+    const thumb = (work && work.thumbnail)
+      ? `<img src="${esc(work.thumbnail)}" alt="${esc(g.title)}のスクリーンショット" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
+      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">app screenshot</span>`;
     return `      <a ${linkAttrs} class="gcard" style="--tilt: ${g.tilt}; flex: none; width: clamp(240px, 24vw, 360px); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; display: block; text-decoration: none; color: #f4f4f5">
-        <div style="aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
-          <span style="font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">app screenshot</span>
+        <div style="aspect-ratio: 16 / 10; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
+          ${thumb}
         </div>
         <div style="padding: 16px 18px 20px">
           <h3 style="margin: 0 0 5px; font: 500 15px 'Noto Sans JP', sans-serif">${esc(g.title)}</h3>

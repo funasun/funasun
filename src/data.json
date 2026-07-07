@@ -230,7 +230,7 @@
       "type": "Game",
       "status": "wip",
       "description": "私の故郷・綾川町を舞台としたゲーム。綾川町に来たことがない人でも懐かしい気持ちになります。",
-      "thumbnail": "",
+      "thumbnail": "images/ayagawa-thumb.jpg",
       "liveUrl": "https://funasun.github.io/ayagawa-natsu/"
     },
     {
@@ -238,7 +238,7 @@
       "type": "Game",
       "status": "wip",
       "description": "世界を救え！",
-      "thumbnail": "",
+      "thumbnail": "images/blackout-thumb.jpg",
       "liveUrl": "https://op-blackout.vercel.app/"
     },
     {
@@ -246,7 +246,7 @@
       "type": "Game",
       "status": "wip",
       "description": "令和のプレイヤーが平安時代で暮らしながら、日本史を体験して学ぶ歴史ゲーム。",
-      "thumbnail": "",
+      "thumbnail": "images/tokiwatari-thumb.jpg",
       "liveUrl": "https://funasun.github.io/history-game/"
     },
     {
@@ -254,7 +254,7 @@
       "type": "Game",
       "status": "wip",
       "description": "無人島に漂着した少年たちの暮らしを生き抜くサバイバルゲーム。ジュール・ヴェルヌの原作をもとに。",
-      "thumbnail": "",
+      "thumbnail": "images/monogatari-thumb.jpg",
       "liveUrl": "https://funasun.github.io/novel-game/"
     },
     {
@@ -262,7 +262,7 @@
       "type": "Game",
       "status": "wip",
       "description": "ベートーヴェンの生涯を追体験する伝記ゲーム。",
-      "thumbnail": "",
+      "thumbnail": "images/denki-thumb.jpg",
       "liveUrl": "https://funasun.github.io/denki-game/"
     },
     {
@@ -270,7 +270,7 @@
       "type": "Game",
       "status": "wip",
       "description": "プレイヤー自身が思想史を旅する哲学ゲーム。思考プロセスを大事にする高校倫理の授業。",
-      "thumbnail": "",
+      "thumbnail": "images/tetsugaku-thumb.jpg",
       "liveUrl": "https://funasun.github.io/philosophy-game/"
     }
   ],
