@@ -55,7 +55,10 @@
           el: el,
           s: el.getAttribute('data-seg'),
           o: el.getAttribute('data-out'),
-          d: el.getAttribute('data-dim')
+          d: el.getAttribute('data-dim'),
+          // displayed values (smoothed) / last written values (dedupe)
+          k: -1, ko: -1, kd: -1,
+          wk: null, wko: null, wkd: null
         });
       });
       sceneList.push({
@@ -69,64 +72,87 @@
     var tlCur = -1;
     var raf = null;
     var last = 0;
+    var lastScroll = 0;
     var EPS = 0.0005;
     var TAU = 110; // smoothing time constant (ms) — Apple-like eased catch-up
-    // Displayed progress chases the scroll-derived target with an exponential
+    var IDLE = 180; // ms without scrolling before mid-transitions self-complete
+    // Displayed values chase the scroll-derived targets with an exponential
     // ease, so stopping or reversing mid-gimmick settles smoothly instead of
-    // freezing/jerking. The rAF loop keeps itself alive only while any value
-    // is still converging, then stops (preserves the battery/crash fixes).
+    // freezing/jerking. On top of that, once scrolling pauses, any element
+    // caught mid-fade completes to its nearest clean state (fully shown or
+    // fully hidden) — Apple-style "always stop at a readable state".
+    // The rAF loop keeps itself alive only while any value is still
+    // converging, then stops (preserves the battery/crash fixes).
+    // th = どちらに寄せるかの閾値。表示側（読める状態）を優遇する:
+    //   入場 (--k): 3割出ていれば表示を完了 / 退場 (--out): 7割消えるまで残す
+    var settleTarget = function (t, idle, th) {
+      if (!idle || t === null) return t;
+      if (t > 0.02 && t < 0.98) return t < th ? 0 : 1;
+      return t;
+    };
     var frame = function (now) {
       raf = null;
       var dt = last ? Math.min(64, now - last) : 16.7;
       last = now;
       var a = 1 - Math.exp(-dt / TAU); // frame-rate independent lerp factor
-      var settled = true;
+      var idle = now - lastScroll > IDLE;
+      var settled = idle; // stay alive until the idle-settle pass has run
+      var chase = function (cur, t) {
+        if (cur < 0) return t; // first pass → snap
+        var d = t - cur;
+        if (d > EPS || d < -EPS) {
+          settled = false;
+          return cur + d * a;
+        }
+        return t;
+      };
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
         var total = sc.el.offsetHeight - vh;
         var target = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
         var off = rect.bottom < 0 || rect.top > vh;
-        if (sc.cur < 0 || off) {
-          // First pass, or scene fully outside the viewport: snap (nothing
-          // visible to animate; re-entry then starts from the exact position).
+        if (off) {
+          // Scene fully outside the viewport: snap (nothing visible to
+          // animate; re-entry then starts from the exact position).
           sc.cur = target;
-        } else {
-          var d = target - sc.cur;
-          if (d > EPS || d < -EPS) {
-            sc.cur += d * a;
-            settled = false;
-          } else {
-            sc.cur = target;
-          }
+          continue;
         }
-        if (off) continue;
+        sc.cur = chase(sc.cur, target);
         var pr = Number(sc.cur.toFixed(4));
-        if (pr === sc.lp) continue; // unchanged → nothing to write
-        sc.lp = pr;
-        sc.el.style.setProperty('--p', sc.cur.toFixed(4));
+        if (pr !== sc.lp) {
+          sc.lp = pr;
+          sc.el.style.setProperty('--p', pr);
+        }
         var nodes = sc.nodes;
         for (var j = 0; j < nodes.length; j++) {
           var n = nodes[j];
-          var k = seg(sc.cur, n.s);
-          var ko = seg(sc.cur, n.o);
-          var kd = seg(sc.cur, n.d);
-          if (k !== null) n.el.style.setProperty('--k', k.toFixed(4));
-          if (ko !== null) n.el.style.setProperty('--ko', ko.toFixed(4));
-          if (kd !== null) n.el.style.setProperty('--kd', kd.toFixed(4));
+          // targets from the raw scroll position; when idle, mid-fades
+          // complete to 0 or 1 so text never freezes half-transparent
+          var tk = settleTarget(seg(target, n.s), idle, 0.3);
+          var tko = settleTarget(seg(target, n.o), idle, 0.7);
+          var tkd = settleTarget(seg(target, n.d), idle, 0.5);
+          if (tk !== null) {
+            n.k = chase(n.k, tk);
+            var wk = Number(n.k.toFixed(3));
+            if (wk !== n.wk) { n.wk = wk; n.el.style.setProperty('--k', wk); }
+          }
+          if (tko !== null) {
+            n.ko = chase(n.ko, tko);
+            var wko = Number(n.ko.toFixed(3));
+            if (wko !== n.wko) { n.wko = wko; n.el.style.setProperty('--ko', wko); }
+          }
+          if (tkd !== null) {
+            n.kd = chase(n.kd, tkd);
+            var wkd = Number(n.kd.toFixed(3));
+            if (wkd !== n.wkd) { n.wkd = wkd; n.el.style.setProperty('--kd', wkd); }
+          }
         }
       }
       if (tl) {
         var r = tl.getBoundingClientRect();
         var tt = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
-        if (tlCur < 0) tlCur = tt;
-        var td = tt - tlCur;
-        if (td > EPS || td < -EPS) {
-          tlCur += td * a;
-          settled = false;
-        } else {
-          tlCur = tt;
-        }
+        tlCur = chase(tlCur, tt);
         tl.style.setProperty('--tl', tlCur.toFixed(4));
       }
       if (!settled) {
@@ -136,6 +162,7 @@
       }
     };
     var kick = function () {
+      lastScroll = performance.now();
       if (!raf) raf = requestAnimationFrame(frame);
     };
     window.addEventListener('scroll', kick, { passive: true });
