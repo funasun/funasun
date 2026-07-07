@@ -88,7 +88,13 @@ ${ldTags}`;
 /* ---------------- fragments ---------------- */
 
 function gameTiles() {
-  return data.home.gameTiles.map((g) => `      <div class="gcard" style="--tilt: ${g.tilt}; flex: none; width: clamp(240px, 24vw, 360px); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
+  // Home の帯カード: 同名の worksItems から liveUrl を探してリンクにする。
+  // 見つからなければ Works ページへ誘導（クリックしても何も起きない、を防ぐ）
+  return data.home.gameTiles.map((g) => {
+    const work = data.worksItems.find((w) => w.title === g.title);
+    const url = (work && work.liveUrl) || '';
+    const linkAttrs = url ? `href="${esc(url)}" target="_blank" rel="noopener"` : 'href="works.html"';
+    return `      <a ${linkAttrs} class="gcard" style="--tilt: ${g.tilt}; flex: none; width: clamp(240px, 24vw, 360px); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; display: block; text-decoration: none; color: #f4f4f5">
         <div style="aspect-ratio: 16 / 10; display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
           <span style="font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">app screenshot</span>
         </div>
@@ -96,7 +102,8 @@ function gameTiles() {
           <h3 style="margin: 0 0 5px; font: 500 15px 'Noto Sans JP', sans-serif">${esc(g.title)}</h3>
           <p style="margin: 0; font: 300 12px/1.7 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5)">${esc(g.desc)}</p>
         </div>
-      </div>`).join('\n');
+      </a>`;
+  }).join('\n');
 }
 
 function newsRows() {
@@ -164,14 +171,17 @@ function awardRows() {
 
 function workCards() {
   return data.worksItems.map((w) => {
-    const url = w.liveUrl || '#';
+    const url = w.liveUrl || '';
     const statusStyle = w.status === 'live'
       ? "font: 400 10.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(111,140,255,.5); color: var(--accent, #6f8cff)"
       : "font: 400 10.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); color: rgba(244,244,245,.45)";
     const thumb = w.thumbnail
       ? `<img src="${esc(w.thumbnail)}" alt="${esc(w.title)}のスクリーンショット" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
       : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">app screenshot</span>`;
-    return `    <a href="${esc(url)}" target="_blank" rel="noopener" data-type="${esc(w.type)}" class="wcard" style="display: block; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; text-decoration: none; color: #f4f4f5">
+    // liveUrl が空の作品はリンクにしない（href="#" だと「押しても飛ばない」リンクになる）
+    const tag = url ? 'a' : 'div';
+    const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
+    return `    <${tag}${linkAttrs} data-type="${esc(w.type)}" class="wcard" style="display: block; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; text-decoration: none; color: #f4f4f5">
       <div style="aspect-ratio: 16 / 10; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
         ${thumb}
       </div>
@@ -183,7 +193,7 @@ function workCards() {
         <h3 style="margin: 0 0 6px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(w.title)}</h3>
         <p style="margin: 0; font: 300 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5)">${esc(w.description)}</p>
       </div>
-    </a>`;
+    </${tag}>`;
   }).join('\n');
 }
 
