@@ -63,87 +63,107 @@
       sceneList.push({
         el: scene,
         nodes: specs,
-        dp: null, // displayed progress（スクロール目標へ滑らかに追従する現在値）
-        lp: null  // last progress written to the DOM (dedupe writes)
+        lp: null // last progress written to the DOM (dedupe writes)
       });
     });
     var vh = window.innerHeight;
     var raf = null;
-    var last = 0;   // 前フレームのタイムスタンプ（フレームレート非依存の減衰用）
-    var tlDp = null; // timeline track の表示値
-    // Apple の製品ページと同じ挙動:
-    // ・演出の「目標」は常にスクロール位置だけで決まる（可逆・スナップしない）。
-    //   途中で止めればその位置の状態で落ち着き、逆戻りすれば正確に巻き戻る。
-    // ・ただし表示上の進行度 dp を毎フレーム「目標へ一定割合だけ」近づける
-    //   減衰（ダンピング）を掛ける。これで速いフリックでも一気に飛ばず、
-    //   スクロールの速さに依存しない滑らかな進み方になる。
-    // ・dp が目標に追いついたらループを止める（自走し続けない＝負荷・電池対策）。
-    var TAU = 80; // ms。大きいほど滑らか（重い）、小さいほどスクロール直結（軽い）
-    var writeScene = function (sc, p) {
-      var pr = Number(p.toFixed(4));
-      if (pr === sc.lp) return; // 変化なし → 書かない
-      sc.lp = pr;
-      sc.el.style.setProperty('--p', pr);
-      var nodes = sc.nodes;
-      for (var j = 0; j < nodes.length; j++) {
-        var n = nodes[j];
-        var k = seg(p, n.s);
-        var ko = seg(p, n.o);
-        var kd = seg(p, n.d);
-        if (k !== null) { var wk = Number(k.toFixed(3)); if (wk !== n.wk) { n.wk = wk; n.el.style.setProperty('--k', wk); } }
-        if (ko !== null) { var wko = Number(ko.toFixed(3)); if (wko !== n.wko) { n.wko = wko; n.el.style.setProperty('--ko', wko); } }
-        if (kd !== null) { var wkd = Number(kd.toFixed(3)); if (wkd !== n.wkd) { n.wkd = wkd; n.el.style.setProperty('--kd', wkd); } }
-      }
-    };
-    var tick = function (now) {
+    // 演出はスクロール位置に「正確に」連動させる（遅延ゼロ）。
+    // 遅延（減衰）を掛けると、速いフリックのときアニメが追いつく前に
+    // シーンをピンアウトして中途半端な状態で飛び、バグに見えていた。
+    // スクロールの「速さ」を抑える役目は下の Wheel smoothing が担う（役割分離）。
+    // スクロールイベント 1 回につき最大 1 フレームだけ更新（自走ループなし）。
+    var update = function () {
       raf = null;
-      // dt をクランプ（タブ復帰などの巨大 dt で一気に飛ぶのを防ぐ）
-      var dt = last ? Math.min(64, now - last) : 16.7;
-      last = now;
-      var alpha = 1 - Math.exp(-dt / TAU); // 経過時間ベース＝120Hz でも 60Hz でも同じ体感
+      // 毎フレーム最新のビューポート高さを読む（モバイルのアドレスバー開閉対策）。
       vh = window.innerHeight;
-      var moving = false;
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
+        // 画面外のシーンはスキップ（見えない＝書く必要なし。再表示時に再計算）。
+        if (rect.bottom < 0 || rect.top > vh) continue;
         var total = sc.el.offsetHeight - vh;
-        var target = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-        // 画面外のシーンは見えないので即座に目標へスナップ（再表示時に飛ばない）
-        if (rect.bottom < 0 || rect.top > vh) { sc.dp = target; continue; }
-        if (sc.dp === null) {
-          sc.dp = target; // 初回はアニメせず即確定
-        } else {
-          sc.dp += (target - sc.dp) * alpha;
-          if (Math.abs(target - sc.dp) < 0.0004) sc.dp = target; // 収束したら固定
-          else moving = true; // まだ追従中 → 次フレームも回す
+        var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
+        var pr = Number(p.toFixed(4));
+        if (pr === sc.lp) continue; // 進行度に変化なし → 何も書かない
+        sc.lp = pr;
+        sc.el.style.setProperty('--p', pr);
+        var nodes = sc.nodes;
+        for (var j = 0; j < nodes.length; j++) {
+          var n = nodes[j];
+          var k = seg(p, n.s);
+          var ko = seg(p, n.o);
+          var kd = seg(p, n.d);
+          if (k !== null) { var wk = Number(k.toFixed(3)); if (wk !== n.wk) { n.wk = wk; n.el.style.setProperty('--k', wk); } }
+          if (ko !== null) { var wko = Number(ko.toFixed(3)); if (wko !== n.wko) { n.wko = wko; n.el.style.setProperty('--ko', wko); } }
+          if (kd !== null) { var wkd = Number(kd.toFixed(3)); if (wkd !== n.wkd) { n.wkd = wkd; n.el.style.setProperty('--kd', wkd); } }
         }
-        writeScene(sc, sc.dp);
       }
       if (tl) {
         var r = tl.getBoundingClientRect();
-        var ttarget = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
-        if (tlDp === null) { tlDp = ttarget; }
-        else {
-          tlDp += (ttarget - tlDp) * alpha;
-          if (Math.abs(ttarget - tlDp) < 0.0004) tlDp = ttarget;
-          else moving = true;
-        }
-        tl.style.setProperty('--tl', tlDp.toFixed(4));
+        var tp = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
+        tl.style.setProperty('--tl', tp.toFixed(4));
       }
-      if (moving) raf = requestAnimationFrame(tick); // 追従が終わるまで回す
     };
     var onScroll = function () {
-      if (!raf) { last = 0; raf = requestAnimationFrame(tick); }
+      if (!raf) raf = requestAnimationFrame(update);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', function () {
       vh = window.innerHeight;
-      // 寸法が変わったので次フレームで即座に目標へスナップし直す
-      for (var i = 0; i < sceneList.length; i++) { sceneList[i].dp = null; sceneList[i].lp = null; }
-      tlDp = null;
+      for (var i = 0; i < sceneList.length; i++) sceneList[i].lp = null;
       onScroll();
     });
     onScroll();
+  }
+
+  /* ============ Wheel smoothing（マウス／トラックパッド）============ */
+  // ホイールのスクロールをイージングして、速く回しても一定以上の速さで
+  // 進まないようにする（Apple の製品ページのような「重み」）。演出は上の
+  // update がスクロール位置に正確連動しているので、これで演出の進む速さも
+  // 自動的に滑らか＆速度制限される。
+  // タッチ（スマホ）はネイティブのまま＝フリックの慣性を殺さない（Apple も同様）。
+  var mm = window.matchMedia;
+  var reduceMotion = mm && mm('(prefers-reduced-motion: reduce)').matches;
+  var coarsePointer = mm && mm('(pointer: coarse)').matches;
+  if (!reduceMotion && !coarsePointer && window.requestAnimationFrame) {
+    var wsTarget = window.scrollY;
+    var wsRaf = null;
+    var wsActive = false;
+    var WS_EASE = 0.14; // 小さいほど滑らか（重い）、大きいほど直結（軽い）
+    var wsMax = function () {
+      var d = document.documentElement, b = document.body;
+      return Math.max(0, Math.max(d.scrollHeight, b ? b.scrollHeight : 0) - window.innerHeight);
+    };
+    var wsClamp = function (v) { return Math.max(0, Math.min(wsMax(), v)); };
+    var wsLoop = function () {
+      var cur = window.scrollY;
+      if (Math.abs(wsTarget - cur) < 0.5) {
+        wsRaf = null; wsActive = false;
+        window.scrollTo(0, wsTarget);
+        return;
+      }
+      wsActive = true;
+      window.scrollTo(0, cur + (wsTarget - cur) * WS_EASE);
+      wsRaf = requestAnimationFrame(wsLoop);
+    };
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) return; // ピンチズームには干渉しない
+      var d = e.deltaY;
+      if (e.deltaMode === 1) d *= 16;                 // 行単位 → px 換算
+      else if (e.deltaMode === 2) d *= window.innerHeight; // ページ単位
+      if (!d) return;
+      e.preventDefault();
+      // ループ停止中は、直前に他手段（スクロールバー等）で動いた位置へ同期
+      if (!wsActive) wsTarget = window.scrollY;
+      wsTarget = wsClamp(wsTarget + d);
+      if (!wsRaf) wsRaf = requestAnimationFrame(wsLoop);
+    }, { passive: false });
+    // ホイール以外（キーボード / アンカー / スクロールバー）で動いたら目標を同期
+    window.addEventListener('scroll', function () {
+      if (!wsActive) wsTarget = window.scrollY;
+    }, { passive: true });
+    window.addEventListener('resize', function () { wsTarget = wsClamp(wsTarget); }, { passive: true });
   }
 
   /* ============ Count-up (Research stats) ============ */
