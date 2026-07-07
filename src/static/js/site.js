@@ -75,6 +75,9 @@
     // 更新する（iPhone Safari の負荷・クラッシュ対策）。
     var update = function () {
       raf = null;
+      // 毎フレーム最新のビューポート高さを読む。モバイルのアドレスバー開閉で
+      // innerHeight が変わっても（resize が遅れて発火しても）スクラブがずれない。
+      vh = window.innerHeight;
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
