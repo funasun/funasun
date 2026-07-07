@@ -55,34 +55,62 @@
           el: el,
           s: el.getAttribute('data-seg'),
           o: el.getAttribute('data-out'),
-          d: el.getAttribute('data-dim'),
-          lp: -1 // last progress applied to this scene (dedupe writes)
+          d: el.getAttribute('data-dim')
         });
       });
-      sceneList.push({ el: scene, nodes: specs, lp: -1 });
+      sceneList.push({
+        el: scene,
+        nodes: specs,
+        cur: -1, // displayed (smoothed) progress; -1 = uninitialised
+        lp: -1 // last progress written to the DOM (dedupe writes)
+      });
     });
     var vh = window.innerHeight;
+    var tlCur = -1;
     var raf = null;
-    var update = function () {
+    var last = 0;
+    var EPS = 0.0005;
+    var TAU = 110; // smoothing time constant (ms) — Apple-like eased catch-up
+    // Displayed progress chases the scroll-derived target with an exponential
+    // ease, so stopping or reversing mid-gimmick settles smoothly instead of
+    // freezing/jerking. The rAF loop keeps itself alive only while any value
+    // is still converging, then stops (preserves the battery/crash fixes).
+    var frame = function (now) {
       raf = null;
+      var dt = last ? Math.min(64, now - last) : 16.7;
+      last = now;
+      var a = 1 - Math.exp(-dt / TAU); // frame-rate independent lerp factor
+      var settled = true;
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
-        // Skip scenes fully outside the viewport — their frozen state isn't
-        // visible, and re-entering recomputes from scratch.
-        if (rect.bottom < 0 || rect.top > vh) continue;
         var total = sc.el.offsetHeight - vh;
-        var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-        var pr = Number(p.toFixed(4));
-        if (pr === sc.lp) continue; // progress unchanged → nothing to write
+        var target = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
+        var off = rect.bottom < 0 || rect.top > vh;
+        if (sc.cur < 0 || off) {
+          // First pass, or scene fully outside the viewport: snap (nothing
+          // visible to animate; re-entry then starts from the exact position).
+          sc.cur = target;
+        } else {
+          var d = target - sc.cur;
+          if (d > EPS || d < -EPS) {
+            sc.cur += d * a;
+            settled = false;
+          } else {
+            sc.cur = target;
+          }
+        }
+        if (off) continue;
+        var pr = Number(sc.cur.toFixed(4));
+        if (pr === sc.lp) continue; // unchanged → nothing to write
         sc.lp = pr;
-        sc.el.style.setProperty('--p', p.toFixed(4));
+        sc.el.style.setProperty('--p', sc.cur.toFixed(4));
         var nodes = sc.nodes;
         for (var j = 0; j < nodes.length; j++) {
           var n = nodes[j];
-          var k = seg(p, n.s);
-          var ko = seg(p, n.o);
-          var kd = seg(p, n.d);
+          var k = seg(sc.cur, n.s);
+          var ko = seg(sc.cur, n.o);
+          var kd = seg(sc.cur, n.d);
           if (k !== null) n.el.style.setProperty('--k', k.toFixed(4));
           if (ko !== null) n.el.style.setProperty('--ko', ko.toFixed(4));
           if (kd !== null) n.el.style.setProperty('--kd', kd.toFixed(4));
@@ -90,21 +118,34 @@
       }
       if (tl) {
         var r = tl.getBoundingClientRect();
-        var tp = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
-        tl.style.setProperty('--tl', tp.toFixed(4));
+        var tt = Math.min(1, Math.max(0, (vh * 0.82 - r.top) / r.height));
+        if (tlCur < 0) tlCur = tt;
+        var td = tt - tlCur;
+        if (td > EPS || td < -EPS) {
+          tlCur += td * a;
+          settled = false;
+        } else {
+          tlCur = tt;
+        }
+        tl.style.setProperty('--tl', tlCur.toFixed(4));
+      }
+      if (!settled) {
+        raf = requestAnimationFrame(frame);
+      } else {
+        last = 0; // loop idle — reset the clock for the next kick
       }
     };
-    var onScroll = function () {
-      if (!raf) raf = requestAnimationFrame(update);
+    var kick = function () {
+      if (!raf) raf = requestAnimationFrame(frame);
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', kick, { passive: true });
     window.addEventListener('resize', function () {
       vh = window.innerHeight;
       // force recompute on next frame (dimensions changed)
       for (var i = 0; i < sceneList.length; i++) sceneList[i].lp = -1;
-      onScroll();
+      kick();
     });
-    onScroll();
+    kick();
   }
 
   /* ============ Count-up (Research stats) ============ */
