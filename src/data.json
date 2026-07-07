@@ -222,8 +222,8 @@
       "type": "Web App",
       "status": "live",
       "description": "煩雑な名刺管理をこのアプリひとつで！",
-      "thumbnail": "",
-      "liveUrl": ""
+      "thumbnail": "images/meishi-thumb.jpg",
+      "liveUrl": "https://meishi-app-funasun273.vercel.app/"
     },
     {
       "title": "あやがわの夏",
