@@ -63,7 +63,8 @@
       sceneList.push({
         el: scene,
         nodes: specs,
-        lp: null // last progress written to the DOM (dedupe writes)
+        lp: null, // last progress written to the DOM (dedupe writes)
+        vis: false // 画面内フラグ（切り替わった時だけ will-change を付け外し）
       });
     });
     var vh = window.innerHeight;
@@ -77,11 +78,26 @@
       raf = null;
       // 毎フレーム最新のビューポート高さを読む（モバイルのアドレスバー開閉対策）。
       vh = window.innerHeight;
+      // 画面手前 0.5 画面分から「見える」扱いにして、レイヤーを先に用意する
+      // （シーンに入った瞬間にレイヤー生成が走ると 1 フレーム引っかかるため）。
+      var margin = vh * 0.5;
       for (var i = 0; i < sceneList.length; i++) {
         var sc = sceneList[i];
         var rect = sc.el.getBoundingClientRect();
+        var vis = rect.bottom >= -margin && rect.top <= vh + margin;
+        // 画面の出入りが切り替わった瞬間だけ will-change を付け外しする。
+        // 入った時: アニメする要素を GPU レイヤーへ昇格 → transform/opacity を
+        // 再描画なしで合成（Apple 方式の「GPU 合成のみ」）。速いスクロールでも
+        // 文字の再ラスタライズが起きず「読み込みが間に合わない」カクつきを防ぐ。
+        // 出た時: レイヤーを解放してモバイルのメモリ圧（＝クラッシュ）を避ける。
+        if (vis !== sc.vis) {
+          sc.vis = vis;
+          var wc = vis ? 'transform, opacity' : '';
+          var nn = sc.nodes;
+          for (var m = 0; m < nn.length; m++) nn[m].el.style.willChange = wc;
+        }
         // 画面外のシーンはスキップ（見えない＝書く必要なし。再表示時に再計算）。
-        if (rect.bottom < 0 || rect.top > vh) continue;
+        if (!vis) continue;
         var total = sc.el.offsetHeight - vh;
         var p = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
         var pr = Number(p.toFixed(4));

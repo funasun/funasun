@@ -91,7 +91,9 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
   top: 0;
   left: 0;
   height: 1px;
-  width: calc(var(--k, 0) * 100%);
+  width: 100%;
+  transform: scaleX(var(--k, 0));
+  transform-origin: left;
   background: rgba(255,255,255,.35);
 }
 /* IntersectionObserver 駆動（About メタ表・Research 受賞） */
@@ -101,9 +103,11 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
   top: 0;
   left: 0;
   height: 1px;
-  width: calc(var(--r, 0) * 100%);
+  width: 100%;
+  transform: scaleX(var(--r, 0));
+  transform-origin: left;
   background: rgba(255,255,255,.25);
-  transition: width 1.2s cubic-bezier(.2,.7,.2,1);
+  transition: transform 1.2s cubic-bezier(.2,.7,.2,1);
 }
 
 /* ============ フィルタチップ（Works / Archive）============ */
