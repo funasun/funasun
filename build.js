@@ -209,11 +209,9 @@ function archiveSections() {
   return Object.keys(byYear).sort().reverse().map((y) => {
     const items = byYear[y].map((a) => {
       const images = a.images.length ? `
-          <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px">
-${a.images.map((im) => `            <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px">
-              <div style="width: 260px; height: 190px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,.12)">
-                <img src="${esc(im.src)}" alt="${esc(a.title)} — ${esc(im.caption)}" style="width: 100%; height: 100%; object-fit: cover" loading="lazy">
-              </div>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 18px">
+${a.images.map((im) => `            <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 300px">
+              <img src="${esc(im.src)}" alt="${esc(a.title)} — ${esc(im.caption)}" style="display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: #0a0a0e" loading="lazy">
               <figcaption style="font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">${esc(im.caption)}</figcaption>
             </figure>`).join('\n')}
           </div>` : '';
