@@ -158,6 +158,20 @@ function timelineItems() {
       </div>`).join('\n');
 }
 
+function aboutVideo() {
+  const v = (data.about && data.about.video) || {};
+  if (!v.ytid) return '';
+  // 軽量埋め込み: 普段はポスター画像＋再生ボタンだけ（画像1枚分の重さ）。
+  // クリックした瞬間に site.js が youtube-nocookie の iframe に差し替える。
+  return `<section data-reveal style="padding: 0 7vw 16vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
+  <p style="margin: 0 0 34px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45)">Music — 演奏</p>
+  <div class="yt-lite" data-ytid="${esc(v.ytid)}" data-title="${esc(v.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(v.poster || '')}')">
+    <button class="yt-play" type="button" aria-label="演奏動画を再生"></button>
+  </div>
+  <p style="margin: 16px 0 0; font: 400 12.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">${esc(v.caption || '')}</p>
+</section>`;
+}
+
 function statCards() {
   return data.research.stats.map((s) => `    <div data-reveal data-m="statrow" style="padding: 34px 32px 30px; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; background: linear-gradient(160deg, #0c0c11, #08080b); opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 26px)); transition: opacity 1s ease, transform 1s ease">
       <div style="display: flex; align-items: baseline; gap: 4px">
@@ -278,6 +292,36 @@ function articleLds() {
   });
 }
 
+/* ---------------- Press kit ---------------- */
+
+function pressFacts() {
+  const p = data.press || {};
+  return (p.facts || []).map((f) => `      <div class="rline" data-reveal data-m="stack6" style="position: relative; display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 18px 6px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
+        <span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.5)">${esc(f.label)}</span>
+        <span style="font: 300 14.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.82)">${esc(f.value)}</span>
+      </div>`).join('\n');
+}
+
+function pressPhotos() {
+  const p = data.press || {};
+  return (p.photos || []).map((ph) => `      <figure data-reveal style="margin: 0; display: flex; flex-direction: column; gap: 12px; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease">
+        <div style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); aspect-ratio: 4 / 5; background: #0a0a0e">
+          <img src="${esc(ph.src)}" alt="${esc(p.name || '')} — ${esc(ph.caption || '')}" style="width: 100%; height: 100%; object-fit: cover; object-position: top" loading="lazy">
+        </div>
+        <figcaption style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <span style="font: 400 12px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.45)">${esc(ph.caption || '')}</span>
+          <a href="${esc(ph.src)}" download class="hw" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: var(--accent, #6f8cff); text-decoration: none; white-space: nowrap">ダウンロード ↓</a>
+        </figcaption>
+      </figure>`).join('\n');
+}
+
+function pressAwards() {
+  return data.research.awards.map((a) => `      <div data-reveal style="display: flex; align-items: baseline; gap: clamp(14px, 3vw, 30px); padding: 16px 6px; border-top: 1px solid rgba(255,255,255,.1); opacity: calc(var(--r, 0)); transition: opacity .9s ease">
+        <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.45); white-space: nowrap; width: 96px">${esc(a.year)}</span>
+        <span style="flex: 1; font: 400 14.5px/1.7 'Noto Sans JP', sans-serif">${esc(a.name)}</span>
+      </div>`).join('\n');
+}
+
 function pillarPhoto(key) {
   const p = (data.home.pillarPhotos || {})[key] || {};
   if (p.src) {
@@ -314,6 +358,7 @@ const pages = [
     tokens: {
       '{{ABOUT_PROSE}}': esc(data.about.prose),
       '{{META_ROWS}}': metaRows(),
+      '{{ABOUT_VIDEO}}': aboutVideo(),
       '{{TIMELINE_ITEMS}}': timelineItems()
     }
   },
@@ -347,6 +392,25 @@ const pages = [
     desc: '受賞、議員訪問、発表、演奏会。船越温の活動の時系列記録。',
     tokens: { '{{ARCHIVE_SECTIONS}}': archiveSections() },
     extraLd: articleLds()
+  },
+  {
+    file: 'press.html',
+    active: 'Press',
+    canonicalPath: '/press.html',
+    title: 'Press プレスキット — 船越温 / Tsutsumu Funakoshi',
+    desc: '報道・取材のためのプロフィール、経歴、ポートレート写真、連絡先。',
+    tokens: {
+      '{{PRESS_CATCH}}': esc(data.press.catch),
+      '{{PRESS_NAME}}': esc(data.press.name),
+      '{{PRESS_NAME_ROMAJI}}': esc(data.press.nameRomaji),
+      '{{PRESS_NAME_KANA}}': esc(data.press.nameKana),
+      '{{PRESS_FACTS}}': pressFacts(),
+      '{{PRESS_BIO_SHORT}}': esc(data.press.bioShort),
+      '{{PRESS_BIO_LONG}}': esc(data.press.bioLong),
+      '{{PRESS_PHOTOS}}': pressPhotos(),
+      '{{PRESS_AWARDS}}': pressAwards(),
+      '{{PRESS_EMAIL}}': esc(data.contact.email)
+    }
   }
 ];
 
@@ -366,7 +430,7 @@ for (const page of pages) {
     .replace('{{NAV}}', navHtml(page.active, !!page.isHome))
     .replace('{{FOOTER}}', footerHtml(!!page.isHome));
   for (const [token, value] of Object.entries(page.tokens || {})) {
-    html = html.replace(token, value);
+    html = html.replaceAll(token, value);
   }
   const leftover = html.match(/\{\{[A-Z_]+\}\}/);
   if (leftover) throw new Error(`${page.file}: unresolved token ${leftover[0]}`);

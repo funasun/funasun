@@ -252,4 +252,55 @@
       }
     }
   }
+
+  /* ============ 軽量 YouTube 埋め込み（About 演奏欄）============ */
+  // ポスター＋再生ボタンだけの facade をクリックした瞬間に、初めて
+  // youtube-nocookie の iframe を差し込む（それまで YouTube を一切読み込まない）。
+  document.querySelectorAll('.yt-lite').forEach(function (box) {
+    box.addEventListener('click', function () {
+      var id = box.getAttribute('data-ytid');
+      if (!id || box.querySelector('iframe')) return;
+      var iframe = document.createElement('iframe');
+      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&playsinline=1';
+      iframe.title = box.getAttribute('data-title') || '演奏動画';
+      iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      var btn = box.querySelector('.yt-play');
+      if (btn) btn.remove();
+      box.appendChild(iframe);
+    }, { once: true });
+  });
+
+  /* ============ プロフィール文コピー（Press プレスキット）============ */
+  // 「コピー」ボタンで data-copy が指す要素の本文をクリップボードに入れる。
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = document.querySelector(btn.getAttribute('data-copy'));
+      if (!target) return;
+      var text = target.textContent.trim();
+      var done = function () {
+        var prev = btn.textContent;
+        btn.textContent = 'コピーしました';
+        btn.style.color = 'var(--accent, #6f8cff)';
+        btn.style.borderColor = 'var(--accent, #6f8cff)';
+        setTimeout(function () {
+          btn.textContent = prev;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {});
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+    });
+  });
 })();

@@ -110,6 +110,48 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
   transition: transform 1.2s cubic-bezier(.2,.7,.2,1);
 }
 
+/* ============ 軽量 YouTube 埋め込み（About 演奏欄）============ */
+/* 普段はポスター画像＋再生ボタンだけ。クリックで site.js が iframe を差し込む。
+   これで YouTube の重いスクリプトを「押すまで」読み込まない（Apple 式の軽さ）。 */
+.yt-lite {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background-size: cover;
+  background-position: center;
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.yt-lite iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.yt-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(6,6,8,.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: transform .35s cubic-bezier(.2,.7,.2,1), background .35s ease;
+}
+.yt-play::before {
+  content: '';
+  position: absolute;
+  left: 54%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 11px 0 11px 18px;
+  border-color: transparent transparent transparent #f4f4f5;
+}
+.yt-lite:hover .yt-play { transform: translate(-50%, -50%) scale(1.09); background: rgba(111,140,255,.9); }
+
 /* ============ フィルタチップ（Works / Archive）============ */
 .chip {
   font: 400 12px 'Noto Sans JP', sans-serif;

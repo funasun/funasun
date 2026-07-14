@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+{{HEAD}}
+</head>
+<body class="p-press">
+<div id="top"></div>
+{{NAV}}
+
+<main>
+<header style="padding: 20vh 7vw 8vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 18px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Press Kit — プレスキット</p>
+  <h1 data-reveal style="margin: 0 0 10px; font: 600 clamp(34px, 4.4vw, 60px)/1.3 'Noto Serif JP', serif; letter-spacing: .06em; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1.1s ease .1s, transform 1.1s ease .1s">{{PRESS_NAME}}<span style="color: var(--accent, #6f8cff)">。</span></h1>
+  <p data-reveal style="margin: 0 0 26px; font: italic 400 15px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.5); opacity: calc(var(--r, 0)); transition: opacity 1.1s ease .15s">{{PRESS_NAME_ROMAJI}}　（{{PRESS_NAME_KANA}}）</p>
+  <p data-reveal style="margin: 0; font: 500 clamp(20px, 2.4vw, 30px)/1.6 'Noto Serif JP', serif; letter-spacing: .08em; color: var(--accent, #6f8cff); opacity: calc(var(--r, 0)); transition: opacity 1.1s ease .2s">{{PRESS_CATCH}}</p>
+  <p data-reveal style="margin: 34px 0 0; font: 300 13.5px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.55); max-width: 640px; text-wrap: pretty; opacity: calc(var(--r, 0)); transition: opacity 1.2s ease .25s">報道・取材でご利用いただける情報をまとめています。プロフィール文は用途に合わせてそのままお使いいただけます。ご不明な点は下記の連絡先までお問い合わせください。</p>
+</header>
+
+<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 24px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Profile — 基本情報</p>
+  <div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,.1)">
+{{PRESS_FACTS}}
+  </div>
+</section>
+
+<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box; display: grid; grid-template-columns: 1fr; gap: 44px">
+  <div data-reveal style="opacity: calc(var(--r, 0)); transition: opacity 1s ease">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 16px">
+      <p style="margin: 0; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45)">Bio 短 — 約100字</p>
+      <button class="copy-btn" type="button" data-copy="#bio-short" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 6px 16px; border-radius: 999px; cursor: pointer; background: none; color: rgba(244,244,245,.7); border: 1px solid rgba(255,255,255,.22); transition: all .3s ease">コピー</button>
+    </div>
+    <p id="bio-short" style="margin: 0; font: 300 15px/2.2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.82); text-wrap: pretty; padding: 22px 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: linear-gradient(160deg, #0c0c11, #08080b)">{{PRESS_BIO_SHORT}}</p>
+  </div>
+  <div data-reveal style="opacity: calc(var(--r, 0)); transition: opacity 1s ease">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 16px">
+      <p style="margin: 0; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45)">Bio 長 — 約300字</p>
+      <button class="copy-btn" type="button" data-copy="#bio-long" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 6px 16px; border-radius: 999px; cursor: pointer; background: none; color: rgba(244,244,245,.7); border: 1px solid rgba(255,255,255,.22); transition: all .3s ease">コピー</button>
+    </div>
+    <p id="bio-long" style="margin: 0; font: 300 15px/2.3 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.82); text-wrap: pretty; padding: 22px 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: linear-gradient(160deg, #0c0c11, #08080b)">{{PRESS_BIO_LONG}}</p>
+  </div>
+</section>
+
+<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Photos — 写真素材</p>
+  <p data-reveal style="margin: 0 0 34px; font: 300 12.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5); opacity: calc(var(--r, 0)); transition: opacity 1s ease">記事・番組でご利用いただけます。クレジット「船越温」を添えてください。</p>
+  <div data-m="stack" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 28px">
+{{PRESS_PHOTOS}}
+  </div>
+</section>
+
+<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 20px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); opacity: calc(var(--r, 0)); transition: opacity 1s ease">Awards — 主な受賞</p>
+  <div style="display: flex; flex-direction: column">
+{{PRESS_AWARDS}}
+  </div>
+</section>
+
+<section style="border-top: 1px solid rgba(255,255,255,.08); padding: 10vh 7vw; text-align: center">
+  <p style="margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45)">Press Contact — 取材のお問い合わせ</p>
+  <p style="margin: 0 0 24px; font: 500 clamp(18px, 2vw, 26px)/1.9 'Noto Serif JP', serif; letter-spacing: .1em">取材・掲載のご相談を承ります。</p>
+  <a href="mailto:{{PRESS_EMAIL}}" class="pill" style="display: inline-block; max-width: 86vw; overflow-wrap: break-word; padding: 13px 34px; border: 1px solid var(--accent, #6f8cff); border-radius: 999px; font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: var(--accent, #6f8cff); text-decoration: none; transition: background .3s ease, color .3s ease">{{PRESS_EMAIL}}</a>
+</section>
+</main>
+
+{{FOOTER}}
+<script src="js/site.js"></script>
+</body>
+</html>
