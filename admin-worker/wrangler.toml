@@ -1,0 +1,7 @@
+# Cloudflare Worker 設定（CLI「wrangler」でデプロイする場合に使用）
+#   デプロイ:  npx wrangler deploy
+#   秘密の設定: npx wrangler secret put GH_TOKEN   （GitHub トークンを1回だけ登録）
+# ダッシュボード（ブラウザ）から作る場合は worker.js の中身を貼り付けるだけでOK。
+name = "funasun-admin"
+main = "worker.js"
+compatibility_date = "2024-11-01"

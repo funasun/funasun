@@ -2,10 +2,12 @@
    admin/github.js — GitHub にファイルを読み書きする共通部品
    ------------------------------------------------------------
    編集ツール（index.html）から使う。data.json と images/ を
-   GitHub の REST API で直接読み書きする。
-   ・カギ（トークン）は「このブラウザの中だけ」に保存（localStorage）。
-     コードにも公開ページにも埋め込まない＝公開リポジトリでも安全。
-   ・GitHub の API はブラウザから直接呼べる（CORS 対応済み）。
+   読み書きするが、GitHub を直接叩くのではなく Cloudflare Worker
+   （保存代行サーバー）経由で行う。
+   ・利用者は GitHub トークンを一切持たない。
+     代わりに「Googleログインの本人証明（IDトークン）」を Worker に送り、
+     Worker 側が本人確認したうえで、秘密に持つトークンで保存を実行する。
+   ・data 構造（{sha,text,b64} など）は以前と同じなので app.js は変更不要。
    ============================================================ */
 (function (global) {
   'use strict';
@@ -13,14 +15,8 @@
   var OWNER = 'funasun';
   var REPO = 'funasun';
   var BRANCH = 'main';
-  var API = 'https://api.github.com';
-  var TOKEN_KEY = 'funasun_admin_gh_token';
 
-  function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
-  function setToken(t) { localStorage.setItem(TOKEN_KEY, (t || '').trim()); }
-  function clearToken() { localStorage.removeItem(TOKEN_KEY); }
-  function hasToken() { return !!getToken(); }
-  function tokenTail() { var t = getToken(); return t ? '…' + t.slice(-4) : ''; }
+  function workerUrl() { return (global.ADMIN_CONFIG && global.ADMIN_CONFIG.workerUrl) || ''; }
 
   // UTF-8 文字列 → base64（日本語を安全に）
   function utf8ToB64(str) { return btoa(unescape(encodeURIComponent(str))); }
@@ -37,19 +33,27 @@
     });
   }
 
+  // 現在の Google ログインから本人証明（IDトークン）を取得
+  function idToken() {
+    if (!global.AdminAuth || !global.AdminAuth.getIdToken) {
+      return Promise.reject(new Error('ログイン機能が初期化されていません'));
+    }
+    return global.AdminAuth.getIdToken();
+  }
+
+  // Worker 経由で GitHub API を呼ぶ
   function request(method, path, body) {
-    var token = getToken();
-    if (!token) return Promise.reject(new Error('カギ（トークン）が設定されていません'));
-    return fetch(API + path, {
-      method: method,
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: body ? JSON.stringify(body) : undefined
+    var url = workerUrl();
+    if (!url) return Promise.reject(new Error('保存サーバーのURLが未設定です（admin/config.js の workerUrl）'));
+    return idToken().then(function (tok) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: tok, method: method, path: path, body: body || null })
+      });
     }).then(function (res) {
-      if (res.status === 401) throw new Error('カギが無効です（期限切れ・権限不足の可能性）。設定し直してください。');
+      if (res.status === 401) throw new Error('ログインが無効です。ログインし直してください。');
+      if (res.status === 403) throw new Error('このアカウントには編集権限がありません。');
       if (res.status === 404) { var e = new Error('見つかりません'); e.notFound = true; throw e; }
       if (res.status === 409) throw new Error('保存が競合しました。「再読み込み」してからやり直してください。');
       if (res.status === 422) throw new Error('内容が不正で保存できませんでした。');
@@ -60,9 +64,10 @@
     });
   }
 
-  // ログイン中の GitHub ユーザー名を返す（カギの検証にも使う）
+  // ログイン中の Google アカウント（メール）を返す
   function me() {
-    return request('GET', '/user').then(function (u) { return u.login; });
+    var email = global.AdminAuth && global.AdminAuth.currentEmail && global.AdminAuth.currentEmail();
+    return email ? Promise.resolve(email) : Promise.reject(new Error('未ログイン'));
   }
 
   // ファイルを取得 → { sha, text, b64 }。無ければ notFound=true の error。
@@ -99,8 +104,6 @@
 
   global.GH = {
     OWNER: OWNER, REPO: REPO, BRANCH: BRANCH,
-    getToken: getToken, setToken: setToken, clearToken: clearToken,
-    hasToken: hasToken, tokenTail: tokenTail,
     me: me, getFile: getFile, putText: putText, putB64: putB64, del: del,
     blobToB64: blobToB64
   };

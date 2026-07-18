@@ -52,35 +52,35 @@
   }
 
   // ============================================================
-  //  カギ（トークン）設定画面
+  //  ログイン画面（Googleログイン）
   // ============================================================
-  function showTokenScreen(errText) {
+  function showLoginScreen(errText) {
     $('app').style.display = 'none';
     $('gate').style.display = 'block';
     if (errText) setStatus(errText, 'err');
   }
 
-  function startWithToken() {
-    var v = $('token-input').value.trim();
-    if (!v) { setStatus('カギを貼り付けてください。', 'err'); return; }
-    setStatus('カギを確認中…', 'info');
-    GH.setToken(v);
-    GH.me().then(function (login) {
-      $('token-input').value = '';
-      enterApp(login);
-    }).catch(function (e) {
-      GH.clearToken();
-      setStatus(e.message || 'カギの確認に失敗しました。', 'err');
+  function doLogin() {
+    if (!window.AdminAuth) {
+      setStatus('ログイン機能を準備中です。数秒待ってからもう一度お試しください。', 'err');
+      return;
+    }
+    setStatus('Googleでログイン中…', 'info');
+    window.AdminAuth.signIn().catch(function (e) {
+      var msg = (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request'))
+        ? 'ログインがキャンセルされました。'
+        : ('ログインに失敗しました：' + ((e && e.message) || e));
+      setStatus(msg, 'err');
     });
   }
 
   // ============================================================
   //  本体へ入る → data.json を読み込む
   // ============================================================
-  function enterApp(login) {
+  function enterApp(email) {
     $('gate').style.display = 'none';
     $('app').style.display = 'block';
-    $('who').textContent = 'GitHub: ' + login + '（カギ ' + GH.tokenTail() + '）';
+    $('who').textContent = 'Google: ' + email;
     loadData();
   }
 
@@ -408,27 +408,40 @@
   // ============================================================
   //  初期化
   // ============================================================
+  var entered = false;  // すでに本体に入っているか（トークン更新での二重読込を防ぐ）
+
   function init() {
-    $('btn-token').addEventListener('click', startWithToken);
-    $('token-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') startWithToken(); });
+    $('btn-login').addEventListener('click', doLogin);
     $('btn-save').addEventListener('click', save);
     $('btn-reload').addEventListener('click', reload);
     $('btn-logout').addEventListener('click', function () {
       if (dirty && !confirm('未保存の変更があります。ログアウトしますか？')) return;
-      GH.clearToken();
-      location.reload();
+      if (window.AdminAuth) window.AdminAuth.signOut();
+      // ログアウトは admin-auth イベント（user=null）で画面が切り替わる
     });
     window.addEventListener('beforeunload', function (e) {
       if (dirty) { e.preventDefault(); e.returnValue = ''; }
     });
 
-    if (GH.hasToken()) {
-      setStatus('カギを確認中…', 'info');
-      GH.me().then(function (login) { enterApp(login); })
-        .catch(function () { GH.clearToken(); showTokenScreen('カギが無効になっています。もう一度設定してください。'); });
-    } else {
-      showTokenScreen('');
-    }
+    // Firebase のログイン状態が確定 / 変化したとき
+    window.addEventListener('admin-auth', function (e) {
+      var user = e.detail && e.detail.user;
+      if (user) {
+        if (!entered) { entered = true; enterApp(user.email); }
+      } else {
+        entered = false;
+        dirty = false;               // ログアウト後は未保存警告を出さない
+        showLoginScreen('');
+        setStatus('', '');
+      }
+    });
+    // Firebase 初期化失敗（設定漏れなど）
+    window.addEventListener('admin-auth-error', function (e) {
+      showLoginScreen('ログイン機能を初期化できませんでした：' + (e.detail || ''));
+    });
+
+    showLoginScreen('');
+    setStatus('ログイン状態を確認中…', 'info');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

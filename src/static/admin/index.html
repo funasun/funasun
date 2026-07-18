@@ -100,26 +100,22 @@
 </head>
 <body>
 
-<!-- ===== カギ設定画面 ===== -->
+<!-- ===== ログイン画面 ===== -->
 <div id="gate" class="wrap">
   <p class="eyebrow">Admin — サイト編集ツール（自分専用）</p>
   <h1>本文・画像をノーコードで編集</h1>
-  <p class="sub">記事や文言をフォームで編集し、「保存する」を押すと GitHub に反映され、1〜2分で本番サイトに公開されます。画像は webp 以外を選ぶと自動で webp に変換してアップロードします。</p>
+  <p class="sub">記事や文言をフォームで編集し、「保存する」を押すと 1〜2分で本番サイトに公開されます。画像は webp 以外を選ぶと自動で webp に変換します。編集できるのは登録された Google アカウント（本人）だけです。</p>
 
   <div class="steps">
-    <b>はじめての人へ（1回だけの準備）</b>
+    <b>使いかた</b>
     <ol>
-      <li>GitHub の「専用のカギ」を作ります → <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">カギ発行ページを開く ↗</a></li>
-      <li><b>Repository access</b> は「Only select repositories」→ <b>funasun/funasun</b> を選択</li>
-      <li><b>Permissions → Repository permissions → Contents</b> を <b>Read and write</b> に</li>
-      <li>「Generate token」で出てきた文字列（<code>github_pat_…</code>）をコピー</li>
-      <li>下の欄に貼り付けて「はじめる」。カギはこのブラウザの中だけに保存されます（公開されません）。</li>
+      <li>下の「Googleでログイン」を押して、あなたの Google アカウントでログイン</li>
+      <li>フォームで本文・記事・画像を編集</li>
+      <li>「保存する」で反映（トークンなどの準備は不要です）</li>
     </ol>
   </div>
 
-  <label class="fl" for="token-input">GitHub のカギ（トークン）</label>
-  <input id="token-input" type="password" autocomplete="off" placeholder="github_pat_… を貼り付け">
-  <p style="margin:14px 0 0"><button id="btn-token" type="button">はじめる</button></p>
+  <p style="margin:14px 0 0"><button id="btn-login" type="button">Googleでログイン</button></p>
   <p style="margin:40px 0 0"><a href="/">← 公式サイトへ戻る</a></p>
 </div>
 
@@ -142,6 +138,46 @@
 
 <!-- 常に見える状態表示（保存・読み込み・エラーなど） -->
 <p id="status" class="status" role="status" aria-live="polite"></p>
+
+<!-- 環境設定（Worker URL・Firebase 設定） -->
+<script src="/admin/config.js"></script>
+
+<!-- Googleログイン（Firebase Auth）。window.AdminAuth を用意し、
+     ログイン状態が変わるたびに 'admin-auth' イベントを発火する。 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence }
+    from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+  var cfg = (window.ADMIN_CONFIG || {}).firebase;
+  if (!cfg || !cfg.apiKey) {
+    window.dispatchEvent(new CustomEvent('admin-auth-error', { detail: 'Firebase 設定がありません（admin/config.js）' }));
+  } else {
+    var app = initializeApp(cfg);
+    var auth = getAuth(app);
+    var provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    window.AdminAuth = {
+      signIn: function () {
+        return setPersistence(auth, browserLocalPersistence).then(function () {
+          return signInWithPopup(auth, provider);
+        });
+      },
+      signOut: function () { return signOut(auth); },
+      getIdToken: function () {
+        return auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(new Error('未ログイン'));
+      },
+      currentEmail: function () { return auth.currentUser ? auth.currentUser.email : null; }
+    };
+
+    onAuthStateChanged(auth, function (user) {
+      window.dispatchEvent(new CustomEvent('admin-auth', {
+        detail: { user: user ? { email: user.email } : null }
+      }));
+    });
+  }
+</script>
 
 <script src="/admin/github.js"></script>
 <script src="/admin/webp.js"></script>
