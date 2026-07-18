@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!-- admin/index.html — サイト本文のノーコード編集ツール（自分専用）。
+     GitHub のカギ（トークン）でログイン → フォームで data.json を編集・画像アップ →
+     「保存する」で GitHub に反映 → GitHub Actions が自動ビルド＆公開。
+     画像は webp 以外を選ぶと自動で webp に変換してアップ。 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サイト編集ツール — 船越温</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#060608">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Noto+Serif+JP:wght@600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #6f8cff; --bg: #060608; --panel: #0b0b0f; --line: rgba(255,255,255,.12); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #f4f4f5; -webkit-font-smoothing: antialiased; font-family: 'Noto Sans JP', sans-serif; }
+  a { color: var(--accent); }
+
+  /* ---- カギ設定画面 ---- */
+  .wrap { max-width: 760px; margin: 0 auto; padding: 8vh 24px 14vh; }
+  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); }
+  h1 { margin: 0 0 10px; font: 600 clamp(24px, 3.5vw, 32px)/1.4 'Noto Serif JP', serif; }
+  .sub { margin: 0 0 24px; font: 300 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.6); }
+  .steps { margin: 0 0 24px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); font: 300 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.72); }
+  .steps b { color: #f4f4f5; font-weight: 500; }
+  .steps ol { margin: 8px 0 0; padding-left: 20px; }
+  #token-input { width: 100%; font: 400 13px ui-monospace, Menlo, monospace; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; }
+  #token-input:focus { outline: none; border-color: var(--accent); }
+
+  /* ---- 共通ボタン ---- */
+  button { font: 400 13.5px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 11px 20px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
+  button.ghost { background: none; color: rgba(244,244,245,.8); border-color: rgba(255,255,255,.25); }
+  button:hover { opacity: .88; }
+  button:disabled { opacity: .4; cursor: default; }
+
+  .status { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50; max-width: min(90vw, 640px);
+    margin: 0; padding: 0; font: 400 13px 'Noto Sans JP', sans-serif; text-align: center; pointer-events: none; transition: opacity .2s ease; }
+  .status:empty { opacity: 0; }
+  .status:not(:empty) { padding: 11px 20px; border-radius: 12px; border: 1px solid var(--line); background: rgba(12,12,17,.96); box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  .status.err { color: #ff8a8a; border-color: rgba(255,138,138,.4); }
+  .status.ok { color: #86efac; border-color: rgba(134,239,172,.4); }
+  .status.info { color: rgba(244,244,245,.7); }
+
+  /* ---- 本体 ---- */
+  #app { display: none; }
+  header.bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px clamp(16px, 4vw, 40px); background: rgba(6,6,8,.9); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  header.bar .brand { font: 600 15px 'Noto Serif JP', serif; margin-right: auto; }
+  header.bar .who { font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.5); width: 100%; order: 3; }
+  header.bar button { padding: 9px 16px; font-size: 12.5px; }
+
+  .layout { display: flex; gap: 0; align-items: flex-start; }
+  nav.tabs { position: sticky; top: 62px; flex: none; width: 190px; display: flex; flex-direction: column; padding: 20px 10px; border-right: 1px solid var(--line); min-height: 80vh; }
+  nav.tabs .tab { text-align: left; background: none; border: none; color: rgba(244,244,245,.6); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; letter-spacing: .02em; }
+  nav.tabs .tab:hover { background: rgba(255,255,255,.04); opacity: 1; }
+  nav.tabs .tab.on { background: rgba(111,140,255,.14); color: #f4f4f5; border: 1px solid rgba(111,140,255,.4); }
+
+  main.pane { flex: 1; min-width: 0; padding: 24px clamp(16px, 4vw, 44px) 16vh; }
+  .sec-title { margin: 4px 0 22px; font: 600 clamp(20px, 3vw, 26px) 'Noto Serif JP', serif; }
+
+  .field { margin: 0 0 20px; }
+  .fl { display: block; margin: 0 0 7px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.62); }
+  .field input, .field textarea, .field select, .strrow input, .strrow textarea {
+    width: 100%; font: 400 14px 'Noto Sans JP', sans-serif; padding: 11px 13px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; resize: vertical; }
+  .field input:focus, .field textarea:focus, .field select:focus, .strrow input:focus, .strrow textarea:focus { outline: none; border-color: var(--accent); }
+  .field textarea { line-height: 1.8; min-height: 90px; }
+
+  fieldset.group { margin: 0 0 22px; padding: 16px 16px 8px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.015); }
+  fieldset.group legend { padding: 0 8px; font: 500 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.7); }
+
+  .card { border: 1px solid var(--line); border-radius: 12px; margin: 0 0 14px; overflow: hidden; background: var(--panel); }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border-bottom: 1px solid var(--line); }
+  .card-title { flex: 1; font: 400 13px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.85); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-body { padding: 14px 14px 2px; }
+
+  .itembtns, .imgbtns { display: flex; gap: 6px; flex: none; }
+  button.mini { padding: 5px 10px; font-size: 12px; border-radius: 8px; background: none; color: rgba(244,244,245,.75); border: 1px solid rgba(255,255,255,.2); }
+  button.mini.del:hover { border-color: #ff8a8a; color: #ff8a8a; }
+  button.mini.pick { border-color: rgba(111,140,255,.5); color: var(--accent); }
+  button.add { margin: 4px 0 12px; padding: 9px 16px; font-size: 12.5px; background: none; color: var(--accent); border: 1px dashed rgba(111,140,255,.5); border-radius: 10px; }
+
+  .strrow { display: flex; gap: 8px; margin: 0 0 10px; align-items: flex-start; }
+  .strrow input, .strrow textarea { flex: 1; }
+
+  .field.image .preview { width: 100%; max-width: 260px; aspect-ratio: 16/10; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0a0a0e; display: flex; align-items: center; justify-content: center; margin: 0 0 8px; }
+  .field.image .preview img { width: 100%; height: 100%; object-fit: cover; }
+  .field.image .nopreview { font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.35); }
+  .field.image .pathinput { font: 400 12px ui-monospace, Menlo, monospace; margin: 0 0 8px; }
+  .field.image .imgbtns { flex-wrap: wrap; }
+
+  @media (max-width: 720px) {
+    .layout { flex-direction: column; }
+    nav.tabs { position: static; width: 100%; flex-direction: row; flex-wrap: wrap; min-height: 0; border-right: none; border-bottom: 1px solid var(--line); }
+    nav.tabs .tab { flex: 1 1 auto; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== カギ設定画面 ===== -->
+<div id="gate" class="wrap">
+  <p class="eyebrow">Admin — サイト編集ツール（自分専用）</p>
+  <h1>本文・画像をノーコードで編集</h1>
+  <p class="sub">記事や文言をフォームで編集し、「保存する」を押すと GitHub に反映され、1〜2分で本番サイトに公開されます。画像は webp 以外を選ぶと自動で webp に変換してアップロードします。</p>
+
+  <div class="steps">
+    <b>はじめての人へ（1回だけの準備）</b>
+    <ol>
+      <li>GitHub の「専用のカギ」を作ります → <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">カギ発行ページを開く ↗</a></li>
+      <li><b>Repository access</b> は「Only select repositories」→ <b>funasun/funasun</b> を選択</li>
+      <li><b>Permissions → Repository permissions → Contents</b> を <b>Read and write</b> に</li>
+      <li>「Generate token」で出てきた文字列（<code>github_pat_…</code>）をコピー</li>
+      <li>下の欄に貼り付けて「はじめる」。カギはこのブラウザの中だけに保存されます（公開されません）。</li>
+    </ol>
+  </div>
+
+  <label class="fl" for="token-input">GitHub のカギ（トークン）</label>
+  <input id="token-input" type="password" autocomplete="off" placeholder="github_pat_… を貼り付け">
+  <p style="margin:14px 0 0"><button id="btn-token" type="button">はじめる</button></p>
+  <p style="margin:40px 0 0"><a href="/">← 公式サイトへ戻る</a></p>
+</div>
+
+<!-- ===== 本体 ===== -->
+<div id="app">
+  <header class="bar">
+    <span class="brand">サイト編集ツール</span>
+    <button id="btn-reload" class="ghost" type="button">再読み込み</button>
+    <button id="btn-save" type="button" disabled>保存する</button>
+    <button id="btn-logout" class="ghost" type="button">ログアウト</button>
+    <span id="who" class="who"></span>
+  </header>
+  <div class="layout">
+    <nav id="tabs" class="tabs"></nav>
+    <main class="pane">
+      <div id="form"></div>
+    </main>
+  </div>
+</div>
+
+<!-- 常に見える状態表示（保存・読み込み・エラーなど） -->
+<p id="status" class="status" role="status" aria-live="polite"></p>
+
+<script src="/admin/github.js"></script>
+<script src="/admin/webp.js"></script>
+<script src="/admin/schema.js"></script>
+<script src="/admin/app.js"></script>
+</body>
+</html>
