@@ -83,6 +83,14 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
 .gcard { transform: rotate(var(--tilt, 0deg)); transition: transform .5s cubic-bezier(.2,.7,.2,1), border-color .5s ease; }
 .gcard:hover { transform: rotate(0deg) translateY(-8px); border-color: rgba(255,255,255,.3); }
 
+/* Contact: SNS/リンクカード（hover 浮上） */
+.lcard:hover { transform: translateY(-6px); border-color: rgba(255,255,255,.3); }
+/* Contact: フォーム入力欄 */
+.field::placeholder { color: rgba(244,244,245,.3); }
+.field:focus { border-color: var(--accent, #6f8cff) !important; }
+select.field { background-image: linear-gradient(45deg, transparent 50%, rgba(244,244,245,.5) 50%), linear-gradient(135deg, rgba(244,244,245,.5) 50%, transparent 50%); background-position: right 18px center, right 13px center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 40px; }
+select.field option { background: #0a0a0e; color: #f4f4f5; }
+
 /* ============ 線が左から引かれる演出（style-before 相当）============ */
 /* スクラブ駆動（Home 柱の具体行） */
 .kline::before {

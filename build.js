@@ -34,7 +34,8 @@ function navHtml(active, isHome) {
     .replace('{{C_ABOUT}}', active === 'About' ? on : off)
     .replace('{{C_RESEARCH}}', active === 'Research' ? on : off)
     .replace('{{C_WORKS}}', active === 'Works' ? on : off)
-    .replace('{{C_ARCHIVE}}', active === 'Archive' ? on : off);
+    .replace('{{C_ARCHIVE}}', active === 'Archive' ? on : off)
+    .replace('{{C_CONTACT}}', active === 'Contact' ? on : off);
 }
 
 function footerHtml(isHome) {
@@ -411,6 +412,17 @@ const pages = [
       '{{PRESS_AWARDS}}': pressAwards(),
       '{{PRESS_EMAIL}}': esc(data.contact.email)
     }
+  },
+  {
+    file: 'contact.html',
+    active: 'Contact',
+    canonicalPath: '/contact.html',
+    title: 'Contact お問い合わせ — 船越温 / Tsutsumu Funakoshi',
+    desc: 'ご意見・ご要望、取材や出演のご依頼などのお問い合わせ。フォーム・メール・SNS（Instagram / X）から連絡できます。',
+    tokens: {
+      '{{CONTACT_EMAIL}}': esc(data.contact.email),
+      '{{CONTACT_ACCESS_KEY}}': esc((data.contact && data.contact.web3formsKey) || '')
+    }
   }
 ];
 
@@ -475,6 +487,7 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 - [Research](${SITE}/research.html): 廃棄うどん研究の詳細（統計・プロセス・受賞）
 - [Works](${SITE}/works.html): 個人開発の Web アプリとゲーム9本
 - [Archive](${SITE}/archive.html): 活動の時系列記録（記事全文）
+- [Contact](${SITE}/contact.html): お問い合わせ（フォーム・メール・SNS）
 
 ## 連絡先
 
