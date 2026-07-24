@@ -1,0 +1,13 @@
+# Cloudflare Worker 設定（ファイル共有：ギガファイル便ふう / Google Drive バックエンド）
+#   デプロイ:      npx wrangler deploy
+#   合言葉の設定:  npx wrangler secret put UPLOAD_CODE   （アップロード用の合言葉を1回だけ登録）
+#
+# 保存先は Google Drive（カード不要・15GB無料）。以下のシークレットを登録して使う:
+#   UPLOAD_CODE / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
+name = "funasun-files"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# 毎日 03:00(UTC) に期限切れファイルを自動削除
+[triggers]
+crons = ["0 3 * * *"]
