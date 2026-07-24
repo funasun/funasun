@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<!-- share/edit.html — 共有ページの中身を作る「あなた専用」ツール。
+     Googleでログイン → リンクと合言葉を入力 → ブラウザ内で暗号化 →
+     「保存する」で Firebase に保存（＝すぐ共有ページに反映。GitHub操作は不要）。
+     平文（生のリンク）はサーバーに送らない。保存されるのは暗号文だけ。 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>共有ページ編集ツール — 船越温</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#060608">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Noto+Serif+JP:wght@600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #6f8cff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #060608; color: #f4f4f5; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 8vh 24px 14vh; }
+  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); }
+  h1 { margin: 0 0 10px; font: 600 clamp(24px, 3.5vw, 34px)/1.4 'Noto Serif JP', serif; }
+  .sub { margin: 0 0 30px; font: 300 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.55); }
+  .steps { margin: 0 0 28px; padding: 18px 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0b0b0f; font: 300 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.72); }
+  .steps b { color: #f4f4f5; font-weight: 500; }
+  label { display: block; margin: 22px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.65); }
+  .hint { font-weight: 300; color: rgba(244,244,245,.4); letter-spacing: 0; }
+  input, textarea { width: 100%; font: 400 14px 'Noto Sans JP', sans-serif; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; resize: vertical; }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { min-height: 130px; line-height: 1.8; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 26px; }
+  button { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 12px 22px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
+  button.ghost { background: none; color: rgba(244,244,245,.75); border-color: rgba(255,255,255,.25); }
+  button:hover { opacity: .88; }
+  button:disabled { opacity: .4; cursor: default; }
+  .who { font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.55); }
+  .editor { opacity: .4; pointer-events: none; transition: opacity .25s ease; }
+  .editor.on { opacity: 1; pointer-events: auto; }
+  .msg { margin: 14px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; min-height: 20px; }
+  .msg.err { color: #ff8a8a; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.5); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Tool — 編集ツール（自分専用）</p>
+  <h1>共有ページの中身を作る</h1>
+  <p class="sub">Googleでログインして、リンクと合言葉を入れて「保存する」を押すだけ。すぐに共有ページへ反映されます。生のリンクはこのページの外に出ません（暗号化して保存）。</p>
+
+  <div class="steps">
+    <b>使い方</b><br>
+    1.「Googleでログイン」を押して、あなたのアカウントでログイン<br>
+    2. タイトル・ひとこと・リンク・合言葉を入力<br>
+    3.「保存する」を押す → すぐに共有ページ（/share/）へ反映（GitHub操作は不要）<br>
+    4. 見る人には <b>共有ページのURL</b> と <b>合言葉</b> を伝える<br>
+    ※ 前の内容を直したいときは「現在の内容を読み込む」から
+  </div>
+
+  <div class="row" style="margin-top:0">
+    <button id="btn-login" type="button">Googleでログイン</button>
+    <button id="btn-logout" type="button" class="ghost" style="display:none">ログアウト</button>
+    <span id="who" class="who"></span>
+  </div>
+
+  <div id="editor" class="editor">
+    <label>タイトル <span class="hint">（例: 3年A組へ共有）</span></label>
+    <input id="f-title" type="text" placeholder="共有リンク">
+
+    <label>ひとこと <span class="hint">（任意・改行OK）</span></label>
+    <textarea id="f-note" placeholder="ここに説明を書けます（空でもOK）"></textarea>
+
+    <label>リンク <span class="hint">（1行に1つ。「ラベル | URL」の形。URLだけでも可）</span></label>
+    <textarea id="f-links" placeholder="発表スライド | https://example.com/slide&#10;参考サイト | https://example.org&#10;https://example.net"></textarea>
+
+    <label>合言葉 <span class="hint">（見る人に伝える合言葉。推測されにくいものを）</span></label>
+    <input id="f-pw" type="text" autocomplete="off" placeholder="合言葉">
+
+    <div class="row">
+      <button id="btn-save" type="button">保存する</button>
+      <button id="btn-load" type="button" class="ghost">現在の内容を読み込む</button>
+    </div>
+  </div>
+
+  <p id="msg" class="msg" role="status" aria-live="polite"></p>
+</div>
+
+<script src="/share/crypto.js"></script>
+<script src="/share/firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = $('msg');
+  function setMsg(t, c) { msg.textContent = t; msg.className = 'msg' + (c ? ' ' + c : ''); }
+
+  function parseLinks(text) {
+    return text.split('\n').map(function (line) {
+      var s = line.trim();
+      if (!s) return null;
+      var i = s.indexOf('|');
+      if (i === -1) return { label: s, url: s };
+      return { label: s.slice(0, i).trim(), url: s.slice(i + 1).trim() };
+    }).filter(Boolean);
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    return d.getFullYear() + '.' + m + '.' + day;
+  }
+
+  // --- Firebase 準備 ---
+  var cfg = window.FIREBASE_CONFIG;
+  if (!cfg || !cfg.projectId || /ここに貼り付け/.test(cfg.projectId)) {
+    setMsg('まだセットアップが完了していません。firebase-config.js に設定を貼り付けてください。', 'err');
+    $('btn-login').disabled = true;
+    throw new Error('Firebase not configured');
+  }
+
+  var app = initializeApp(cfg);
+  var db = getFirestore(app);
+  var auth = getAuth(app);
+  var provider = new GoogleAuthProvider();
+  var user = null;
+  var docRef = doc(db, 'share', 'current');
+
+  function setLoggedIn(u) {
+    user = u;
+    if (u) {
+      $('btn-login').style.display = 'none';
+      $('btn-logout').style.display = '';
+      $('who').textContent = 'ログイン中: ' + (u.email || u.displayName || '');
+      $('editor').classList.add('on');
+    } else {
+      $('btn-login').style.display = '';
+      $('btn-logout').style.display = 'none';
+      $('who').textContent = '';
+      $('editor').classList.remove('on');
+    }
+  }
+
+  onAuthStateChanged(auth, function (u) { setLoggedIn(u); });
+
+  $('btn-login').addEventListener('click', function () {
+    setMsg('ログイン中…', 'info');
+    signInWithPopup(auth, provider)
+      .then(function () { setMsg('ログインしました。編集して「保存する」を押してください。', 'ok'); })
+      .catch(function () { setMsg('ログインに失敗しました。もう一度お試しください。', 'err'); });
+  });
+
+  $('btn-logout').addEventListener('click', function () {
+    signOut(auth).then(function () { setMsg('ログアウトしました。', 'info'); });
+  });
+
+  $('btn-save').addEventListener('click', function () {
+    if (!user) { setMsg('先にログインしてください。', 'err'); return; }
+    var pw = $('f-pw').value;
+    if (!pw) { setMsg('合言葉を入力してください。', 'err'); return; }
+    var data = {
+      title: $('f-title').value.trim() || '共有リンク',
+      note: $('f-note').value,
+      links: parseLinks($('f-links').value)
+    };
+    if (!data.links.length) { setMsg('リンクを1つ以上入力してください。', 'err'); return; }
+    setMsg('暗号化して保存中…', 'info');
+    ShareCrypto.encryptToBlob(data, pw).then(function (blob) {
+      return setDoc(docRef, { blob: blob, updated: todayStr() });
+    }).then(function () {
+      setMsg('保存しました。共有ページ（/share/）に反映されています。', 'ok');
+    }).catch(function () {
+      setMsg('保存に失敗しました。ログイン状態と通信環境を確認してください。', 'err');
+    });
+  });
+
+  $('btn-load').addEventListener('click', function () {
+    var pw = $('f-pw').value;
+    if (!pw) { setMsg('先に合言葉を入力してください。', 'err'); return; }
+    setMsg('読み込み中…', 'info');
+    getDoc(docRef).then(function (snap) {
+      if (!snap.exists() || !snap.data().blob) { setMsg('まだ保存された内容がありません。新規に作成してください。', 'info'); return; }
+      return ShareCrypto.decryptBlob(snap.data().blob, pw).then(function (data) {
+        $('f-title').value = data.title || '';
+        $('f-note').value = data.note || '';
+        $('f-links').value = (data.links || []).map(function (l) {
+          return (l.label && l.label !== l.url) ? (l.label + ' | ' + l.url) : l.url;
+        }).join('\n');
+        setMsg('読み込みました。編集して「保存する」を押してください。', 'ok');
+      }).catch(function () { setMsg('合言葉が違うため読み込めませんでした。', 'err'); });
+    }).catch(function () { setMsg('データの読み込みに失敗しました。', 'err'); });
+  });
+</script>
+</body>
+</html>

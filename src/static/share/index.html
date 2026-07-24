@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!-- share/index.html — 合言葉で開く共有ページ（閲覧用）。
+     中身は Firebase(Firestore) に暗号化して保存され、正しい合言葉を入れた
+     ブラウザ内でのみ復号される。ビルド加工なしの自己完結ファイル。 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>共有ページ — 船越温</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#060608">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500&family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #6f8cff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #060608; color: #f4f4f5; min-height: 100vh; min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 14vh 24px 12vh; }
+  .eyebrow { margin: 0 0 16px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); }
+  h1 { margin: 0 0 10px; font: 600 clamp(26px, 4vw, 40px)/1.4 'Noto Serif JP', serif; letter-spacing: .05em; }
+  .sub { margin: 0 0 40px; font: 300 13.5px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.55); }
+  form { display: flex; flex-direction: column; gap: 14px; max-width: 380px; }
+  label { font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.6); }
+  input[type=password] { font: 400 15px 'Noto Sans JP', sans-serif; padding: 13px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; }
+  input[type=password]:focus { outline: none; border-color: var(--accent); }
+  button { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 13px 24px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
+  button:hover { opacity: .88; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { margin: 14px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; min-height: 20px; }
+  .msg.err { color: #ff8a8a; }
+  .msg.info { color: rgba(244,244,245,.5); }
+  .content { display: none; }
+  .content h2 { margin: 0 0 8px; font: 600 clamp(22px, 3vw, 30px) 'Noto Serif JP', serif; }
+  .content .note { margin: 0 0 30px; font: 300 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.62); white-space: pre-line; text-wrap: pretty; }
+  .links { display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,.1); }
+  .link-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 4px; border-bottom: 1px solid rgba(255,255,255,.1); text-decoration: none; color: #f4f4f5; transition: background .25s ease; }
+  .link-row:hover { background: rgba(255,255,255,.03); }
+  .link-row .lbl { font: 400 15.5px/1.6 'Noto Sans JP', sans-serif; }
+  .link-row .arw { color: var(--accent); flex: none; }
+  .updated { margin: 34px 0 0; font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.35); }
+  .foot { margin: 60px 0 0; font: 300 12px 'Noto Sans JP', sans-serif; }
+  .foot a { color: rgba(244,244,245,.5); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate">
+    <p class="eyebrow">Private — 共有ページ</p>
+    <h1>合言葉を入力してください<span style="color: var(--accent)">。</span></h1>
+    <p class="sub">このページは、合言葉を知っている人だけが見られます。心当たりのない方は閉じてください。</p>
+    <form id="form" autocomplete="off">
+      <label for="pw">合言葉</label>
+      <input id="pw" type="password" inputmode="text" autocomplete="off" placeholder="合言葉を入力">
+      <button id="btn" type="submit">開く</button>
+    </form>
+    <p id="msg" class="msg" role="status" aria-live="polite"></p>
+  </div>
+
+  <div id="content" class="content">
+    <h2 id="c-title"></h2>
+    <p id="c-note" class="note"></p>
+    <div id="c-links" class="links"></div>
+    <p id="c-updated" class="updated"></p>
+    <p class="foot"><a href="/">← 船越温 公式サイトへ</a></p>
+  </div>
+</div>
+
+<script src="/share/crypto.js"></script>
+<script src="/share/firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+  var form = document.getElementById('form');
+  var pw = document.getElementById('pw');
+  var btn = document.getElementById('btn');
+  var msg = document.getElementById('msg');
+  var gate = document.getElementById('gate');
+  var content = document.getElementById('content');
+  var blob = null;
+  var loadError = false;
+  var updated = '';
+
+  function setMsg(text, cls) { msg.textContent = text; msg.className = 'msg' + (cls ? ' ' + cls : ''); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  // URL の安全チェック: http(s) と mailto のみ許可（javascript: 等を弾く）
+  function safeUrl(u) {
+    var s = String(u || '').trim();
+    if (/^https?:\/\//i.test(s) || /^mailto:/i.test(s)) return s;
+    return '';
+  }
+
+  // 起動時に Firebase から暗号文を読み込む（中身は合言葉がないと読めない）
+  var cfg = window.FIREBASE_CONFIG;
+  if (!cfg || !cfg.projectId || /ここに貼り付け/.test(cfg.projectId)) {
+    setMsg('まだセットアップが完了していません。', 'info');
+  } else {
+    try {
+      var app = initializeApp(cfg);
+      var db = getFirestore(app);
+      var snap = await getDoc(doc(db, 'share', 'current'));
+      if (snap.exists() && snap.data().blob) {
+        blob = snap.data().blob;
+        updated = snap.data().updated || '';
+      } else {
+        setMsg('まだ共有されている内容はありません。', 'info');
+      }
+    } catch (e) {
+      loadError = true;
+      setMsg('データの読み込みに失敗しました。時間をおいて再度お試しください。', 'err');
+    }
+  }
+
+  function render(data) {
+    document.getElementById('c-title').textContent = data.title || '共有リンク';
+    var note = document.getElementById('c-note');
+    if (data.note) { note.textContent = data.note; } else { note.style.display = 'none'; }
+    var box = document.getElementById('c-links');
+    var links = Array.isArray(data.links) ? data.links : [];
+    box.innerHTML = links.map(function (l) {
+      var url = safeUrl(l.url);
+      var label = esc(l.label || url || 'リンク');
+      if (!url) return '<div class="link-row"><span class="lbl">' + label + '</span></div>';
+      return '<a class="link-row" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer"><span class="lbl">' + label + '</span><span class="arw">↗</span></a>';
+    }).join('');
+    if (updated) document.getElementById('c-updated').textContent = '最終更新: ' + updated;
+    gate.style.display = 'none';
+    content.style.display = 'block';
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (loadError) return;
+    if (!blob) { setMsg('まだ共有されている内容はありません。', 'info'); return; }
+    if (!pw.value) { setMsg('合言葉を入力してください。', 'err'); return; }
+    btn.disabled = true; setMsg('確認中…', 'info');
+    ShareCrypto.decryptBlob(blob, pw.value).then(function (data) {
+      render(data);
+    }).catch(function () {
+      btn.disabled = false;
+      setMsg('合言葉が違います。もう一度お試しください。', 'err');
+      pw.select();
+    });
+  });
+</script>
+</body>
+</html>
