@@ -236,16 +236,52 @@ function workCards() {
 // 県内（讃岐）か県外（遠征）か。data 側は area:'遠征' のときだけ県外扱い。
 function isAway(u) { return String(u.area || '').trim() === '遠征'; }
 
-// 訪問日の古い順に通し番号を振る（入力時に番号を書かなくて済むように）
-function henroNumbered(away) {
-  return data.udonItems
-    .filter((u) => isAway(u) === away)
-    .slice()
-    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
-    .map((u, i) => Object.assign({}, u, { _no: i + 1 }));
+/* 同じ店に何度も行ったときは、カードを1枚にまとめて訪問履歴を積む
+   （食べログの店ページと同じ考え方）。入力側は「1回＝1件」のままでよく、
+   再訪したら同じ店名・同じ場所でもう1件足すだけ。店名と場所の両方で
+   照合するので、チェーン店の別の支店は別の店として扱われる。          */
+function shopKey(u) {
+  const norm = (s) => String(s || '').trim().replace(/\s+/g, '').toLowerCase();
+  return norm(u.shop) + ' ' + norm(u.town);
+}
+
+// 店ごとにまとめる。番号は初訪問の古い順（再訪しても番号がずれない）、
+// 並び順は最終訪問の新しい順。
+function henroShops(away) {
+  const map = new Map();
+  data.udonItems.filter((u) => isAway(u) === away).forEach((u) => {
+    const k = shopKey(u);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(u);
+  });
+
+  const groups = Array.from(map.values()).map((list) => {
+    const visits = list.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    const latest = visits[visits.length - 1];
+    const tags = [];
+    visits.forEach((v) => (v.tags || []).forEach((t) => { if (t && tags.indexOf(t) < 0) tags.push(t); }));
+    return {
+      visits,
+      shop: latest.shop,
+      town: latest.town,
+      mapQuery: latest.mapQuery,
+      tags,
+      first: String(visits[0].date || ''),
+      last: String(latest.date || ''),
+      // 表紙の写真は「写真がある訪問のうち一番新しいもの」
+      cover: visits.slice().reverse().find((v) => v.photo) || latest
+    };
+  });
+
+  groups.sort((a, b) => a.first.localeCompare(b.first));
+  groups.forEach((g, i) => { g._no = i + 1; });
+  return groups.slice().sort((a, b) => b.last.localeCompare(a.last));
 }
 
 function henroCount(away) { return data.udonItems.filter((u) => isAway(u) === away).length; }
+
+// 軒数（同じ店への再訪は1軒として数える）
+function henroShopCount() { return henroShops(false).length + henroShops(true).length; }
 
 // 訪問済みの市町（県内のみ）
 function visitedTowns() {
@@ -275,10 +311,11 @@ function henroTownMap() {
 }
 
 // 絞り込みチップ。県内は市町、県外は都道府県などの場所。
+// カードは店ごとに1枚なので、数え方も「軒数」に合わせる。
 function henroChips(away) {
   const counts = {};
-  data.udonItems.filter((u) => isAway(u) === away).forEach((u) => {
-    const t = String(u.town || '').trim();
+  henroShops(away).forEach((g) => {
+    const t = String(g.town || '').trim();
     if (t) counts[t] = (counts[t] || 0) + 1;
   });
   const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'ja'));
@@ -303,8 +340,8 @@ function mapPb(q) {
 
 /* iframe はページ読み込み時には作らず、「地図を表示」を押したときだけ
    site.js が挿入する。こうすると通信量も増えず、押すまで Google に何も渡らない。 */
-function henroMapBlock(u) {
-  const q = String(u.mapQuery || [u.shop, u.town].filter(Boolean).join(' ')).trim();
+function henroMapBlock(g) {
+  const q = String(g.mapQuery || [g.shop, g.town].filter(Boolean).join(' ')).trim();
   if (!q) return '';
   const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   return `
@@ -317,40 +354,76 @@ function henroMapBlock(u) {
         </div>`;
 }
 
-// 記録カード。新しい順に並べる。
+/* 1回だけの店は「食べたもの＋メモ」をそのまま出す。
+   2回以上の店は、訪問ごとの行を新しい順に積む（何回目・日付・食べたもの・メモ）。 */
+function henroVisitLog(g) {
+  const n = g.visits.length;
+  if (n === 1) {
+    const v = g.visits[0];
+    const note = v.note
+      ? `\n        <p style="margin: 10px 0 0; font: 400 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66)">${esc(v.note)}</p>`
+      : '';
+    return `\n        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff)">${esc(v.menu || '')}</p>${note}`;
+  }
+  const rows = g.visits.slice().reverse().map((v, i) => {
+    const times = n - i; // 何回目か
+    const thumb = v.photo
+      ? `<img src="${esc(v.photo)}" alt="${esc(v.menu || 'うどん')}" loading="lazy" style="width: 46px; height: 46px; flex: none; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,.1)">`
+      : '';
+    const note = v.note
+      ? `\n            <p style="margin: 5px 0 0; font: 400 12px/1.75 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66)">${esc(v.note)}</p>`
+      : '';
+    return `        <li style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.09)">
+          ${thumb}
+          <div style="flex: 1; min-width: 0">
+            <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap">
+              <span style="font: 500 11px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: var(--accent, #6f8cff)">${times}回目</span>
+              <span style="font: 400 11.5px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.62)">${esc(v.date || '')}</span>
+            </div>
+            <p style="margin: 3px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88)">${esc(v.menu || '')}</p>${note}
+          </div>
+        </li>`;
+  }).join('\n');
+  return `\n        <ol style="list-style: none; margin: 10px 0 0; padding: 0">\n${rows}\n        </ol>`;
+}
+
+// 記録カード。店ごとに1枚、最終訪問が新しい順に並べる。
 function henroCards(away) {
-  const items = henroNumbered(away).reverse();
+  const items = henroShops(away);
   if (!items.length) {
     const msg = away
       ? 'まだ県外での記録がありません。<br>遠征したときの一杯を残していきます。'
       : 'まだ記録がありません。<br>これから一杯ずつ増やしていきます。';
     return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 300 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.62)">${msg}</p>`;
   }
-  return items.map((u) => {
-    const thumb = u.photo
-      ? `<img src="${esc(u.photo)}" alt="${esc(u.shop)}の${esc(u.menu || 'うどん')}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
+  return items.map((g) => {
+    const n = g.visits.length;
+    const thumb = g.cover.photo
+      ? `<img src="${esc(g.cover.photo)}" alt="${esc(g.shop)}の${esc(g.cover.menu || 'うどん')}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
       : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.58)">no photo</span>`;
-    const tags = (u.tags || []).length
-      ? `\n        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px">${(u.tags || []).map((t) =>
+    const tags = g.tags.length
+      ? `\n        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px">${g.tags.map((t) =>
           `<span style="font: 400 10px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 2px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.66)">${esc(t)}</span>`).join('')}</div>`
       : '';
-    const note = u.note
-      ? `\n        <p style="margin: 10px 0 0; font: 400 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66)">${esc(u.note)}</p>`
+    const badge = (away ? '遠征 ' : '') + 'No.' + g._no;
+    // 2回以上の店は回数バッジを出す。日付は「直近いつ行ったか」を見せる。
+    const times = n > 1
+      ? `<span style="position: absolute; top: 12px; right: 12px; font: 500 11px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px; background: rgba(111,140,255,.9); color: #060608">${n}回</span>`
       : '';
-    const badge = (away ? '遠征 ' : '') + 'No.' + u._no;
-    const map = henroMapBlock(u);
-    return `    <article data-type="${esc(u.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
+    const dateLabel = n > 1 ? `最新 ${g.last}` : g.last;
+    const map = henroMapBlock(g);
+    return `    <article data-type="${esc(g.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
       <div style="aspect-ratio: 4 / 3; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
         ${thumb}
         <span style="position: absolute; top: 12px; left: 12px; font: 500 11px 'EB Garamond', serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: rgba(6,6,8,.72); backdrop-filter: blur(8px); color: var(--accent, #6f8cff)">${esc(badge)}</span>
+        ${times}
       </div>
       <div style="padding: 18px 20px 22px">
         <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px">
-          <span style="font: 400 10.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.74)">${esc(u.town || '—')}</span>
-          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.58)">${esc(u.date || '')}</span>
+          <span style="font: 400 10.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.74)">${esc(g.town || '—')}</span>
+          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.58)">${esc(dateLabel)}</span>
         </div>
-        <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(u.shop || '')}</h3>
-        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff)">${esc(u.menu || '')}</p>${note}${tags}${map}
+        <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(g.shop || '')}</h3>${henroVisitLog(g)}${tags}${map}
       </div>
     </article>`;
   }).join('\n');
@@ -521,6 +594,7 @@ const pages = [
       '{{HENRO_HEADING}}': esc(data.henro.heading),
       '{{HENRO_LEAD}}': esc(data.henro.lead),
       '{{HENRO_TOTAL}}': String(data.udonItems.length),
+      '{{HENRO_SHOP_COUNT}}': String(henroShopCount()),
       '{{HENRO_HOME_COUNT}}': String(henroCount(false)),
       '{{HENRO_AWAY_COUNT}}': String(henroCount(true)),
       '{{HENRO_TOWN_DONE}}': String(visitedTownCount()),

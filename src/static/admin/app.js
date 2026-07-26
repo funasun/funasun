@@ -163,8 +163,12 @@
     }
   }
 
+  // hint を書いておくと、項目名の下に小さな補足を出す（入力欄の中の
+  // placeholder と違い、打ち始めても消えないので使い方の説明に向く）
   function labelEl(def) {
-    return el('label', { class: 'fl', text: def.label });
+    var lab = el('label', { class: 'fl', text: def.label });
+    if (def.hint) lab.appendChild(el('span', { class: 'fh', text: def.hint }));
+    return lab;
   }
 
   function renderInput(obj, def, inputType) {

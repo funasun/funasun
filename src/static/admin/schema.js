@@ -152,9 +152,11 @@
       item: [
         { key: 'area', label: '区分', type: 'select', options: [
           { value: '讃岐', label: '讃岐（香川県内）' }, { value: '遠征', label: '遠征（県外）' } ] },
-        { key: 'shop', label: '店名', type: 'text', placeholder: '山越うどん' },
+        { key: 'shop', label: '店名', type: 'text', placeholder: '山越うどん',
+          hint: '再訪したときは、この「1回分」をもう1件足してください。店名と場所が同じものは、サイト側で1枚のカードにまとまって訪問履歴になります。' },
         { key: 'town', label: '場所', type: 'text', placeholder: '県内は市町（綾川町 など）／県外は都道府県や市（東京都 など）' },
-        { key: 'date', label: '訪問日', type: 'text', placeholder: '2026.07.20' },
+        { key: 'date', label: '訪問日', type: 'text', placeholder: '2026.07.20',
+          hint: '「2026.07.20」の形で。空のままだと並び順が正しくなりません。' },
         { key: 'mapQuery', label: '地図の検索語（任意）', type: 'text', placeholder: '空欄なら「店名＋場所」で検索。ズレるときだけ住所などを入れる' },
         { key: 'menu', label: '食べたもの', type: 'text', placeholder: 'かまたま（小）' },
         { key: 'photo', label: '写真', type: 'image' },
