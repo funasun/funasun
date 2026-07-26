@@ -300,7 +300,17 @@
 
     var pathText = el('input', { type: 'text', class: 'pathinput', placeholder: 'images/…（自動入力）' });
     pathText.value = path;
-    pathText.addEventListener('input', function () { obj[def.key] = pathText.value.trim(); markDirty(); });
+    // 手で打ち直したときも見た目を合わせる（アップ済みの画像を後から
+    // つなぎ直すときに、合っているかどうかがその場で分かるように）
+    pathText.addEventListener('input', function () {
+      var p = pathText.value.trim();
+      obj[def.key] = p;
+      preview.innerHTML = '';
+      preview.appendChild(p
+        ? el('img', { src: '/' + p, alt: '' })
+        : el('span', { class: 'nopreview', text: '画像なし' }));
+      markDirty();
+    });
 
     var fileInput = el('input', { type: 'file', accept: 'image/*', style: 'display:none' });
     fileInput.addEventListener('change', function () {
@@ -364,20 +374,18 @@
     var localUrl = null;
     Webp.toWebp(file).then(function (r) {
       localUrl = URL.createObjectURL(r.blob);
-      var base = Webp.slugifyBase(file.name);
-      return uniquePath(base).then(function (path) {
-        setStatus('画像をアップロード中… ' + path, 'info');
-        return GH.blobToB64(r.blob).then(function (b64) {
-          return GH.putB64('src/' + path, b64, 'admin: 画像追加 ' + path).then(function () {
-            var old = obj[def.key];
-            obj[def.key] = path;
-            pathText.value = path;
-            preview.innerHTML = '';
-            preview.appendChild(el('img', { src: localUrl, alt: '' }));
-            if (old && old !== path && /^images\//.test(old)) orphanImages[old] = true;
-            markDirty();
-            setStatus('画像を追加しました：' + path + (r.converted ? '（webpに変換済み）' : '') + '。「保存する」で本文に反映されます。', 'ok');
-          });
+      var path = uploadPath(Webp.slugifyBase(file.name));
+      setStatus('画像をアップロード中… ' + path, 'info');
+      return GH.blobToB64(r.blob).then(function (b64) {
+        return GH.putB64('src/' + path, b64, 'admin: 画像追加 ' + path).then(function () {
+          var old = obj[def.key];
+          obj[def.key] = path;
+          pathText.value = path;
+          preview.innerHTML = '';
+          preview.appendChild(el('img', { src: localUrl, alt: '' }));
+          if (old && old !== path && /^images\//.test(old)) orphanImages[old] = true;
+          markDirty();
+          setStatus('画像を追加しました：' + path + (r.converted ? '（webpに変換済み）' : '') + '。「保存する」で本文に反映されます。', 'ok');
         });
       });
     }).catch(function (e) {
@@ -385,16 +393,18 @@
     });
   }
 
-  // images/<base>.webp が既にあれば -xxxx を付けて重複を避ける
-  function uniquePath(base) {
-    var path = 'images/' + base + '.webp';
-    return GH.getFile('src/' + path).then(function () {
-      // 既に存在 → ユニーク化
-      return 'images/' + base + '-' + Date.now().toString(36).slice(-4) + '.webp';
-    }).catch(function (e) {
-      if (e && e.notFound) return path;
-      throw e;
-    });
+  /* 画像の保存先を決める。
+     以前は「同じ名前が無いか GitHub に見に行ってから書く」やり方だったが、
+     GitHub のファイル一覧は少し前の状態を返すことがあり、続けてアップすると
+     直前に上げた画像を見落として同じ名前で書きに行き、弾かれていた。
+     （日本語のファイル名は英数字が残らず全部 image になるので、なおさら衝突した）
+     最初から重複しない名前を作れば、見に行く必要も衝突もなくなる。      */
+  function uploadPath(base) {
+    var d = new Date();
+    var two = function (n) { return (n < 10 ? '0' : '') + n; };
+    var stamp = String(d.getFullYear()).slice(2) + two(d.getMonth() + 1) + two(d.getDate());
+    var rand = Math.random().toString(36).slice(2, 6);
+    return 'images/' + base + '-' + stamp + '-' + rand + '.webp';
   }
 
   // ============================================================

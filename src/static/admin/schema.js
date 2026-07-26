@@ -155,13 +155,24 @@
         { key: 'shop', label: '店名', type: 'text', placeholder: '山越うどん',
           hint: '再訪したときは、この「1回分」をもう1件足してください。店名と場所が同じものは、サイト側で1枚のカードにまとまって訪問履歴になります。' },
         { key: 'town', label: '場所', type: 'text', placeholder: '県内は市町（綾川町 など）／県外は都道府県や市（東京都 など）' },
+        { key: 'shopType', label: '店のかたち', type: 'select', options: [
+          { value: '', label: '（選ばない）' },
+          { value: 'セルフ', label: 'セルフ' },
+          { value: '一般店', label: '一般店（注文して席まで）' },
+          { value: '製麺所', label: '製麺所' } ],
+          hint: '讃岐うどんの店を分けるときの定番の3種類。店ごとの情報なので、再訪のときは同じものを選べば大丈夫です。' },
         { key: 'date', label: '訪問日', type: 'text', placeholder: '2026.07.20',
           hint: '「2026.07.20」の形で。空のままだと並び順が正しくなりません。' },
         { key: 'mapQuery', label: '地図の検索語（任意）', type: 'text', placeholder: '空欄なら「店名＋場所」で検索。ズレるときだけ住所などを入れる' },
         { key: 'menu', label: '食べたもの', type: 'text', placeholder: 'かまたま（小）' },
+        { key: 'price', label: '値段', type: 'text', placeholder: '250円' },
+        { key: 'noodle', label: '麺', type: 'text', placeholder: 'コシが強い／エッジが立つ／やわらかめ',
+          hint: 'ここから3つは、その日の一杯の感想です。空でも大丈夫。' },
+        { key: 'broth', label: '出汁', type: 'text', placeholder: 'いりこが強い／昆布とかつお／甘め' },
         { key: 'photo', label: '写真', type: 'image' },
         { key: 'note', label: 'ひとことメモ', type: 'textarea', placeholder: '2〜3行で気軽に。' },
-        { key: 'tags', label: 'タグ', type: 'strlist', placeholder: 'セルフ / 製麺所 など' }
+        { key: 'tags', label: 'タグ', type: 'strlist', placeholder: '釜玉 / ひやあつ / 行列 など',
+          hint: '「セルフ・一般店・製麺所」は上の「店のかたち」で選べるので、ここには食べ方や雰囲気を。' }
       ]
     },
 

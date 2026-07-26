@@ -170,8 +170,9 @@
         });
       },
       signOut: function () { return signOut(auth); },
-      getIdToken: function () {
-        return auth.currentUser ? auth.currentUser.getIdToken() : Promise.reject(new Error('未ログイン'));
+      // force=true でトークンを取り直す。期限切れで弾かれたときのやり直し用
+      getIdToken: function (force) {
+        return auth.currentUser ? auth.currentUser.getIdToken(!!force) : Promise.reject(new Error('未ログイン'));
       },
       currentEmail: function () { return auth.currentUser ? auth.currentUser.email : null; }
     };

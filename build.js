@@ -271,6 +271,9 @@ function henroShops(away) {
       shop: latest.shop,
       town: latest.town,
       mapQuery: latest.mapQuery,
+      /* 店のかたち（セルフ／一般店／製麺所）は店の性質なので、訪問ごとに
+         入れ直させない。どれか1回でも入っていればそれを店の情報として使う。 */
+      shopType: visits.slice().reverse().map((v) => v.shopType).find(Boolean) || '',
       // 詳細ページの URL を手で決めたいときの逃げ道（普段は空でよい）
       slug: visits.map((v) => v.slug).find(Boolean) || '',
       tags,
@@ -439,17 +442,16 @@ function up(src) {
   return '../' + s;
 }
 
-// 見出しの下の「場所・訪問回数・初訪問・最新」
+// 見出しの下の「場所・店のかたち・訪問回数・初訪問・最新」
 function udonMeta(g) {
   const n = g.visits.length;
-  const rows = [
-    ['場所', g.town || '—'],
-    ['訪問', n + ' 回'],
-    ['初訪問', g.first || '—'],
-    ['最新', g.last || '—']
-  ];
-  // 1回だけの店は「初訪問／最新」を並べても同じ日付が二つ出るだけなので省く
-  const use = n > 1 ? rows : rows.slice(0, 2).concat([['訪問日', g.last || '—']]);
+  const rows = [['場所', g.town || '—']];
+  // 店のかたちは入っているときだけ。空の「—」を並べても意味がない
+  if (g.shopType) rows.push(['店のかたち', g.shopType]);
+  // 1回だけの店は、回数も「初訪問／最新」も要らない（同じ日付が二度出るだけ）
+  if (n > 1) rows.push(['訪問', n + ' 回'], ['初訪問', g.first || '—'], ['最新', g.last || '—']);
+  else rows.push(['訪問日', g.last || '—']);
+  const use = rows;
   return `  <div style="display: flex; gap: clamp(22px, 5vw, 52px); flex-wrap: wrap; margin-bottom: 26px">
 ${use.map(([k, v]) => `    <div>
       <span style="display: block; margin-bottom: 5px; font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .16em; color: rgba(244,244,245,.78)">${esc(k)}</span>
@@ -479,6 +481,24 @@ function udonMapEmbed(g) {
   </section>`;
 }
 
+/* メモは編集画面で改行して書ける。HTML はそのままだと改行を無視して
+   一続きにしてしまうので、書いたとおりに改行させる。                */
+function escLines(s) {
+  return esc(String(s || '')).replace(/\r?\n/g, '<br>');
+}
+
+/* その日の一杯の中身（麺・出汁・値段）。書いた項目だけを並べる。
+   全部空なら丸ごと出さない＝空欄が並んで「書き忘れ」に見えるのを防ぐ。 */
+function udonSpec(v) {
+  const rows = [['麺', v.noodle], ['出汁', v.broth], ['値段', v.price]].filter(([, val]) => String(val || '').trim());
+  if (!rows.length) return '';
+  return `
+      <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 16px 0 0; max-width: 640px">
+${rows.map(([k, val]) => `        <dt style="margin: 0; font: 500 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.78)">${esc(k)}</dt>
+        <dd style="margin: 0; font: 400 14px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(val)}</dd>`).join('\n')}
+      </dl>`;
+}
+
 // 訪問ごとのブロック。新しい順に、大きい写真とメモを添える。
 function udonVisitBlocks(g) {
   const n = g.visits.length;
@@ -488,7 +508,7 @@ function udonVisitBlocks(g) {
       ? `\n      <img src="${esc(up(v.photo))}" alt="${esc(g.shop)}の${esc(v.menu || 'うどん')}" loading="lazy" style="display: block; width: 100%; height: auto; margin-bottom: 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,.1); background: #0b0b0f">`
       : '';
     const note = v.note
-      ? `\n      <p style="margin: 12px 0 0; font: 400 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); max-width: 640px">${esc(v.note)}</p>`
+      ? `\n      <p style="margin: 12px 0 0; font: 400 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); max-width: 640px">${escLines(v.note)}</p>`
       : '';
     // 1回だけの店に「1回目」と書いても情報が増えないので、複数回のときだけ出す
     const label = n > 1
@@ -498,7 +518,7 @@ function udonVisitBlocks(g) {
       <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px">
         ${label}<span style="font: 400 14px 'EB Garamond', serif; letter-spacing: .08em; color: rgba(244,244,245,.88)">${esc(v.date || '日付未記入')}</span>
       </div>${photo}
-      <h2 style="margin: 0; font: 600 clamp(20px, 2.6vw, 27px)/1.5 'Noto Serif JP', serif">${esc(v.menu || '（食べたものは未記入）')}</h2>${note}
+      <h2 style="margin: 0; font: 600 clamp(20px, 2.6vw, 27px)/1.5 'Noto Serif JP', serif">${esc(v.menu || '（食べたものは未記入）')}</h2>${udonSpec(v)}${note}
     </article>`;
   }).join('\n');
 }
@@ -802,6 +822,7 @@ Sitemap: ${SITE}/sitemap.xml
 fs.writeFileSync(path.join(DIST, 'robots.txt'), robots);
 
 // llms.txt
+// 店ごとの詳細ページは記録が増えるほど際限なく伸びるので並べない。sitemap.xml から辿れる。
 const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 
 > うどん県（香川県）在住の高校3年生・船越温の個人サイト。コンセプトは「社会のためのイノベーション。」。廃棄うどんを原料とする水素・SAF・ナフサ生成の研究、議員訪問や主権者教育アプリなどの政治活動、生徒会長としての制度設計、そしてヴァイオリン・声楽などの音楽活動を記録している。
@@ -820,6 +841,8 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 - [Research](${SITE}/research.html): 廃棄うどん研究の詳細（統計・プロセス・受賞）
 - [Works](${SITE}/works.html): 個人開発の Web アプリとゲーム9本
 - [Archive](${SITE}/archive.html): 活動の時系列記録（記事全文）
+- [Udon](${SITE}/henro.html): 讃岐うどんの食べ歩き記録「うどん遍路」。香川県内${data.henro.kagawaTowns.length}市町の巡り具合と県外遠征。店ごとの詳細ページ（/udon/ 以下）もある
+- [Press](${SITE}/press.html): 報道・取材向けのプロフィール・経歴・ポートレート写真・連絡先
 - [Contact](${SITE}/contact.html): お問い合わせ（フォーム・メール・SNS）
 
 ## 連絡先
