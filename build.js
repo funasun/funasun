@@ -233,26 +233,70 @@ function workCards() {
 
 /* ---------------- うどん遍路 ---------------- */
 
-// 訪問した市町のチップ（「すべて」＋登場する市町を訪問数の多い順）
-function henroTowns() {
+// 県内（讃岐）か県外（遠征）か。data 側は area:'遠征' のときだけ県外扱い。
+function isAway(u) { return String(u.area || '').trim() === '遠征'; }
+
+// 訪問日の古い順に通し番号を振る（入力時に番号を書かなくて済むように）
+function henroNumbered(away) {
+  return data.udonItems
+    .filter((u) => isAway(u) === away)
+    .slice()
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .map((u, i) => Object.assign({}, u, { _no: i + 1 }));
+}
+
+function henroCount(away) { return data.udonItems.filter((u) => isAway(u) === away).length; }
+
+// 訪問済みの市町（県内のみ）
+function visitedTowns() {
+  const set = new Set();
+  data.udonItems.filter((u) => !isAway(u)).forEach((u) => {
+    const t = String(u.town || '').trim();
+    if (t) set.add(t);
+  });
+  return set;
+}
+
+function visitedTownCount() {
+  const v = visitedTowns();
+  return data.henro.kagawaTowns.filter((t) => v.has(t)).length;
+}
+
+// 香川の全17市町を並べ、訪問済みを点灯させる「制覇状況」
+function henroTownMap() {
+  const v = visitedTowns();
+  return data.henro.kagawaTowns.map((t) => {
+    const on = v.has(t);
+    const style = on
+      ? "font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(111,140,255,.55); background: rgba(111,140,255,.12); color: var(--accent, #6f8cff)"
+      : "font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); color: rgba(244,244,245,.3)";
+    return `      <span style="${style}">${esc(t)}</span>`;
+  }).join('\n');
+}
+
+// 絞り込みチップ。県内は市町、県外は都道府県などの場所。
+function henroChips(away) {
   const counts = {};
-  data.udonItems.forEach((u) => {
-    const t = (u.town || '').trim();
+  data.udonItems.filter((u) => isAway(u) === away).forEach((u) => {
+    const t = String(u.town || '').trim();
     if (t) counts[t] = (counts[t] || 0) + 1;
   });
-  const towns = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'ja'));
+  const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'ja'));
+  if (!keys.length) return '';
   return ['    <button class="chip on" data-filter="All">すべて</button>']
-    .concat(towns.map((t) =>
-      `    <button class="chip" data-filter="${esc(t)}">${esc(t)}（${counts[t]}）</button>`))
+    .concat(keys.map((t) => `    <button class="chip" data-filter="${esc(t)}">${esc(t)}（${counts[t]}）</button>`))
     .join('\n');
 }
 
-// 記録カード。新しい順（訪問日の降順）に並べる。
-function henroCards() {
-  if (!data.udonItems.length) {
-    return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 300 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.45)">まだ記録がありません。<br>これから一杯ずつ増やしていきます。</p>`;
+// 記録カード。新しい順に並べる。
+function henroCards(away) {
+  const items = henroNumbered(away).reverse();
+  if (!items.length) {
+    const msg = away
+      ? 'まだ県外での記録がありません。<br>遠征したときの一杯を残していきます。'
+      : 'まだ記録がありません。<br>これから一杯ずつ増やしていきます。';
+    return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 300 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.45)">${msg}</p>`;
   }
-  const items = data.udonItems.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   return items.map((u) => {
     const thumb = u.photo
       ? `<img src="${esc(u.photo)}" alt="${esc(u.shop)}の${esc(u.menu || 'うどん')}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
@@ -264,10 +308,11 @@ function henroCards() {
     const note = u.note
       ? `\n        <p style="margin: 10px 0 0; font: 300 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5)">${esc(u.note)}</p>`
       : '';
+    const badge = (away ? '遠征 ' : '') + 'No.' + u._no;
     return `    <article data-type="${esc(u.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
       <div style="aspect-ratio: 4 / 3; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
         ${thumb}
-        <span style="position: absolute; top: 12px; left: 12px; font: 500 11px 'EB Garamond', serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: rgba(6,6,8,.72); backdrop-filter: blur(8px); color: var(--accent, #6f8cff)">No.${esc(u.no || '—')}</span>
+        <span style="position: absolute; top: 12px; left: 12px; font: 500 11px 'EB Garamond', serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: rgba(6,6,8,.72); backdrop-filter: blur(8px); color: var(--accent, #6f8cff)">${esc(badge)}</span>
       </div>
       <div style="padding: 18px 20px 22px">
         <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px">
@@ -441,15 +486,21 @@ const pages = [
     active: 'Henro',
     canonicalPath: '/henro.html',
     title: 'うどん遍路 — 船越温 / Tsutsumu Funakoshi',
-    desc: '讃岐うどんの食べ歩き記録。八十八ヶ所になぞらえ、88軒を目標に県内を巡る。',
+    desc: '讃岐うどんの食べ歩き記録。香川県内17市町を巡り、県外遠征で食べた一杯も記録する。',
     tokens: {
       '{{HENRO_HEADING}}': esc(data.henro.heading),
       '{{HENRO_LEAD}}': esc(data.henro.lead),
-      '{{HENRO_COUNT}}': String(data.udonItems.length),
-      '{{HENRO_TARGET}}': String(data.henro.target),
-      '{{HENRO_PERCENT}}': String(Math.min(100, Math.round(data.udonItems.length / data.henro.target * 100))),
-      '{{HENRO_TOWNS}}': henroTowns(),
-      '{{HENRO_CARDS}}': henroCards()
+      '{{HENRO_TOTAL}}': String(data.udonItems.length),
+      '{{HENRO_HOME_COUNT}}': String(henroCount(false)),
+      '{{HENRO_AWAY_COUNT}}': String(henroCount(true)),
+      '{{HENRO_TOWN_DONE}}': String(visitedTownCount()),
+      '{{HENRO_TOWN_ALL}}': String(data.henro.kagawaTowns.length),
+      '{{HENRO_TOWN_PERCENT}}': String(Math.round(visitedTownCount() / data.henro.kagawaTowns.length * 100)),
+      '{{HENRO_TOWN_MAP}}': henroTownMap(),
+      '{{HENRO_HOME_CHIPS}}': henroChips(false),
+      '{{HENRO_AWAY_CHIPS}}': henroChips(true),
+      '{{HENRO_HOME_CARDS}}': henroCards(false),
+      '{{HENRO_AWAY_CARDS}}': henroCards(true)
     }
   },
   {

@@ -204,25 +204,30 @@
     counts.forEach(function (el) { el.textContent = '0'; cio.observe(el); });
   }
 
-  /* ============ Filter chips (Works / Archive) ============ */
+  /* ============ Filter chips (Works / Archive / Henro) ============
+     チップが [data-filter-scope] の中にある場合は、その範囲の中だけを
+     絞り込む（Henro のように1ページに複数の絞り込みが並ぶため）。
+     囲いが無い場合はページ全体が対象（Works / Archive の従来動作）。   */
   var chips = document.querySelectorAll('.chip[data-filter]');
   if (chips.length) {
-    var applyFilter = function (val) {
-      document.querySelectorAll('[data-type]').forEach(function (el) {
+    var applyFilter = function (val, root) {
+      root.querySelectorAll('[data-type]').forEach(function (el) {
         var show = val === 'All' || el.getAttribute('data-type') === val;
         el.classList.toggle('hidden-by-filter', !show);
       });
       // Archive: hide year groups that became empty
-      document.querySelectorAll('[data-year-group]').forEach(function (g) {
+      root.querySelectorAll('[data-year-group]').forEach(function (g) {
         var any = g.querySelector('[data-type]:not(.hidden-by-filter)');
         g.classList.toggle('hidden-by-filter', !any);
       });
     };
     chips.forEach(function (chip) {
       chip.addEventListener('click', function () {
-        chips.forEach(function (c) { c.classList.remove('on'); });
+        var scope = chip.closest ? chip.closest('[data-filter-scope]') : null;
+        var group = scope ? scope.querySelectorAll('.chip[data-filter]') : chips;
+        group.forEach(function (c) { c.classList.remove('on'); });
         chip.classList.add('on');
-        applyFilter(chip.getAttribute('data-filter'));
+        applyFilter(chip.getAttribute('data-filter'), scope || document);
       });
     });
   }
