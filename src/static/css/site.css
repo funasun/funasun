@@ -37,6 +37,23 @@ img { display: block; }
 
 /* ============ Nav ============ */
 .nav-links { display: flex; align-items: center; gap: 26px; }
+
+/* Henro（うどん遍路）は日々の食べ歩き記録で、経歴を載せた他のページとは
+   性格が違う。区切り線と小さな点を添えて、ひと目で別枠だと分かるようにする */
+.nav-sep { width: 1px; height: 12px; background: rgba(255,255,255,.2); flex: none; }
+.nav-log { display: inline-flex; align-items: center; gap: 7px; }
+.nav-log::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent, #6f8cff);
+  flex: none;
+}
+.menu-sep { width: 44px; height: 1px; background: rgba(255,255,255,.2); margin: 18px 0; }
+.menu-log { display: inline-flex; align-items: baseline; gap: 12px; }
+.menu-log small { font: 400 14px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff); }
+
 .nav-burger {
   display: none;
   flex-direction: column;
@@ -86,7 +103,7 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
 /* Contact: SNS/リンクカード（hover 浮上） */
 .lcard:hover { transform: translateY(-6px); border-color: rgba(255,255,255,.3); }
 /* Contact: フォーム入力欄 */
-.field::placeholder { color: rgba(244,244,245,.3); }
+.field::placeholder { color: rgba(244,244,245,.5); }
 .field:focus { border-color: var(--accent, #6f8cff) !important; }
 select.field { background-image: linear-gradient(45deg, transparent 50%, rgba(244,244,245,.5) 50%), linear-gradient(135deg, rgba(244,244,245,.5) 50%, transparent 50%); background-position: right 18px center, right 13px center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 40px; }
 select.field option { background: #0a0a0e; color: #f4f4f5; }
@@ -169,7 +186,7 @@ select.field option { background: #0a0a0e; color: #f4f4f5; }
   cursor: pointer;
   transition: all .3s ease;
   background: none;
-  color: rgba(244,244,245,.6);
+  color: rgba(244,244,245,.74);
   border: 1px solid rgba(255,255,255,.2);
 }
 .chip.on { background: #f4f4f5; color: #060608; border-color: #f4f4f5; }

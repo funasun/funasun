@@ -16,16 +16,16 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: #060608; color: #f4f4f5; -webkit-font-smoothing: antialiased; font-family: 'Noto Sans JP', sans-serif; }
   .wrap { max-width: 640px; margin: 0 auto; padding: 8vh 24px 14vh; }
-  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.45); }
+  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.62); }
   h1 { margin: 0 0 10px; font: 600 clamp(24px, 3.5vw, 34px)/1.4 'Noto Serif JP', serif; }
-  .sub { margin: 0 0 30px; font: 300 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.55); }
-  label { display: block; margin: 22px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.65); }
-  .hint { font-weight: 300; color: rgba(244,244,245,.4); letter-spacing: 0; }
+  .sub { margin: 0 0 30px; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.7); }
+  label { display: block; margin: 22px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.78); }
+  .hint { font-weight: 300; color: rgba(244,244,245,.58); letter-spacing: 0; }
   input, select { width: 100%; font: 400 14px 'Noto Sans JP', sans-serif; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; }
   input:focus, select:focus { outline: none; border-color: var(--accent); }
   .drop { margin-top: 8px; padding: 34px 20px; border: 1.5px dashed rgba(255,255,255,.24); border-radius: 14px; background: #0a0a0e; text-align: center; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
   .drop.over { border-color: var(--accent); background: #0d0d16; }
-  .drop p { margin: 6px 0 0; font: 300 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5); }
+  .drop p { margin: 6px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66); }
   .drop .pick { font: 500 14px 'Noto Sans JP', sans-serif; color: #f4f4f5; }
   .filename { margin-top: 10px; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent); word-break: break-all; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 26px; }
@@ -35,12 +35,12 @@
   .bar { margin-top: 20px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; display: none; }
   .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s ease; }
   .msg { margin: 14px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; min-height: 20px; }
-  .msg.err { color: #ff8a8a; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.55); }
+  .msg.err { color: #ff8a8a; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.7); }
   .result { display: none; margin-top: 26px; padding: 20px; border: 1px solid rgba(111,140,255,.4); border-radius: 14px; background: #0b0b12; }
   .result .u { display: flex; gap: 10px; margin-top: 10px; }
   .result input { font-size: 13px; }
-  .result .note { margin: 14px 0 0; font: 300 12px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5); }
-  .back { display: inline-block; margin-top: 40px; font: 300 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5); text-decoration: none; }
+  .result .note { margin: 14px 0 0; font: 400 12px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66); }
+  .back { display: inline-block; margin-top: 40px; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -79,7 +79,7 @@
   <p id="msg" class="msg" role="status" aria-live="polite"></p>
 
   <div id="result" class="result">
-    <span style="font:500 12px 'Noto Sans JP',sans-serif; letter-spacing:.1em; color:rgba(244,244,245,.65)">共有URL（この2つを相手に伝える）</span>
+    <span style="font:500 12px 'Noto Sans JP',sans-serif; letter-spacing:.1em; color:rgba(244,244,245,.78)">共有URL（この2つを相手に伝える）</span>
     <div class="u">
       <input id="rurl" type="text" readonly>
       <button id="copy" type="button" style="padding:12px 18px">コピー</button>
