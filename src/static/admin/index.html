@@ -88,6 +88,10 @@
   .field.image .preview { width: 100%; max-width: 260px; aspect-ratio: 16/10; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0a0a0e; display: flex; align-items: center; justify-content: center; margin: 0 0 8px; }
   .field.image .preview img { width: 100%; height: 100%; object-fit: cover; }
   .field.image .nopreview { font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.35); }
+  .field.image .preview { cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+  .field.image .preview:focus { outline: none; border-color: #6f8cff; }
+  .field.image .preview.over { border-color: #6f8cff; border-style: dashed; background: #0d0d16; }
+  .field.image .drophint { margin: 0 0 8px; font: 400 11px 'Noto Sans JP', sans-serif; line-height: 1.8; color: rgba(244,244,245,.4); }
   .field.image .pathinput { font: 400 12px ui-monospace, Menlo, monospace; margin: 0 0 8px; }
   .field.image .imgbtns { flex-wrap: wrap; }
 

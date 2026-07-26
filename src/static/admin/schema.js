@@ -144,6 +144,23 @@
     },
 
     {
+      id: 'udon', label: 'うどん遍路', base: '', arrayPath: 'udonItems',
+      listLabel: 'うどん', itemLabel: function (o) {
+        return 'No.' + (o.no || '—') + '　' + (o.shop || '（店名未入力）') + (o.town ? '（' + o.town + '）' : '');
+      },
+      item: [
+        { key: 'no', label: '番号（何軒目か）', type: 'number' },
+        { key: 'shop', label: '店名', type: 'text', placeholder: '山越うどん' },
+        { key: 'town', label: '市町', type: 'text', placeholder: '綾川町 / 高松市 など' },
+        { key: 'date', label: '訪問日', type: 'text', placeholder: '2026.07.20' },
+        { key: 'menu', label: '食べたもの', type: 'text', placeholder: 'かまたま（小）' },
+        { key: 'photo', label: '写真', type: 'image' },
+        { key: 'note', label: 'ひとことメモ', type: 'textarea', placeholder: '2〜3行で気軽に。' },
+        { key: 'tags', label: 'タグ', type: 'strlist', placeholder: 'セルフ / 製麺所 など' }
+      ]
+    },
+
+    {
       id: 'articles', label: 'Archive（活動記録）', base: '', arrayPath: 'articles',
       listLabel: '記事', itemLabel: function (o) { return (o.date || '') + ' ' + (o.title || '（無題）'); },
       item: [

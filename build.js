@@ -35,6 +35,7 @@ function navHtml(active, isHome) {
     .replace('{{C_RESEARCH}}', active === 'Research' ? on : off)
     .replace('{{C_WORKS}}', active === 'Works' ? on : off)
     .replace('{{C_ARCHIVE}}', active === 'Archive' ? on : off)
+    .replace('{{C_HENRO}}', active === 'Henro' ? on : off)
     .replace('{{C_CONTACT}}', active === 'Contact' ? on : off);
 }
 
@@ -230,6 +231,56 @@ function workCards() {
   }).join('\n');
 }
 
+/* ---------------- うどん遍路 ---------------- */
+
+// 訪問した市町のチップ（「すべて」＋登場する市町を訪問数の多い順）
+function henroTowns() {
+  const counts = {};
+  data.udonItems.forEach((u) => {
+    const t = (u.town || '').trim();
+    if (t) counts[t] = (counts[t] || 0) + 1;
+  });
+  const towns = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'ja'));
+  return ['    <button class="chip on" data-filter="All">すべて</button>']
+    .concat(towns.map((t) =>
+      `    <button class="chip" data-filter="${esc(t)}">${esc(t)}（${counts[t]}）</button>`))
+    .join('\n');
+}
+
+// 記録カード。新しい順（訪問日の降順）に並べる。
+function henroCards() {
+  if (!data.udonItems.length) {
+    return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 300 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.45)">まだ記録がありません。<br>これから一杯ずつ増やしていきます。</p>`;
+  }
+  const items = data.udonItems.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return items.map((u) => {
+    const thumb = u.photo
+      ? `<img src="${esc(u.photo)}" alt="${esc(u.shop)}の${esc(u.menu || 'うどん')}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
+      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.4)">no photo</span>`;
+    const tags = (u.tags || []).length
+      ? `\n        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px">${(u.tags || []).map((t) =>
+          `<span style="font: 400 10px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 2px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.5)">${esc(t)}</span>`).join('')}</div>`
+      : '';
+    const note = u.note
+      ? `\n        <p style="margin: 10px 0 0; font: 300 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5)">${esc(u.note)}</p>`
+      : '';
+    return `    <article data-type="${esc(u.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
+      <div style="aspect-ratio: 4 / 3; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
+        ${thumb}
+        <span style="position: absolute; top: 12px; left: 12px; font: 500 11px 'EB Garamond', serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: rgba(6,6,8,.72); backdrop-filter: blur(8px); color: var(--accent, #6f8cff)">No.${esc(u.no || '—')}</span>
+      </div>
+      <div style="padding: 18px 20px 22px">
+        <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px">
+          <span style="font: 400 10.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.6)">${esc(u.town || '—')}</span>
+          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.4)">${esc(u.date || '')}</span>
+        </div>
+        <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(u.shop || '')}</h3>
+        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff)">${esc(u.menu || '')}</p>${note}${tags}
+      </div>
+    </article>`;
+  }).join('\n');
+}
+
 function archiveSections() {
   const byYear = {};
   data.articles.forEach((a) => {
@@ -384,6 +435,22 @@ const pages = [
     title: 'Works 開発 — 船越温 / Tsutsumu Funakoshi',
     desc: '個人で開発した Web アプリとゲーム、9本。主権者教育アプリ、生活制度ナビ、歴史・哲学ゲームなど。',
     tokens: { '{{WORK_CARDS}}': workCards() }
+  },
+  {
+    file: 'henro.html',
+    active: 'Henro',
+    canonicalPath: '/henro.html',
+    title: 'うどん遍路 — 船越温 / Tsutsumu Funakoshi',
+    desc: '讃岐うどんの食べ歩き記録。八十八ヶ所になぞらえ、88軒を目標に県内を巡る。',
+    tokens: {
+      '{{HENRO_HEADING}}': esc(data.henro.heading),
+      '{{HENRO_LEAD}}': esc(data.henro.lead),
+      '{{HENRO_COUNT}}': String(data.udonItems.length),
+      '{{HENRO_TARGET}}': String(data.henro.target),
+      '{{HENRO_PERCENT}}': String(Math.min(100, Math.round(data.udonItems.length / data.henro.target * 100))),
+      '{{HENRO_TOWNS}}': henroTowns(),
+      '{{HENRO_CARDS}}': henroCards()
+    }
   },
   {
     file: 'archive.html',

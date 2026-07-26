@@ -317,6 +317,13 @@
       "liveUrl": "https://funasun.github.io/philosophy-game/"
     }
   ],
+  "henro": {
+    "_note": "うどん遍路ページの設定。target は目標軒数（八十八ヶ所にちなむ）。",
+    "heading": "うどん遍路",
+    "lead": "讃岐の地を巡り、食べたうどんを記録していく。八十八ヶ所になぞらえて、88軒を目標に。",
+    "target": 88
+  },
+  "udonItems": [],
   "articles": [
     {
       "slug": "kjo-concertmaster",

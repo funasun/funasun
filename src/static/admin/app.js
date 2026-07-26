@@ -304,6 +304,34 @@
       fileInput.value = '';
     });
 
+    // 写真アプリからも入れられるように、プレビュー枠を
+    //   ①ドラッグ&ドロップ ②クリックして Cmd+V で貼り付け
+    // の受け口にする（Mac のファイル選択だと写真アプリを開けないため）。
+    preview.setAttribute('tabindex', '0');
+    preview.setAttribute('title', 'ドラッグ&ドロップ、またはクリックして Cmd+V で貼り付け');
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      preview.addEventListener(ev, function (e) { e.preventDefault(); preview.classList.add('over'); });
+    });
+    ['dragleave', 'dragend', 'drop'].forEach(function (ev) {
+      preview.addEventListener(ev, function (e) { e.preventDefault(); preview.classList.remove('over'); });
+    });
+    preview.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) { handleUpload(f, obj, def, preview, pathText); return; }
+      setStatus('画像として受け取れませんでした。写真アプリからドラッグするか、コピーして Cmd+V で貼り付けてみてください。', 'err');
+    });
+    preview.addEventListener('paste', function (e) {
+      var items = (e.clipboardData && e.clipboardData.items) || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file' && /^image\//i.test(items[i].type)) {
+          var f = items[i].getAsFile();
+          if (f) { e.preventDefault(); handleUpload(f, obj, def, preview, pathText); return; }
+        }
+      }
+      setStatus('クリップボードに画像がありませんでした。写真アプリで画像を選んで Cmd+C してから、もう一度お試しください。', 'err');
+    });
+    preview.addEventListener('click', function () { fileInput.click(); });
+
     var btnRow = el('div', { class: 'imgbtns' }, [
       el('button', { class: 'mini pick', type: 'button', text: '画像を選ぶ（自動でwebp化）',
         onclick: function () { fileInput.click(); } }),
@@ -319,6 +347,8 @@
     ]);
 
     wrap.appendChild(preview);
+    wrap.appendChild(el('p', { class: 'drophint', text:
+      '写真アプリから直接ドラッグ&ドロップできます。または枠をクリックして Cmd+V で貼り付け。' }));
     wrap.appendChild(pathText);
     wrap.appendChild(btnRow);
     wrap.appendChild(fileInput);

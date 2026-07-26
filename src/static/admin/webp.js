@@ -29,11 +29,21 @@
 
   // File → { blob, ext, converted }
   //   converted=true なら webp に変換済み、false なら元が webp でそのまま
+  function isHeic(file) {
+    return /image\/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '');
+  }
+
   function toWebp(file) {
     if (isWebp(file)) {
       return Promise.resolve({ blob: file, ext: 'webp', converted: false });
     }
-    return createBitmap(file).then(function (bitmap) {
+    return createBitmap(file).catch(function (e) {
+      // Chrome は HEIC を読めない。写真アプリ標準の形式なので案内を出す。
+      if (isHeic(file)) {
+        throw new Error('HEIC形式は変換できません。Safari で開き直すか、写真アプリの「書き出す」でJPEGにしてからお試しください。');
+      }
+      throw e;
+    }).then(function (bitmap) {
       var w = bitmap.width, h = bitmap.height;
       if (Math.max(w, h) > MAX_EDGE) {
         var scale = MAX_EDGE / Math.max(w, h);
