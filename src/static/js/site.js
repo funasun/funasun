@@ -232,36 +232,8 @@
     });
   }
 
-  /* ============ Henro: 地図（押したときだけ読み込む） ============
-     Google マップの iframe は重く、読み込んだ時点で Google に通信が発生する。
-     最初から全カードに埋めると遅くなるので、ボタンを押したときに作る。   */
-  var mapBtns = document.querySelectorAll('.map-btn[data-map-pb]');
-  if (mapBtns.length) {
-    mapBtns.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var slot = btn.closest('.udon-map').querySelector('.map-slot');
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        if (open) {
-          slot.innerHTML = '';
-          slot.style.marginTop = '0';
-          btn.setAttribute('aria-expanded', 'false');
-          btn.textContent = '地図を表示';
-          return;
-        }
-        var frame = document.createElement('iframe');
-        frame.src = 'https://www.google.com/maps/embed?pb=' + btn.getAttribute('data-map-pb');
-        frame.title = '地図';
-        frame.loading = 'lazy';
-        frame.referrerPolicy = 'no-referrer-when-downgrade';
-        frame.setAttribute('allowfullscreen', '');
-        frame.style.cssText = 'display: block; width: 100%; height: 200px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px';
-        slot.appendChild(frame);
-        slot.style.marginTop = '12px';
-        btn.setAttribute('aria-expanded', 'true');
-        btn.textContent = '地図を閉じる';
-      });
-    });
-  }
+  /* 地図は店ごとの詳細ページ（/udon/○○.html）に直接埋めている。
+     一覧に全店ぶんの iframe を並べると重くなるので、一覧には置かない。 */
 
   /* ============ Archive accordion (single open) ============ */
   var rows = document.querySelectorAll('.arch-item > .arch-row');

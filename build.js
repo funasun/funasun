@@ -25,12 +25,16 @@ const read = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 
 /* ---------------- partials ---------------- */
 
-function navHtml(active, isHome) {
+/* prefix は「そのページから見たサイト直下までの戻り道」。直下のページは ''、
+   udon/ の中の詳細ページは '../'。ナビとフッターは全ページ共通なので、
+   リンク先をここで補正しないと階層の違うページからリンクが切れる。 */
+function navHtml(active, isHome, prefix = '') {
   const on = '#f4f4f5';
   // 選択中との差は残しつつ、単体でも十分読める明るさにする
   const off = 'rgba(244,244,245,.88)';
   return read('partials/nav.html')
-    .replaceAll('{{HOME_HREF}}', isHome ? '#top' : 'index.html')
+    .replaceAll('{{P}}', prefix)
+    .replaceAll('{{HOME_HREF}}', isHome ? '#top' : prefix + 'index.html')
     .replace('{{C_HOME}}', active === 'Home' ? on : off)
     .replace('{{C_ABOUT}}', active === 'About' ? on : off)
     .replace('{{C_RESEARCH}}', active === 'Research' ? on : off)
@@ -40,9 +44,10 @@ function navHtml(active, isHome) {
     .replace('{{C_CONTACT}}', active === 'Contact' ? on : off);
 }
 
-function footerHtml(isHome) {
+function footerHtml(isHome, prefix = '') {
   return read('partials/footer.html')
-    .replaceAll('{{HOME_HREF}}', isHome ? '#top' : 'index.html');
+    .replaceAll('{{P}}', prefix)
+    .replaceAll('{{HOME_HREF}}', isHome ? '#top' : prefix + 'index.html');
 }
 
 /* ---------------- head / meta / JSON-LD ---------------- */
@@ -63,7 +68,7 @@ const personLd = {
   ]
 };
 
-function headHtml({ title, desc, canonicalPath, extraLd }) {
+function headHtml({ title, desc, canonicalPath, extraLd, prefix = '', ogImage }) {
   const url = SITE + canonicalPath;
   const lds = [personLd].concat(extraLd || []);
   const ldTags = lds
@@ -79,7 +84,7 @@ function headHtml({ title, desc, canonicalPath, extraLd }) {
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-<meta property="og:image" content="${SITE}/images/og.png">
+<meta property="og:image" content="${ogImage ? SITE + '/' + ogImage : SITE + '/images/og.png'}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#060608">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -88,7 +93,7 @@ function headHtml({ title, desc, canonicalPath, extraLd }) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="${prefix}css/site.css">
 ${ldTags}
 <noscript><style>
 /* JS なし環境の保険: 演出を止めて、全コンテンツを縦に流して読めるようにする */
@@ -266,6 +271,8 @@ function henroShops(away) {
       shop: latest.shop,
       town: latest.town,
       mapQuery: latest.mapQuery,
+      // 詳細ページの URL を手で決めたいときの逃げ道（普段は空でよい）
+      slug: visits.map((v) => v.slug).find(Boolean) || '',
       tags,
       first: String(visits[0].date || ''),
       last: String(latest.date || ''),
@@ -277,6 +284,40 @@ function henroShops(away) {
   groups.sort((a, b) => a.first.localeCompare(b.first));
   groups.forEach((g, i) => { g._no = i + 1; });
   return groups.slice().sort((a, b) => b.last.localeCompare(a.last));
+}
+
+/* 詳細ページの URL。店名をそのまま使う（日本語のままで読める URL になる）。
+   ファイル名に使えない記号だけ落とし、重複したら場所を足す。slug を手で
+   入れてあればそれを優先。店名を変えると URL も変わる点だけ注意。      */
+function udonSlug(g) {
+  const base = String(g.slug || g.shop || '').trim()
+    .replace(/[\/\\?#%:*"<>|]/g, '')
+    .replace(/\s+/g, '-');
+  return base || 'udon';
+}
+
+// 全店（県内＋遠征）を、詳細ページ用に URL 付きで返す。
+// 何度も呼ぶので結果を覚えておく（呼ぶたびに slug が振り直されると URL がぶれる）
+let _udonShops = null;
+function udonShops() {
+  if (_udonShops) return _udonShops;
+  const all = henroShops(false).map((g) => Object.assign({}, g, { away: false }))
+    .concat(henroShops(true).map((g) => Object.assign({}, g, { away: true })));
+  const used = new Map();
+  all.forEach((g) => {
+    let s = udonSlug(g);
+    if (used.has(s)) {
+      const withTown = s + '-' + String(g.town || '').replace(/\s+/g, '-');
+      s = used.has(withTown) ? withTown + '-' + (used.size + 1) : withTown;
+    }
+    used.set(s, true);
+    g.slug = s;
+    g.href = 'udon/' + encodeURIComponent(s) + '.html';   // 一覧から見た相対パス
+    g.path = '/udon/' + encodeURIComponent(s) + '.html';   // サイト直下から見た絶対パス
+    g.file = path.join('udon', s + '.html');
+  });
+  _udonShops = all;
+  return all;
 }
 
 function henroCount(away) { return data.udonItems.filter((u) => isAway(u) === away).length; }
@@ -339,58 +380,11 @@ function mapPb(q) {
   return `!1m2!2m1!1z${b64}!3m1!1sja!5m1!1sja`;
 }
 
-/* iframe はページ読み込み時には作らず、「地図を表示」を押したときだけ
-   site.js が挿入する。こうすると通信量も増えず、押すまで Google に何も渡らない。 */
-function henroMapBlock(g) {
-  const q = String(g.mapQuery || [g.shop, g.town].filter(Boolean).join(' ')).trim();
-  if (!q) return '';
-  const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-  return `
-        <div class="udon-map" style="margin-top: 14px">
-          <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center">
-            <button type="button" class="map-btn" data-map-pb="${esc(mapPb(q))}" aria-expanded="false" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 5px 13px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: none; color: rgba(244,244,245,.88); cursor: pointer">地図を表示</button>
-            <a href="${esc(link)}" target="_blank" rel="noopener" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.84); text-decoration: none">マップで開く ↗</a>
-          </div>
-          <div class="map-slot" style="margin-top: 0"></div>
-        </div>`;
-}
-
-/* 1回だけの店は「食べたもの＋メモ」をそのまま出す。
-   2回以上の店は、訪問ごとの行を新しい順に積む（何回目・日付・食べたもの・メモ）。 */
-function henroVisitLog(g) {
-  const n = g.visits.length;
-  if (n === 1) {
-    const v = g.visits[0];
-    const note = v.note
-      ? `\n        <p style="margin: 10px 0 0; font: 400 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(v.note)}</p>`
-      : '';
-    return `\n        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent-text, #adbcff)">${esc(v.menu || '')}</p>${note}`;
-  }
-  const rows = g.visits.slice().reverse().map((v, i) => {
-    const times = n - i; // 何回目か
-    const thumb = v.photo
-      ? `<img src="${esc(v.photo)}" alt="${esc(v.menu || 'うどん')}" loading="lazy" style="width: 46px; height: 46px; flex: none; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,.1)">`
-      : '';
-    const note = v.note
-      ? `\n            <p style="margin: 5px 0 0; font: 400 12px/1.75 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(v.note)}</p>`
-      : '';
-    return `        <li style="display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.09)">
-          ${thumb}
-          <div style="flex: 1; min-width: 0">
-            <div style="display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap">
-              <span style="font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: var(--accent-text, #adbcff)">${times}回目</span>
-              <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.84)">${esc(v.date || '')}</span>
-            </div>
-            <p style="margin: 3px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(v.menu || '')}</p>${note}
-          </div>
-        </li>`;
-  }).join('\n');
-  return `\n        <ol style="list-style: none; margin: 10px 0 0; padding: 0">\n${rows}\n        </ol>`;
-}
-
-// 記録カード。店ごとに1枚、最終訪問が新しい順に並べる。
+/* 記録カード。店ごとに1枚、最終訪問が新しい順に並べる。
+   カード自体が詳細ページへのリンク。訪問の全履歴・メモ・地図は詳細ページに置き、
+   一覧では「写真・店名・場所・直近の一杯」だけを見せて流し読みできるようにする。 */
 function henroCards(away) {
-  const items = henroShops(away);
+  const items = udonShops().filter((g) => g.away === away);
   if (!items.length) {
     const msg = away
       ? 'まだ県外での記録がありません。<br>遠征したときの一杯を残していきます。'
@@ -412,8 +406,12 @@ function henroCards(away) {
       ? `<span style="position: absolute; top: 12px; right: 12px; font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px; background: rgba(111,140,255,.9); color: #060608">${n}回</span>`
       : '';
     const dateLabel = n > 1 ? `最新 ${g.last}` : g.last;
-    const map = henroMapBlock(g);
-    return `    <article data-type="${esc(g.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
+    // 直近の一杯だけ添える（残りは詳細ページで）
+    const latest = g.visits[n - 1];
+    const menu = latest.menu
+      ? `\n        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent-text, #adbcff)">${esc(latest.menu)}</p>`
+      : '';
+    return `    <a href="${esc(g.href)}" data-type="${esc(g.town || '')}" class="wcard" style="display: block; text-decoration: none; color: #f4f4f5; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
       <div style="aspect-ratio: 4 / 3; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
         ${thumb}
         <span style="position: absolute; top: 12px; left: 12px; font: 500 11.5px 'EB Garamond', serif; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: rgba(6,6,8,.72); backdrop-filter: blur(8px); color: var(--accent-text, #adbcff)">${esc(badge)}</span>
@@ -424,10 +422,117 @@ function henroCards(away) {
           <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(g.town || '—')}</span>
           <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.78)">${esc(dateLabel)}</span>
         </div>
-        <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(g.shop || '')}</h3>${henroVisitLog(g)}${tags}${map}
+        <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(g.shop || '')}</h3>${menu}${tags}
+        <span style="display: inline-block; margin-top: 14px; font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.84)">詳しく見る →</span>
       </div>
+    </a>`;
+  }).join('\n');
+}
+
+/* ---------------- うどん詳細ページ ---------------- */
+
+/* 詳細ページは /udon/ の中にあるので、サイト直下を指す相対パスは一段戻す。
+   http… や / で始まるものはそのまま（もう行き先が確定している）。 */
+function up(src) {
+  const s = String(src || '');
+  if (!s || /^(https?:)?\/\//.test(s) || s.startsWith('/')) return s;
+  return '../' + s;
+}
+
+// 見出しの下の「場所・訪問回数・初訪問・最新」
+function udonMeta(g) {
+  const n = g.visits.length;
+  const rows = [
+    ['場所', g.town || '—'],
+    ['訪問', n + ' 回'],
+    ['初訪問', g.first || '—'],
+    ['最新', g.last || '—']
+  ];
+  // 1回だけの店は「初訪問／最新」を並べても同じ日付が二つ出るだけなので省く
+  const use = n > 1 ? rows : rows.slice(0, 2).concat([['訪問日', g.last || '—']]);
+  return `  <div style="display: flex; gap: clamp(22px, 5vw, 52px); flex-wrap: wrap; margin-bottom: 26px">
+${use.map(([k, v]) => `    <div>
+      <span style="display: block; margin-bottom: 5px; font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .16em; color: rgba(244,244,245,.78)">${esc(k)}</span>
+      <span style="font: 400 15px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(v)}</span>
+    </div>`).join('\n')}
+  </div>`;
+}
+
+function udonTagsBlock(g) {
+  if (!g.tags.length) return '';
+  return `  <div style="display: flex; gap: 7px; flex-wrap: wrap">${g.tags.map((t) =>
+    `<span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 3px 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(t)}</span>`).join('')}</div>`;
+}
+
+/* 詳細ページの地図は最初から出す。一覧と違ってページが1軒ぶんしかなく、
+   「この店どこ？」がまさに知りたいことなので、押させる手間を挟まない。 */
+function udonMapEmbed(g) {
+  const q = String(g.mapQuery || [g.shop, g.town].filter(Boolean).join(' ')).trim();
+  if (!q) return '';
+  const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  return `  <section style="margin-bottom: clamp(48px, 8vw, 76px)">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px">
+      <p style="margin: 0; font: 500 11.5px 'EB Garamond', serif; letter-spacing: .34em; text-transform: uppercase; color: rgba(244,244,245,.78)">Map — 場所</p>
+      <a href="${esc(link)}" target="_blank" rel="noopener" class="hw" style="font: 400 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: rgba(244,244,245,.88); text-decoration: none">マップで開く ↗</a>
+    </div>
+    <iframe src="https://www.google.com/maps/embed?pb=${esc(mapPb(q))}" title="${esc(g.shop)}の地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen style="display: block; width: 100%; height: min(46vh, 380px); border: 1px solid rgba(255,255,255,.12); border-radius: 16px"></iframe>
+  </section>`;
+}
+
+// 訪問ごとのブロック。新しい順に、大きい写真とメモを添える。
+function udonVisitBlocks(g) {
+  const n = g.visits.length;
+  return g.visits.slice().reverse().map((v, i) => {
+    const times = n - i;
+    const photo = v.photo
+      ? `\n      <img src="${esc(up(v.photo))}" alt="${esc(g.shop)}の${esc(v.menu || 'うどん')}" loading="lazy" style="display: block; width: 100%; height: auto; margin-bottom: 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,.1); background: #0b0b0f">`
+      : '';
+    const note = v.note
+      ? `\n      <p style="margin: 12px 0 0; font: 400 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); max-width: 640px">${esc(v.note)}</p>`
+      : '';
+    // 1回だけの店に「1回目」と書いても情報が増えないので、複数回のときだけ出す
+    const label = n > 1
+      ? `<span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: 3px 11px; border-radius: 999px; background: rgba(111,140,255,.9); color: #060608">${times}回目</span>`
+      : '';
+    return `    <article style="margin-bottom: clamp(44px, 7vw, 70px)">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px">
+        ${label}<span style="font: 400 14px 'EB Garamond', serif; letter-spacing: .08em; color: rgba(244,244,245,.88)">${esc(v.date || '日付未記入')}</span>
+      </div>${photo}
+      <h2 style="margin: 0; font: 600 clamp(20px, 2.6vw, 27px)/1.5 'Noto Serif JP', serif">${esc(v.menu || '（食べたものは未記入）')}</h2>${note}
     </article>`;
   }).join('\n');
+}
+
+// 詳細ページをページ一覧に足すための入れ物を作る
+function udonDetailPages() {
+  return udonShops().map((g) => {
+    const n = g.visits.length;
+    const latest = g.visits[n - 1];
+    const desc = [
+      g.town ? g.town + 'の' + g.shop : g.shop,
+      latest.menu ? '。' + latest.menu : '',
+      n > 1 ? `。これまで ${n} 回訪問。` : '。',
+      'うどん遍路の記録。'
+    ].join('');
+    return {
+      file: g.file,
+      template: 'udon-detail.html',
+      active: 'Henro',
+      prefix: '../',
+      canonicalPath: g.path,
+      title: `${g.shop} — うどん遍路 / 船越温`,
+      desc,
+      ogImage: g.cover.photo || '',
+      tokens: {
+        '{{UDON_SHOP}}': esc(g.shop || ''),
+        '{{UDON_BADGE}}': esc((g.away ? '遠征 ' : '讃岐 ') + 'No.' + g._no),
+        '{{UDON_META}}': udonMeta(g),
+        '{{UDON_TAGS}}': udonTagsBlock(g),
+        '{{UDON_MAP}}': udonMapEmbed(g),
+        '{{UDON_VISITS}}': udonVisitBlocks(g)
+      }
+    };
+  });
 }
 
 function archiveSections() {
@@ -647,7 +752,8 @@ const pages = [
       '{{CONTACT_ACCESS_KEY}}': esc((data.contact && data.contact.web3formsKey) || '')
     }
   }
-];
+// 店ごとの詳細ページ（/udon/○○.html）。data.json の記録から自動で増える
+].concat(udonDetailPages());
 
 /* ---------------- write dist ---------------- */
 
@@ -659,17 +765,21 @@ fs.cpSync(path.join(SRC, 'static'), DIST, { recursive: true });
 fs.cpSync(path.join(SRC, 'images'), path.join(DIST, 'images'), { recursive: true });
 
 for (const page of pages) {
-  let html = read(path.join('templates', page.file));
+  // 詳細ページのように「1つの型から何枚も作る」ページは template を別に指定する
+  let html = read(path.join('templates', page.template || page.file));
+  const prefix = page.prefix || '';
   html = html
     .replace('{{HEAD}}', headHtml(page))
-    .replace('{{NAV}}', navHtml(page.active, !!page.isHome))
-    .replace('{{FOOTER}}', footerHtml(!!page.isHome));
+    .replace('{{NAV}}', navHtml(page.active, !!page.isHome, prefix))
+    .replace('{{FOOTER}}', footerHtml(!!page.isHome, prefix));
   for (const [token, value] of Object.entries(page.tokens || {})) {
     html = html.replaceAll(token, value);
   }
   const leftover = html.match(/\{\{[A-Z_]+\}\}/);
   if (leftover) throw new Error(`${page.file}: unresolved token ${leftover[0]}`);
-  fs.writeFileSync(path.join(DIST, page.file), html);
+  const out = path.join(DIST, page.file);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, html);
 }
 
 // sitemap.xml
