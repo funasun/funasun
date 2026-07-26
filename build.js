@@ -288,6 +288,35 @@ function henroChips(away) {
     .join('\n');
 }
 
+/* 地図。店名＋場所から検索クエリを組み立てる（mapQuery があればそれを優先）。
+
+   埋め込みには /maps/embed?pb=… を使う。よく紹介される
+   「maps.google.com/maps?q=…&output=embed」は、途中のリダイレクトに
+   X-Frame-Options: SAMEORIGIN が付くため今の Chrome では表示できない
+   （実際に試して確認済み）。pb は「!1m2!2m1!1z＋検索語のbase64url」なので
+   ここで組み立てられる。API キーは不要＝料金は一切発生しない。          */
+function mapPb(q) {
+  const b64 = Buffer.from(q, 'utf8').toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `!1m2!2m1!1z${b64}!3m1!1sja!5m1!1sja`;
+}
+
+/* iframe はページ読み込み時には作らず、「地図を表示」を押したときだけ
+   site.js が挿入する。こうすると通信量も増えず、押すまで Google に何も渡らない。 */
+function henroMapBlock(u) {
+  const q = String(u.mapQuery || [u.shop, u.town].filter(Boolean).join(' ')).trim();
+  if (!q) return '';
+  const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  return `
+        <div class="udon-map" style="margin-top: 14px">
+          <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center">
+            <button type="button" class="map-btn" data-map-pb="${esc(mapPb(q))}" aria-expanded="false" style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 5px 13px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: none; color: rgba(244,244,245,.62); cursor: pointer">地図を表示</button>
+            <a href="${esc(link)}" target="_blank" rel="noopener" style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.45); text-decoration: none">マップで開く ↗</a>
+          </div>
+          <div class="map-slot" style="margin-top: 0"></div>
+        </div>`;
+}
+
 // 記録カード。新しい順に並べる。
 function henroCards(away) {
   const items = henroNumbered(away).reverse();
@@ -309,6 +338,7 @@ function henroCards(away) {
       ? `\n        <p style="margin: 10px 0 0; font: 300 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.5)">${esc(u.note)}</p>`
       : '';
     const badge = (away ? '遠征 ' : '') + 'No.' + u._no;
+    const map = henroMapBlock(u);
     return `    <article data-type="${esc(u.town || '')}" class="wcard" style="border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f">
       <div style="aspect-ratio: 4 / 3; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
         ${thumb}
@@ -320,7 +350,7 @@ function henroCards(away) {
           <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.4)">${esc(u.date || '')}</span>
         </div>
         <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(u.shop || '')}</h3>
-        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff)">${esc(u.menu || '')}</p>${note}${tags}
+        <p style="margin: 0; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff)">${esc(u.menu || '')}</p>${note}${tags}${map}
       </div>
     </article>`;
   }).join('\n');

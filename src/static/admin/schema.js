@@ -155,6 +155,7 @@
         { key: 'shop', label: '店名', type: 'text', placeholder: '山越うどん' },
         { key: 'town', label: '場所', type: 'text', placeholder: '県内は市町（綾川町 など）／県外は都道府県や市（東京都 など）' },
         { key: 'date', label: '訪問日', type: 'text', placeholder: '2026.07.20' },
+        { key: 'mapQuery', label: '地図の検索語（任意）', type: 'text', placeholder: '空欄なら「店名＋場所」で検索。ズレるときだけ住所などを入れる' },
         { key: 'menu', label: '食べたもの', type: 'text', placeholder: 'かまたま（小）' },
         { key: 'photo', label: '写真', type: 'image' },
         { key: 'note', label: 'ひとことメモ', type: 'textarea', placeholder: '2〜3行で気軽に。' },
