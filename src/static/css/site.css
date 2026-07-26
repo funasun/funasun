@@ -1,5 +1,8 @@
 /* ============ Design tokens / base ============ */
-:root { --accent: #6f8cff; }
+/* --accent は点・線・塗りなど「面」で見せる用。同じ色を文字に使うと
+   暗い背景では沈む（Lc 44.5 ＝ 本文に必要な値のおよそ半分）ので、
+   文字には明るい --accent-text を使う。青の印象は保ったまま読める。 */
+:root { --accent: #6f8cff; --accent-text: #adbcff; }
 
 body {
   margin: 0;
@@ -52,7 +55,7 @@ img { display: block; }
 }
 .menu-sep { width: 44px; height: 1px; background: rgba(255,255,255,.2); margin: 18px 0; }
 .menu-log { display: inline-flex; align-items: baseline; gap: 12px; }
-.menu-log small { font: 400 14px 'Noto Sans JP', sans-serif; color: var(--accent, #6f8cff); }
+.menu-log small { font: 400 14px 'Noto Sans JP', sans-serif; color: var(--accent-text, #adbcff); }
 
 .nav-burger {
   display: none;
@@ -103,7 +106,7 @@ body.menu-open .nav-burger span:nth-child(3) { transform: translateY(-6.5px) rot
 /* Contact: SNS/リンクカード（hover 浮上） */
 .lcard:hover { transform: translateY(-6px); border-color: rgba(255,255,255,.3); }
 /* Contact: フォーム入力欄 */
-.field::placeholder { color: rgba(244,244,245,.5); }
+.field::placeholder { color: rgba(244,244,245,.78); }
 .field:focus { border-color: var(--accent, #6f8cff) !important; }
 select.field { background-image: linear-gradient(45deg, transparent 50%, rgba(244,244,245,.5) 50%), linear-gradient(135deg, rgba(244,244,245,.5) 50%, transparent 50%); background-position: right 18px center, right 13px center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 40px; }
 select.field option { background: #0a0a0e; color: #f4f4f5; }
@@ -186,7 +189,7 @@ select.field option { background: #0a0a0e; color: #f4f4f5; }
   cursor: pointer;
   transition: all .3s ease;
   background: none;
-  color: rgba(244,244,245,.74);
+  color: rgba(244,244,245,.88);
   border: 1px solid rgba(255,255,255,.2);
 }
 .chip.on { background: #f4f4f5; color: #060608; border-color: #f4f4f5; }
@@ -194,7 +197,7 @@ select.field option { background: #0a0a0e; color: #f4f4f5; }
 /* ============ Archive アコーディオン ============ */
 .acc-body { display: none; }
 .arch-item.open .acc-body { display: block; }
-.chev { color: var(--accent); display: inline-block; transition: transform .35s ease; transform: rotate(0deg); }
+.chev { color: var(--accent-text, #adbcff); display: inline-block; transition: transform .35s ease; transform: rotate(0deg); }
 .arch-item.open .chev { transform: rotate(180deg); }
 .hidden-by-filter { display: none !important; }
 

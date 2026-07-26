@@ -13,30 +13,30 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Noto+Serif+JP:wght@600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --accent: #6f8cff; }
+  :root { --accent: #6f8cff; --accent-text: #adbcff; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #060608; color: #f4f4f5; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 720px; margin: 0 auto; padding: 8vh 24px 14vh; }
-  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.62); }
+  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.84); }
   h1 { margin: 0 0 10px; font: 600 clamp(24px, 3.5vw, 34px)/1.4 'Noto Serif JP', serif; }
-  .sub { margin: 0 0 30px; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.7); }
-  .steps { margin: 0 0 28px; padding: 18px 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0b0b0f; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  .sub { margin: 0 0 30px; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  .steps { margin: 0 0 28px; padding: 18px 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0b0b0f; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92); }
   .steps b { color: #f4f4f5; font-weight: 500; }
-  label { display: block; margin: 22px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.78); }
-  .hint { font-weight: 300; color: rgba(244,244,245,.58); letter-spacing: 0; }
+  label { display: block; margin: 22px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.88); }
+  .hint { font-weight: 300; color: rgba(244,244,245,.78); letter-spacing: 0; }
   input, textarea { width: 100%; font: 400 14px 'Noto Sans JP', sans-serif; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; resize: vertical; }
   input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   textarea { min-height: 130px; line-height: 1.8; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 26px; }
   button { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 12px 22px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
-  button.ghost { background: none; color: rgba(244,244,245,.86); border-color: rgba(255,255,255,.25); }
+  button.ghost { background: none; color: rgba(244,244,245,.92); border-color: rgba(255,255,255,.25); }
   button:hover { opacity: .88; }
   button:disabled { opacity: .4; cursor: default; }
-  .who { font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.7); }
+  .who { font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
   .editor { opacity: .4; pointer-events: none; transition: opacity .25s ease; }
   .editor.on { opacity: 1; pointer-events: auto; }
   .msg { margin: 14px 0 0; font: 400 13px 'Noto Sans JP', sans-serif; min-height: 20px; }
-  .msg.err { color: #ff8a8a; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.66); }
+  .msg.err { color: #ffb3b3; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.84); }
 </style>
 </head>
 <body>
