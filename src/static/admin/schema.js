@@ -134,7 +134,12 @@
       listLabel: '作品', itemLabel: function (o) { return o.title || '（タイトル未入力）'; },
       item: [
         { key: 'title', label: 'タイトル', type: 'text' },
-        { key: 'type', label: '種類', type: 'text', placeholder: 'Web App / Game' },
+        /* 種類は Works ページの絞り込みボタンと一字一句そろえる必要がある。
+           手入力だと打ち間違いで絞り込みから漏れるので、選ぶ形にしている。 */
+        { key: 'type', label: '種類', type: 'select', options: [
+          { value: 'Web App', label: 'Web App（アプリ）' },
+          { value: 'Game', label: 'Game（ゲーム）' },
+          { value: 'School', label: 'School（学校で使われているサイト）' } ] },
         { key: 'status', label: '状態', type: 'select', options: [
           { value: 'live', label: '公開中' }, { value: 'wip', label: '開発中' } ] },
         { key: 'description', label: '説明', type: 'textarea' },
