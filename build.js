@@ -707,7 +707,8 @@ const pages = [
     active: 'Works',
     canonicalPath: '/works.html',
     title: 'Works 開発 — 船越温 / Tsutsumu Funakoshi',
-    desc: '個人で開発した Web アプリとゲーム、9本。主権者教育アプリ、生活制度ナビ、歴史・哲学ゲームなど。',
+    // 本数は数え直さなくていいように data から取る（手で書くと必ず古くなる）
+    desc: `個人で開発した Web アプリ・ゲームと、学校で実際に使われているサイト、${data.worksItems.length}本。高松高校生徒会公式サイト、高高祭2026、主権者教育アプリなど。`,
     tokens: { '{{WORK_CARDS}}': workCards() }
   },
   {
@@ -839,7 +840,7 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 - [Home](${SITE}/): 研究・政治・制度設計・音楽を束ねる自己紹介
 - [About](${SITE}/about.html): プロフィール・経歴タイムライン
 - [Research](${SITE}/research.html): 廃棄うどん研究の詳細（統計・プロセス・受賞）
-- [Works](${SITE}/works.html): 個人開発の Web アプリとゲーム9本
+- [Works](${SITE}/works.html): 個人開発の Web アプリ・ゲームと、学校で実際に使われているサイト計${data.worksItems.length}本
 - [Archive](${SITE}/archive.html): 活動の時系列記録（記事全文）
 - [Udon](${SITE}/henro.html): 讃岐うどんの食べ歩き記録「うどん遍路」。香川県内${data.henro.kagawaTowns.length}市町の巡り具合と県外遠征。店ごとの詳細ページ（/udon/ 以下）もある
 - [Press](${SITE}/press.html): 報道・取材向けのプロフィール・経歴・ポートレート写真・連絡先

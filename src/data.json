@@ -249,15 +249,15 @@
       "type": "School",
       "status": "live",
       "description": "在校生・新入生・受験生に向けた、生徒会本部の公式サイト。お知らせ、校則や学校生活のきまり、部活動紹介、意見箱、機関紙までをひとつにまとめました。",
-      "thumbnail": "",
+      "thumbnail": "images/seitokai-thumb.webp",
       "liveUrl": "https://www.takakouseitokai.workers.dev/"
     },
     {
       "title": "高高祭2026 特設サイト",
       "type": "School",
-      "status": "live",
-      "description": "文化祭「高高祭2026」の公式ページ。全48企画の検索、会場マップ、ステージのタイムテーブル、売店メニュー、来場者による審査まで、来場者のスマホひとつで完結します。",
-      "thumbnail": "",
+      "status": "wip",
+      "description": "文化祭「高高祭2026」の公式ページ。企画の検索、会場マップ、ステージのタイムテーブル、売店メニュー、来場者による審査まで、来場者のスマホひとつで完結します。現在は試験運用中です。",
+      "thumbnail": "images/kokosai-thumb.webp",
       "liveUrl": "https://www.takakouseitokai.workers.dev/festival"
     },
     {
@@ -265,7 +265,7 @@
       "type": "School",
       "status": "live",
       "description": "来場者が気に入った出し物に点数をつけて投票できる採点システム。採点委員の受付から集計までを支え、グランプリの決定をそのまま運用できます。",
-      "thumbnail": "",
+      "thumbnail": "images/bunkasai-thumb.webp",
       "liveUrl": "https://bunkasai-app.vercel.app/"
     },
     {
@@ -273,7 +273,7 @@
       "type": "School",
       "status": "live",
       "description": "クラスマッチ当日の運営表示システム。本部のPCで書き換えると各フロアの電子黒板へ即時に反映され、試合速報・進行表・暑さ指数・お知らせを自動で切り替えます。",
-      "thumbnail": "",
+      "thumbnail": "images/classmatch-thumb.webp",
       "liveUrl": "https://funasun.github.io/classmatch-app/"
     },
     {
