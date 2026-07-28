@@ -23,6 +23,38 @@ const esc = (s) => String(s)
 
 const read = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 
+/* ---------------- 文言（テンプレート内の見出し・本文） ----------------
+   テンプレートに直接書いていた日本語は data.json の texts に移してある。
+   テンプレート側は {{T:works.h1}} のように書き、ここで差し替える。
+   こうしておくと /admin の「文章」タブから本人が書き換えられる。
+   改行はそのまま <br> になるので、見出しの折り返し位置も指定できる。  */
+const usedTextKeys = new Set();
+const missingTextKeys = [];
+
+function textOf(key) {
+  usedTextKeys.add(key);
+  const v = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), data.texts);
+  if (typeof v !== 'string') { missingTextKeys.push(key); return ''; }
+  return escLines(v);
+}
+
+function resolveTexts(html) {
+  return html.replace(/\{\{T:([A-Za-z0-9_.]+)\}\}/g, (_, key) => textOf(key));
+}
+
+/* 使われていない文言が残っていると、編集画面に「直しても何も変わらない欄」が
+   できてしまう。ビルドのたびに知らせる（消し忘れに気づけるように）。 */
+function reportUnusedTextKeys() {
+  const all = [];
+  const walk = (o, prefix) => Object.entries(o || {}).forEach(([k, v]) => {
+    if (v && typeof v === 'object') walk(v, prefix + k + '.');
+    else all.push(prefix + k);
+  });
+  walk(data.texts, '');
+  const unused = all.filter((k) => !usedTextKeys.has(k));
+  if (unused.length) console.warn(`注意: どこにも使われていない文言 ${unused.length}件: ${unused.join(', ')}`);
+}
+
 /* ---------------- partials ---------------- */
 
 /* prefix は「そのページから見たサイト直下までの戻り道」。直下のページは ''、
@@ -796,8 +828,12 @@ for (const page of pages) {
   for (const [token, value] of Object.entries(page.tokens || {})) {
     html = html.replaceAll(token, value);
   }
+  html = resolveTexts(html);
   const leftover = html.match(/\{\{[A-Z_]+\}\}/);
   if (leftover) throw new Error(`${page.file}: unresolved token ${leftover[0]}`);
+  if (missingTextKeys.length) {
+    throw new Error(`${page.file}: data.json の texts に無い文言: ${[...new Set(missingTextKeys)].join(', ')}`);
+  }
   const out = path.join(DIST, page.file);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, html);
@@ -854,4 +890,5 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 `;
 fs.writeFileSync(path.join(DIST, 'llms.txt'), llms);
 
+reportUnusedTextKeys();
 console.log(`Built ${pages.length} pages → dist/`);

@@ -709,5 +709,204 @@
         "arrow": "tsutsumufunakoshi@gmail.com"
       }
     ]
+  },
+  "texts": {
+    "about": {
+      "ctaLine": "今の活動を、知る。",
+      "ctaLink1": "研究を読む　→",
+      "ctaLink2": "活動記録を見る　→",
+      "eyebrow": "About",
+      "h1": "船越 温",
+      "timelineEyebrow": "Timeline — 歩み"
+    },
+    "archive": {
+      "eyebrow": "Archive",
+      "h1": "活動記録",
+      "lead": "分野ごとの活動記録。行をクリックで本文が開きます。"
+    },
+    "contact": {
+      "category1": "ご意見・ご要望",
+      "category2": "取材・出演のご依頼",
+      "category3": "研究・活動について",
+      "category4": "その他",
+      "emailNote": "直接メールで連絡する",
+      "eyebrow": "Contact — お問い合わせ",
+      "fieldCategory": "種類",
+      "fieldEmail": "返信用メール",
+      "fieldMessage": "内容",
+      "fieldName": "お名前",
+      "formEyebrow": "Message — ご意見・ご要望フォーム",
+      "formLead": "お名前・メールは任意です。返信をご希望の場合はメールアドレスをご記入ください。",
+      "formNote": "送信いただいた内容は運営（船越温）のみが確認します。うまく送れない場合は、上のメールアドレス宛に直接ご連絡ください。",
+      "githubNote": "開発・ソースコード",
+      "h1": "お気軽にご連絡ください",
+      "instagramNote": "日々の活動・写真",
+      "lead": "ご意見・ご要望、取材や出演のご依頼、その他のお問い合わせは、下のフォームまたはメール・SNSからお寄せください。フォームの内容はそのまま船越のメールに届きます。",
+      "optionalMark": "（任意）",
+      "socialEyebrow": "Social — SNS・リンク",
+      "submit": "送信する",
+      "xNote": "お知らせ・発信"
+    },
+    "footer": {
+      "address": "香川県高松市番町３丁目１番１号",
+      "contactEyebrow": "Contact",
+      "h2": "皆様の連絡をお待ちしております。",
+      "name": "船越 温",
+      "nameRomaji": "Tsutsumu Funakoshi",
+      "tagline": "社会のためのイノベーション。",
+      "toTop": "上に戻る ↑"
+    },
+    "henro": {
+      "awayEyebrow": "Away — 県外遠征編",
+      "awayH2": "遠征先の一杯",
+      "eyebrow": "Henro — うどん遍路",
+      "homeEyebrow": "Sanuki — 県内",
+      "homeH2": "讃岐の一杯",
+      "mapEyebrow": "Map — 制覇状況",
+      "unitAway": " 杯（遠征）",
+      "unitCups": " 杯",
+      "unitHome": " 杯（県内）",
+      "unitShops": " 軒",
+      "unitTowns": " 市町"
+    },
+    "index": {
+      "about": {
+        "eyebrow": "About — 人物",
+        "h2": "船越 温",
+        "link": "経歴とタイムライン　→"
+      },
+      "bridge": {
+        "line": "ここまでは、社会に向けた顔。\n実は、もう一つの顔がある。"
+      },
+      "connect": {
+        "h2": "社会のための\nイノベーション",
+        "h2Sub": "Innovation for society.",
+        "line1": "研究と、政治と、学生自治。",
+        "line2": "この三つは、一本に繋がっている。",
+        "word1": "研究",
+        "word2": "政治",
+        "word3": "学生自治"
+      },
+      "finale": {
+        "line": "ジェネラリストとして生きる。",
+        "lineSub": "All of it, one person",
+        "name": "船越 温",
+        "word1": "研究",
+        "word2": "政治",
+        "word3": "学生自治",
+        "word4": "音楽"
+      },
+      "governance": {
+        "eyebrow": "— Governance 制度設計",
+        "h2": "社会のための、\n制度づくり。",
+        "item1Desc": "香川県立高松高等学校 第152代",
+        "item1Title": "生徒会長",
+        "item2Desc": "ルソーの制度、三島の美学 etc. 制度設計の土台として。",
+        "item2Title": "文学",
+        "lead": "生徒会長として、学校の制度再設計に挑戦。文学を通して、先人の知恵に学ぶ。",
+        "link": "思索をなぞる。　→",
+        "word": "学生自治"
+      },
+      "hero": {
+        "tagline": "高校生。\nただし、少し欲張りな。"
+      },
+      "intro": {
+        "line1": "廃棄うどんで水素を作る。",
+        "line2": "議員と対談する。",
+        "line3": "生徒会長を務める。",
+        "line4": "色んな楽器を弾く。",
+        "line5": "バラバラに見える。"
+      },
+      "music": {
+        "eyebrow": "Another face — もう一つの顔",
+        "h2w1": "ヴァイオリン、",
+        "h2w2": "チェロ、",
+        "h2w3": "フルート、",
+        "h2w4": "声楽。",
+        "item1Title": "ヴァイオリン・チェロ・フルート",
+        "item2Desc": "KJO 第25回定期演奏会",
+        "item2Title": "コンサートマスター",
+        "item3Desc": "第九バリトンソロ・ジュニアコン銀賞",
+        "item3Title": "声楽",
+        "lead": "教養と感性を磨く。",
+        "word": "音楽"
+      },
+      "news": {
+        "eyebrow": "News — 最近の動き",
+        "link": "すべて見る　→"
+      },
+      "politics": {
+        "eyebrow": "— Politics 政治",
+        "h2": "議員に会いに行く。",
+        "item1Desc": "玉木雄一郎議員・小川淳也議員を訪問",
+        "item1Title": "議員との対談",
+        "item2Desc": "政治を学べるアプリを開発・公開",
+        "item2Title": "主権者教育アプリ",
+        "lead": "対談し、政策を考える。",
+        "link": "活動記録を見る　→",
+        "word": "政治"
+      },
+      "research": {
+        "eyebrow": "— Research 研究",
+        "h2": "廃棄うどんで\n水素を作る。",
+        "item1Desc": "Aspenを使った水素生成プロセスの設計",
+        "item1Title": "水素・SAF 生成",
+        "item2Desc": "化学工学会 優秀学生賞・社会共創コンテスト グランプリ ほか",
+        "item2Title": "学会で受賞",
+        "lead": "年間3,000トン。捨てられるうどんが、原料になる。",
+        "link": "研究を読む　→",
+        "word": "研究"
+      },
+      "works": {
+        "eyebrow": "Works — 開発",
+        "h2": "アプリとゲーム、9本。",
+        "lead": "『小学生でもわかる』をコンセプトに。",
+        "link": "9本すべて見る　→"
+      }
+    },
+    "press": {
+      "awardsEyebrow": "Awards — 主な受賞",
+      "bioLongLabel": "Bio 長 — 約300字",
+      "bioShortLabel": "Bio 短 — 約100字",
+      "contactEyebrow": "Press Contact — 取材のお問い合わせ",
+      "contactLine": "取材・掲載のご相談を承ります。",
+      "eyebrow": "Press Kit — プレスキット",
+      "lead": "報道・取材でご利用いただける情報をまとめています。プロフィール文は用途に合わせてそのままお使いいただけます。ご不明な点は下記の連絡先までお問い合わせください。",
+      "photosEyebrow": "Photos — 写真素材",
+      "photosLead": "記事・番組でご利用いただけます。クレジット「船越温」を添えてください。",
+      "profileEyebrow": "Profile — 基本情報"
+    },
+    "research": {
+      "awardsEyebrow": "Awards & Activities",
+      "awardsLink": "記事で読む　→",
+      "eyebrow": "— Research 研究",
+      "flowInDesc": "年間 3,000トン超のバイオマス",
+      "flowInTitle": "廃棄うどん",
+      "flowMidDesc": "反応条件・収率・経済性を体系的に最適化",
+      "flowMidTitle": "高効率生成プロセス",
+      "flowOut1": "水素",
+      "flowOut2Note": "持続可能な航空燃料",
+      "flowOut3": "ナフサ",
+      "flowOut3Note": "化学原料",
+      "h1": "廃棄物を資源へ。\n地域から世界のエネルギー問題へ。",
+      "processEyebrow": "Process — 変換の流れ"
+    },
+    "udon": {
+      "backBottom": "← うどん遍路の一覧に戻る",
+      "backTop": "← うどん遍路",
+      "visitsEyebrow": "Visits — 訪問の記録"
+    },
+    "works": {
+      "eyebrow": "Works — 開発",
+      "h1": "これまでにつくったもの",
+      "lead": "個人で開発した Web アプリとゲーム、そして学校で実際に使われているサイト。『小学生でもわかる』をコンセプトに。",
+      "tool1Desc": "合言葉を入れて最大2GBのファイルをアップロード。共有用のダウンロードURLが作れます。",
+      "tool1Title": "ファイル共有　→",
+      "tool2Desc": "合言葉を入れると、まとめたリンク集を見られるページ。",
+      "tool2Title": "URL共有ページ　→",
+      "toolsEyebrow": "Tools — 便利ツール",
+      "toolsH2": "共有ツール",
+      "toolsLead": "合言葉つきで、ファイルやリンクを安全に共有できる自作ツールです。"
+    }
   }
 }

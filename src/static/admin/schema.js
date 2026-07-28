@@ -20,6 +20,15 @@
   var CATEGORIES = ['Research', 'Politics', 'Music', 'Leadership'];
   var catOptions = CATEGORIES.map(function (c) { return { value: c, label: c }; });
 
+  /* 「文章」タブ用の書き方を短くするための小道具。
+     t  … 1行の文言（見出し・リンクの文字など）
+     ta … 改行できる文言（改行するとサイトでもそこで改行される）
+     g  … まとまり（画面上では枠で囲まれる） */
+  function t(key, label, hint) { return { key: key, label: label, type: 'text', hint: hint }; }
+  function ta(key, label, hint) { return { key: key, label: label, type: 'textarea', hint: hint }; }
+  function g(key, label, fields) { return { key: key, label: label, type: 'group', fields: fields }; }
+  var BR = '改行すると、サイトでもそこで行が変わります。';
+
   var SCHEMA = [
     {
       id: 'home', label: 'ホーム', base: 'home',
@@ -259,6 +268,197 @@
       fields: [
         { key: 'title', label: 'サイトタイトル', type: 'text' },
         { key: 'footerYear', label: 'フッターの年', type: 'text', placeholder: '© 2026' }
+      ]
+    },
+
+    /* ============================================================
+       文章（ホーム）
+       ホームは上から下へスクロールする順に並べてある。
+       ============================================================ */
+    {
+      id: 'text-home', label: '文章：ホーム', base: 'texts.index',
+      fields: [
+        g('hero', '① 最初の画面', [
+          ta('tagline', 'スクロールして出てくる一文', BR)
+        ]),
+        g('intro', '② 並んで出てくる4行＋まとめ', [
+          t('line1', '1行目'), t('line2', '2行目'), t('line3', '3行目'), t('line4', '4行目'),
+          t('line5', 'まとめの1行')
+        ]),
+        g('research', '③ 研究', [
+          t('word', '大きく出る言葉'),
+          t('eyebrow', '写真の上の小さなラベル'),
+          ta('h2', '大見出し', BR),
+          ta('lead', 'リード文'),
+          t('item1Title', '項目1・見出し'), t('item1Desc', '項目1・説明'),
+          t('item2Title', '項目2・見出し'), t('item2Desc', '項目2・説明'),
+          t('link', 'リンクの文字')
+        ]),
+        g('politics', '④ 政治', [
+          t('word', '大きく出る言葉'),
+          t('eyebrow', '写真の上の小さなラベル'),
+          ta('h2', '大見出し', BR),
+          ta('lead', 'リード文'),
+          t('item1Title', '項目1・見出し'), t('item1Desc', '項目1・説明'),
+          t('item2Title', '項目2・見出し'), t('item2Desc', '項目2・説明'),
+          t('link', 'リンクの文字')
+        ]),
+        g('governance', '⑤ 学生自治', [
+          t('word', '大きく出る言葉'),
+          t('eyebrow', '写真の上の小さなラベル'),
+          ta('h2', '大見出し', BR),
+          ta('lead', 'リード文'),
+          t('item1Title', '項目1・見出し'), t('item1Desc', '項目1・説明'),
+          t('item2Title', '項目2・見出し'), t('item2Desc', '項目2・説明'),
+          t('link', 'リンクの文字')
+        ]),
+        g('works', '⑥ 開発（Works）', [
+          t('eyebrow', '小さなラベル'),
+          ta('h2', '大見出し', BR),
+          ta('lead', 'リード文'),
+          t('link', 'リンクの文字')
+        ]),
+        g('connect', '⑦ 三つがつながる場面', [
+          t('line1', '最初の一文'),
+          t('word1', '浮かぶ言葉1'), t('word2', '浮かぶ言葉2'), t('word3', '浮かぶ言葉3'),
+          t('line2', '次の一文'),
+          ta('h2', '大見出し', BR),
+          t('h2Sub', '大見出しの下の英文')
+        ]),
+        g('bridge', '⑧ 音楽へのつなぎ', [
+          ta('line', '一文', BR)
+        ]),
+        g('music', '⑨ 音楽', [
+          t('word', '大きく出る言葉'),
+          t('eyebrow', '写真の上の小さなラベル'),
+          t('h2w1', '大見出し・1つめ', 'ここに書いた分は途中で改行されません'),
+          t('h2w2', '大見出し・2つめ'), t('h2w3', '大見出し・3つめ'), t('h2w4', '大見出し・4つめ'),
+          ta('lead', 'リード文'),
+          t('item1Title', '項目1・見出し'),
+          t('item2Title', '項目2・見出し'), t('item2Desc', '項目2・説明'),
+          t('item3Title', '項目3・見出し'), t('item3Desc', '項目3・説明')
+        ]),
+        g('finale', '⑩ 締めくくり', [
+          t('word1', '集まる言葉1'), t('word2', '集まる言葉2'),
+          t('word3', '集まる言葉3'), t('word4', '集まる言葉4'),
+          t('name', '大きく出る名前'),
+          t('line', '名前の下の一文'),
+          t('lineSub', 'その下の英文')
+        ]),
+        g('about', '⑪ 自己紹介の欄', [
+          t('eyebrow', '小さなラベル'),
+          t('h2', '見出し（名前）'),
+          ta('link', 'リンクの文字')
+        ]),
+        g('news', '⑫ 新着ニュースの欄', [
+          t('eyebrow', '小さなラベル'),
+          t('link', 'リンクの文字')
+        ])
+      ]
+    },
+
+    /* ============================================================
+       文章（ホーム以外のページ）
+       ============================================================ */
+    {
+      id: 'text-pages', label: '文章：各ページ', base: 'texts',
+      fields: [
+        g('about', 'About（自己紹介）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          t('h1', '大見出し', '右の「。」は自動で付きます'),
+          t('timelineEyebrow', '歩みの欄のラベル'),
+          t('ctaLine', 'ページ末尾の一文'),
+          t('ctaLink1', 'ページ末尾のリンク1'),
+          t('ctaLink2', 'ページ末尾のリンク2')
+        ]),
+        g('research', 'Research（研究）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          ta('h1', '大見出し', BR),
+          t('processEyebrow', '変換の流れの欄のラベル'),
+          t('flowInTitle', '流れ図・入口の見出し'), t('flowInDesc', '流れ図・入口の説明'),
+          t('flowMidTitle', '流れ図・中央の見出し'), t('flowMidDesc', '流れ図・中央の説明'),
+          t('flowOut1', '流れ図・出口1'),
+          t('flowOut2Note', '流れ図・出口2の補足（SAF）'),
+          t('flowOut3', '流れ図・出口3'), t('flowOut3Note', '流れ図・出口3の補足'),
+          t('awardsEyebrow', '受賞・活動の欄のラベル'),
+          t('awardsLink', '受賞・活動の欄のリンク')
+        ]),
+        g('works', 'Works（つくったもの）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          t('h1', '大見出し', '右の「。」は自動で付きます'),
+          ta('lead', 'リード文'),
+          t('toolsEyebrow', '便利ツールの欄のラベル'),
+          t('toolsH2', '便利ツールの見出し', '右の「。」は自動で付きます'),
+          ta('toolsLead', '便利ツールの説明'),
+          t('tool1Title', 'ツール1・見出し'), ta('tool1Desc', 'ツール1・説明'),
+          t('tool2Title', 'ツール2・見出し'),
+          ta('tool2Desc', 'ツール2・説明', 'このあとに「編集はこちら」のリンクが続きます')
+        ]),
+        g('archive', 'Archive（活動記録）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          t('h1', '大見出し', '右の「。」は自動で付きます'),
+          ta('lead', 'リード文')
+        ]),
+        g('henro', 'うどん遍路', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          t('unitCups', '杯数の単位', '数字のうしろに付く文字。前の空白も含みます'),
+          t('unitShops', '軒数の単位'),
+          t('unitHome', '県内の単位'),
+          t('unitAway', '遠征の単位'),
+          t('unitTowns', '市町の単位'),
+          t('mapEyebrow', '制覇状況の欄のラベル'),
+          t('homeEyebrow', '県内の欄のラベル'),
+          t('homeH2', '県内の見出し', '右の「。」は自動で付きます'),
+          t('awayEyebrow', '県外の欄のラベル'),
+          t('awayH2', '県外の見出し', '右の「。」は自動で付きます')
+        ]),
+        g('press', 'Press（プレスキット）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          ta('lead', 'リード文'),
+          t('profileEyebrow', '基本情報の欄のラベル'),
+          t('bioShortLabel', '短いプロフィールのラベル'),
+          t('bioLongLabel', '長いプロフィールのラベル'),
+          t('photosEyebrow', '写真素材の欄のラベル'),
+          ta('photosLead', '写真素材の説明'),
+          t('awardsEyebrow', '受賞の欄のラベル'),
+          t('contactEyebrow', '連絡先の欄のラベル'),
+          t('contactLine', '連絡先の欄の一文')
+        ]),
+        g('contact', 'Contact（お問い合わせ）', [
+          t('eyebrow', 'ページ上部の小さなラベル'),
+          t('h1', '大見出し', '右の「。」は自動で付きます'),
+          ta('lead', 'リード文'),
+          t('socialEyebrow', 'SNSの欄のラベル'),
+          t('instagramNote', 'Instagram の説明'),
+          t('xNote', 'X / Twitter の説明'),
+          t('githubNote', 'GitHub の説明'),
+          t('emailNote', 'メールの説明'),
+          t('formEyebrow', 'フォームの欄のラベル'),
+          ta('formLead', 'フォームの説明'),
+          t('fieldName', '入力欄の名前：お名前'),
+          t('fieldEmail', '入力欄の名前：返信用メール'),
+          t('fieldCategory', '入力欄の名前：種類'),
+          t('fieldMessage', '入力欄の名前：内容'),
+          t('optionalMark', '任意の印', 'お名前とメールの両方に出ます'),
+          t('category1', '種類の選択肢1'), t('category2', '種類の選択肢2'),
+          t('category3', '種類の選択肢3'), t('category4', '種類の選択肢4'),
+          t('submit', '送信ボタンの文字'),
+          ta('formNote', 'フォームの下の注意書き')
+        ]),
+        g('udon', 'うどん店の詳細ページ', [
+          t('backTop', '上の戻るリンク'),
+          t('visitsEyebrow', '訪問の記録のラベル'),
+          t('backBottom', '下の戻るリンク')
+        ]),
+        g('footer', 'フッター（全ページ共通）', [
+          t('contactEyebrow', '上部の小さなラベル'),
+          ta('h2', '大見出し'),
+          t('name', '名前'),
+          t('nameRomaji', 'ローマ字の名前'),
+          t('tagline', '名前の下の一文'),
+          t('address', '住所'),
+          t('toTop', '上に戻るリンクの文字')
+        ])
       ]
     }
   ];
