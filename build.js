@@ -31,7 +31,7 @@ const read = (p) => fs.readFileSync(path.join(SRC, p), 'utf8');
 function navHtml(active, isHome, prefix = '') {
   const on = '#f4f4f5';
   // 選択中との差は残しつつ、単体でも十分読める明るさにする
-  const off = 'rgba(244,244,245,.88)';
+  const off = '#d8d8da';
   return read('partials/nav.html')
     .replaceAll('{{P}}', prefix)
     .replaceAll('{{HOME_HREF}}', isHome ? '#top' : prefix + 'index.html')
@@ -119,14 +119,14 @@ function gameTiles() {
     const linkAttrs = url ? `href="${esc(url)}" target="_blank" rel="noopener"` : 'href="works.html"';
     const thumb = (work && work.thumbnail)
       ? `<img src="${esc(work.thumbnail)}" alt="${esc(g.title)}のスクリーンショット" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
-      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78)">app screenshot</span>`;
+      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: #c4c4c6">app screenshot</span>`;
     return `      <a ${linkAttrs} class="gcard" style="--tilt: ${g.tilt}; flex: none; width: clamp(240px, 24vw, 360px); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; display: block; text-decoration: none; color: #f4f4f5">
         <div style="aspect-ratio: 16 / 10; position: relative; background: repeating-linear-gradient(45deg, #0e0e13 0 12px, #101017 12px 24px)">
           ${thumb}
         </div>
         <div style="padding: 16px 18px 20px">
           <h3 style="margin: 0 0 5px; font: 500 15px 'Noto Sans JP', sans-serif">${esc(g.title)}</h3>
-          <p style="margin: 0; font: 400 12px/1.7 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(g.desc)}</p>
+          <p style="margin: 0; font: 400 14px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(g.desc)}</p>
         </div>
       </a>`;
   }).join('\n');
@@ -134,9 +134,9 @@ function gameTiles() {
 
 function newsRows() {
   return data.home.newsItems.map((n) => `    <a href="archive.html" data-reveal data-m="wrap" class="hbg" style="display: flex; align-items: baseline; gap: clamp(16px, 3vw, 36px); padding: 22px 6px; border-top: 1px solid rgba(255,255,255,.1); text-decoration: none; color: #f4f4f5; opacity: calc(var(--r, 0)); transition: opacity .9s ease, background .3s ease">
-      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .08em; color: rgba(244,244,245,.84); white-space: nowrap">${esc(n.date)}</span>
-      <span style="flex: none; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(n.cat)}</span>
-      <span style="flex: 1; font: 400 15px/1.7 'Noto Sans JP', sans-serif">${esc(n.title)}</span>
+      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .08em; color: #cfcfd1; white-space: nowrap">${esc(n.date)}</span>
+      <span style="flex: none; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(n.cat)}</span>
+      <span style="flex: 1; font: 400 17px/1.7 'Noto Sans JP', sans-serif">${esc(n.title)}</span>
       <span style="color: var(--accent-text, #adbcff)">→</span>
     </a>`).join('\n');
 }
@@ -148,21 +148,21 @@ function metaValue(v) {
   return v
     .split(' / ')
     .map((s) => `<span style="white-space: nowrap">${esc(s)}</span>`)
-    .join('<span style="color: rgba(244,244,245,.78)"> / </span>');
+    .join('<span style="color: #c4c4c6"> / </span>');
 }
 
 function metaRows() {
   return data.about.meta.map((m) => `    <div data-reveal data-m="stack6" class="rline" style="position: relative; display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: 20px 6px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
-      <span style="font: 500 13px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.84)">${esc(m.label)}</span>
-      <span style="font: 400 14.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${metaValue(m.value)}</span>
+      <span style="font: 500 13px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: #cfcfd1">${esc(m.label)}</span>
+      <span style="font: 400 16px/1.75 'Noto Sans JP', sans-serif; color: #e2e2e4">${metaValue(m.value)}</span>
     </div>`).join('\n');
 }
 
 function timelineItems() {
   return data.about.timeline.map((t) => `      <div data-reveal style="position: relative; display: flex; align-items: baseline; gap: 26px; flex-wrap: wrap; opacity: calc(var(--r, 0)); transform: translateX(calc((1 - var(--r, 0)) * 24px)); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1)">
         <span style="position: absolute; left: -36px; top: 6px; width: 11px; height: 11px; border-radius: 50%; background: #0c0c10; border: 1.5px solid rgba(111,140,255,.8)"></span>
-        <span style="font: 500 15px 'EB Garamond', serif; letter-spacing: .1em; color: rgba(244,244,245,.84); width: 90px; white-space: nowrap">${esc(t.year)}</span>
-        <span style="flex: 1; min-width: 240px; font: 400 15.5px/1.8 'Noto Sans JP', sans-serif">${esc(t.label)}</span>
+        <span style="font: 500 15px 'EB Garamond', serif; letter-spacing: .1em; color: #cfcfd1; width: 90px; white-space: nowrap">${esc(t.year)}</span>
+        <span style="flex: 1; min-width: 240px; font: 400 17px/1.7 'Noto Sans JP', sans-serif">${esc(t.label)}</span>
       </div>`).join('\n');
 }
 
@@ -172,11 +172,11 @@ function aboutVideo() {
   // 軽量埋め込み: 普段はポスター画像＋再生ボタンだけ（画像1枚分の重さ）。
   // クリックした瞬間に site.js が youtube-nocookie の iframe に差し替える。
   return `<section data-reveal style="padding: 0 7vw 16vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
-  <p style="margin: 0 0 34px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.84)">Music — 演奏</p>
+  <p style="margin: 0 0 34px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1">Music — 演奏</p>
   <div class="yt-lite" data-ytid="${esc(v.ytid)}" data-title="${esc(v.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(v.poster || '')}')">
     <button class="yt-play" type="button" aria-label="演奏動画を再生"></button>
   </div>
-  <p style="margin: 16px 0 0; font: 400 12.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78)">${esc(v.caption || '')}</p>
+  <p style="margin: 16px 0 0; font: 400 12.5px ui-monospace, Menlo, monospace; color: #c4c4c6">${esc(v.caption || '')}</p>
 </section>`;
 }
 
@@ -184,26 +184,26 @@ function statCards() {
   return data.research.stats.map((s) => `    <div data-reveal data-m="statrow" style="padding: 34px 32px 30px; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; background: linear-gradient(160deg, #0c0c11, #08080b); opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 26px)); transition: opacity 1s ease, transform 1s ease">
       <div style="display: flex; align-items: baseline; gap: 4px">
         <span data-count="${s.value}" style="font: 500 clamp(44px, 4.2vw, 64px)/1 'EB Garamond', serif">${s.value.toLocaleString('ja-JP')}</span>
-        <span style="font: 500 18px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88)">${esc(s.suffix)}</span>
+        <span style="font: 500 18px 'Noto Sans JP', sans-serif; color: #d8d8da">${esc(s.suffix)}</span>
       </div>
-      <p style="margin: 14px 0 0; font: 400 13px/1.7 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(s.label)}</p>
+      <p style="margin: 14px 0 0; font: 400 15px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(s.label)}</p>
     </div>`).join('\n');
 }
 
 function storyParas() {
-  return data.research.story.map((p) => `    <p data-reveal style="margin: 0; font: 400 15px/2.3 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92); text-wrap: pretty; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease">${esc(p)}</p>`).join('\n');
+  return data.research.story.map((p) => `    <p data-reveal style="margin: 0; font: 400 17px/1.8 'Noto Sans JP', sans-serif; color: #e2e2e4; max-width: 34em; text-wrap: pretty; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease">${esc(p)}</p>`).join('\n');
 }
 
 function keywordChips() {
-  return data.research.keywords.map((kw) => `    <span style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: 6px 16px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(kw)}</span>`).join('\n');
+  return data.research.keywords.map((kw) => `    <span style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: 6px 16px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #d8d8da">${esc(kw)}</span>`).join('\n');
 }
 
 function awardRows() {
   return data.research.awards.map((a) => `    <a href="archive.html" data-reveal data-m="wrap" class="rline hbg" style="position: relative; display: flex; align-items: baseline; gap: clamp(16px, 3vw, 36px); padding: 22px 6px; text-decoration: none; color: #f4f4f5; opacity: calc(var(--r, 0)); transition: opacity .9s ease, background .3s ease">
-      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.84); white-space: nowrap; width: 100px">${esc(a.year)}</span>
+      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .06em; color: #cfcfd1; white-space: nowrap; width: 100px">${esc(a.year)}</span>
       <span style="flex: 1; display: flex; flex-direction: column; gap: 3px">
-        <span style="font: 400 15.5px/1.7 'Noto Sans JP', sans-serif">${esc(a.name)}</span>
-        <span style="font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(a.org)}</span>
+        <span style="font: 400 17px/1.7 'Noto Sans JP', sans-serif">${esc(a.name)}</span>
+        <span style="font: 400 12.5px 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(a.org)}</span>
       </span>
       <span style="color: var(--accent-text, #adbcff)">→</span>
     </a>`).join('\n');
@@ -214,10 +214,10 @@ function workCards() {
     const url = w.liveUrl || '';
     const statusStyle = w.status === 'live'
       ? "font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(111,140,255,.5); color: var(--accent-text, #adbcff)"
-      : "font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); color: rgba(244,244,245,.84)";
+      : "font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); color: #cfcfd1";
     const thumb = w.thumbnail
       ? `<img src="${esc(w.thumbnail)}" alt="${esc(w.title)}のスクリーンショット" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
-      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78)">app screenshot</span>`;
+      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: #c4c4c6">app screenshot</span>`;
     // liveUrl が空の作品はリンクにしない（href="#" だと「押しても飛ばない」リンクになる）
     const tag = url ? 'a' : 'div';
     const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
@@ -227,11 +227,11 @@ function workCards() {
       </div>
       <div style="padding: 18px 20px 22px">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px">
-          <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(w.type)}</span>
+          <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(w.type)}</span>
           <span style="${statusStyle}">${w.status === 'live' ? '公開中' : '開発中'}</span>
         </div>
         <h3 style="margin: 0 0 6px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(w.title)}</h3>
-        <p style="margin: 0; font: 400 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(w.description)}</p>
+        <p style="margin: 0; font: 400 14.5px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(w.description)}</p>
       </div>
     </${tag}>`;
   }).join('\n');
@@ -350,7 +350,7 @@ function henroTownMap() {
     const on = v.has(t);
     const style = on
       ? "font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(111,140,255,.55); background: rgba(111,140,255,.12); color: var(--accent-text, #adbcff)"
-      : "font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); color: rgba(244,244,245,.78)";
+      : "font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .04em; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); color: #c4c4c6";
     return `      <span style="${style}">${esc(t)}</span>`;
   }).join('\n');
 }
@@ -392,16 +392,16 @@ function henroCards(away) {
     const msg = away
       ? 'まだ県外での記録がありません。<br>遠征したときの一杯を残していきます。'
       : 'まだ記録がありません。<br>これから一杯ずつ増やしていきます。';
-    return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 400 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${msg}</p>`;
+    return `    <p style="grid-column: 1 / -1; margin: 0; padding: 60px 0; text-align: center; font: 400 15.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1">${msg}</p>`;
   }
   return items.map((g) => {
     const n = g.visits.length;
     const thumb = g.cover.photo
       ? `<img src="${esc(g.cover.photo)}" alt="${esc(g.shop)}の${esc(g.cover.menu || 'うどん')}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover" loading="lazy">`
-      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78)">no photo</span>`;
+      : `<span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 400 11.5px ui-monospace, Menlo, monospace; color: #c4c4c6">no photo</span>`;
     const tags = g.tags.length
       ? `\n        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px">${g.tags.map((t) =>
-          `<span style="font: 400 11px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 2px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.84)">${esc(t)}</span>`).join('')}</div>`
+          `<span style="font: 400 11px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 2px 9px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #cfcfd1">${esc(t)}</span>`).join('')}</div>`
       : '';
     const badge = (away ? '遠征 ' : '') + 'No.' + g._no;
     // 2回以上の店は回数バッジを出す。日付は「直近いつ行ったか」を見せる。
@@ -422,11 +422,11 @@ function henroCards(away) {
       </div>
       <div style="padding: 18px 20px 22px">
         <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px">
-          <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(g.town || '—')}</span>
-          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.78)">${esc(dateLabel)}</span>
+          <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(g.town || '—')}</span>
+          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .06em; color: #c4c4c6">${esc(dateLabel)}</span>
         </div>
         <h3 style="margin: 0 0 4px; font: 500 16px 'Noto Sans JP', sans-serif">${esc(g.shop || '')}</h3>${menu}${tags}
-        <span style="display: inline-block; margin-top: 14px; font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.84)">詳しく見る →</span>
+        <span style="display: inline-block; margin-top: 14px; font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: #cfcfd1">詳しく見る →</span>
       </div>
     </a>`;
   }).join('\n');
@@ -454,8 +454,8 @@ function udonMeta(g) {
   const use = rows;
   return `  <div style="display: flex; gap: clamp(22px, 5vw, 52px); flex-wrap: wrap; margin-bottom: 26px">
 ${use.map(([k, v]) => `    <div>
-      <span style="display: block; margin-bottom: 5px; font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .16em; color: rgba(244,244,245,.78)">${esc(k)}</span>
-      <span style="font: 400 15px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(v)}</span>
+      <span style="display: block; margin-bottom: 5px; font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .16em; color: #c4c4c6">${esc(k)}</span>
+      <span style="font: 400 15px 'Noto Sans JP', sans-serif; color: #e2e2e4">${esc(v)}</span>
     </div>`).join('\n')}
   </div>`;
 }
@@ -463,7 +463,7 @@ ${use.map(([k, v]) => `    <div>
 function udonTagsBlock(g) {
   if (!g.tags.length) return '';
   return `  <div style="display: flex; gap: 7px; flex-wrap: wrap">${g.tags.map((t) =>
-    `<span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 3px 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(t)}</span>`).join('')}</div>`;
+    `<span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 3px 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: #d8d8da">${esc(t)}</span>`).join('')}</div>`;
 }
 
 /* 詳細ページの地図は最初から出す。一覧と違ってページが1軒ぶんしかなく、
@@ -474,8 +474,8 @@ function udonMapEmbed(g) {
   const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   return `  <section style="margin-bottom: clamp(48px, 8vw, 76px)">
     <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px">
-      <p style="margin: 0; font: 500 11.5px 'EB Garamond', serif; letter-spacing: .34em; text-transform: uppercase; color: rgba(244,244,245,.78)">Map — 場所</p>
-      <a href="${esc(link)}" target="_blank" rel="noopener" class="hw" style="font: 400 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: rgba(244,244,245,.88); text-decoration: none">マップで開く ↗</a>
+      <p style="margin: 0; font: 500 11.5px 'EB Garamond', serif; letter-spacing: .34em; text-transform: uppercase; color: #c4c4c6">Map — 場所</p>
+      <a href="${esc(link)}" target="_blank" rel="noopener" class="hw" style="font: 400 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: #d8d8da; text-decoration: none">マップで開く ↗</a>
     </div>
     <iframe src="https://www.google.com/maps/embed?pb=${esc(mapPb(q))}" title="${esc(g.shop)}の地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen style="display: block; width: 100%; height: min(46vh, 380px); border: 1px solid rgba(255,255,255,.12); border-radius: 16px"></iframe>
   </section>`;
@@ -494,8 +494,8 @@ function udonSpec(v) {
   if (!rows.length) return '';
   return `
       <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 16px 0 0; max-width: 640px">
-${rows.map(([k, val]) => `        <dt style="margin: 0; font: 500 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.78)">${esc(k)}</dt>
-        <dd style="margin: 0; font: 400 14px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(val)}</dd>`).join('\n')}
+${rows.map(([k, val]) => `        <dt style="margin: 0; font: 500 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: #c4c4c6">${esc(k)}</dt>
+        <dd style="margin: 0; font: 400 15.5px/1.7 'Noto Sans JP', sans-serif; color: #e2e2e4">${esc(val)}</dd>`).join('\n')}
       </dl>`;
 }
 
@@ -508,7 +508,7 @@ function udonVisitBlocks(g) {
       ? `\n      <img src="${esc(up(v.photo))}" alt="${esc(g.shop)}の${esc(v.menu || 'うどん')}" loading="lazy" style="display: block; width: 100%; height: auto; margin-bottom: 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,.1); background: #0b0b0f">`
       : '';
     const note = v.note
-      ? `\n      <p style="margin: 12px 0 0; font: 400 14px/2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); max-width: 640px">${escLines(v.note)}</p>`
+      ? `\n      <p style="margin: 12px 0 0; font: 400 15.5px/1.75 'Noto Sans JP', sans-serif; color: #d8d8da; max-width: 34em">${escLines(v.note)}</p>`
       : '';
     // 1回だけの店に「1回目」と書いても情報が増えないので、複数回のときだけ出す
     const label = n > 1
@@ -516,7 +516,7 @@ function udonVisitBlocks(g) {
       : '';
     return `    <article style="margin-bottom: clamp(44px, 7vw, 70px)">
       <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px">
-        ${label}<span style="font: 400 14px 'EB Garamond', serif; letter-spacing: .08em; color: rgba(244,244,245,.88)">${esc(v.date || '日付未記入')}</span>
+        ${label}<span style="font: 400 14px 'EB Garamond', serif; letter-spacing: .08em; color: #d8d8da">${esc(v.date || '日付未記入')}</span>
       </div>${photo}
       <h2 style="margin: 0; font: 600 clamp(20px, 2.6vw, 27px)/1.5 'Noto Serif JP', serif">${esc(v.menu || '（食べたものは未記入）')}</h2>${udonSpec(v)}${note}
     </article>`;
@@ -567,7 +567,7 @@ function archiveSections() {
           <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 18px">
 ${a.images.map((im) => `            <figure style="margin: 0; display: flex; flex-direction: column; gap: 8px; max-width: 300px">
               <img src="${esc(im.src)}" alt="${esc(a.title)} — ${esc(im.caption)}" style="display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: #0a0a0e" loading="lazy">
-              <figcaption style="font: 400 11.5px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78)">${esc(im.caption)}</figcaption>
+              <figcaption style="font: 400 11.5px ui-monospace, Menlo, monospace; color: #c4c4c6">${esc(im.caption)}</figcaption>
             </figure>`).join('\n')}
           </div>` : '';
       const links = a.links.length ? `
@@ -576,21 +576,21 @@ ${a.links.map((lk) => `            <a href="${esc(lk.url)}" target="_blank" rel=
           </div>` : '';
       return `      <article class="arch-item" id="${esc(a.slug)}" data-type="${esc(a.category)}" style="border-top: 1px solid rgba(255,255,255,.1)">
         <div class="arch-row hbg" data-m="wrap" style="display: flex; align-items: baseline; gap: clamp(14px, 2.6vw, 30px); padding: 20px 6px; cursor: pointer">
-          <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.84); white-space: nowrap; width: 52px">${esc(a.date.slice(5) || '—')}</span>
-          <span style="flex: none; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(244,244,245,.88)">${esc(a.category)}</span>
+          <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .06em; color: #cfcfd1; white-space: nowrap; width: 52px">${esc(a.date.slice(5) || '—')}</span>
+          <span style="flex: none; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(a.category)}</span>
           <span style="flex: 1; display: flex; flex-direction: column; gap: 4px">
-            <span style="font: 400 15px/1.6 'Noto Sans JP', sans-serif">${esc(a.title)}</span>
-            <span style="font: 400 12.5px/1.7 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84)">${esc(a.excerpt)}</span>
+            <span style="font: 400 17px/1.6 'Noto Sans JP', sans-serif">${esc(a.title)}</span>
+            <span style="font: 400 14.5px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(a.excerpt)}</span>
           </span>
           <span class="chev">↓</span>
         </div>
         <div class="acc-body" data-m="pad0" style="padding: 6px 6px 30px calc(52px + clamp(14px, 2.6vw, 30px))">
-          <p style="margin: 0 0 20px; font: 400 14.5px/2.2 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92); max-width: 640px; white-space: pre-line; text-wrap: pretty">${esc(a.body)}</p>${images}${links}
+          <p style="margin: 0 0 20px; font: 400 16px/1.8 'Noto Sans JP', sans-serif; color: #e2e2e4; max-width: 34em; white-space: pre-line; text-wrap: pretty">${esc(a.body)}</p>${images}${links}
         </div>
       </article>`;
     }).join('\n');
     return `  <section data-m="stack" data-year-group style="display: grid; grid-template-columns: 110px 1fr; gap: 30px; padding: 34px 0 6px; align-items: start">
-    <h2 data-m="ystick" style="margin: 0; font: 500 clamp(28px, 3vw, 40px) 'EB Garamond', serif; color: rgba(244,244,245,.92); position: sticky; top: 80px">${y}</h2>
+    <h2 data-m="ystick" style="margin: 0; font: 500 clamp(28px, 3vw, 40px) 'EB Garamond', serif; color: #e2e2e4; position: sticky; top: 80px">${y}</h2>
     <div style="display: flex; flex-direction: column">
 ${items}
     </div>
@@ -623,8 +623,8 @@ function articleLds() {
 function pressFacts() {
   const p = data.press || {};
   return (p.facts || []).map((f) => `      <div class="rline" data-reveal data-m="stack6" style="position: relative; display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 18px 6px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
-        <span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: rgba(244,244,245,.84)">${esc(f.label)}</span>
-        <span style="font: 400 14.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92)">${esc(f.value)}</span>
+        <span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .14em; color: #cfcfd1">${esc(f.label)}</span>
+        <span style="font: 400 16px/1.75 'Noto Sans JP', sans-serif; color: #e2e2e4">${esc(f.value)}</span>
       </div>`).join('\n');
 }
 
@@ -635,7 +635,7 @@ function pressPhotos() {
           <img src="${esc(ph.src)}" alt="${esc(p.name || '')} — ${esc(ph.caption || '')}" style="width: 100%; height: 100%; object-fit: cover; object-position: top" loading="lazy">
         </div>
         <figcaption style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
-          <span style="font: 400 12px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.84)">${esc(ph.caption || '')}</span>
+          <span style="font: 400 12px ui-monospace, Menlo, monospace; color: #cfcfd1">${esc(ph.caption || '')}</span>
           <a href="${esc(ph.src)}" download class="hw" style="font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: var(--accent-text, #adbcff); text-decoration: none; white-space: nowrap">ダウンロード ↓</a>
         </figcaption>
       </figure>`).join('\n');
@@ -643,8 +643,8 @@ function pressPhotos() {
 
 function pressAwards() {
   return data.research.awards.map((a) => `      <div data-reveal style="display: flex; align-items: baseline; gap: clamp(14px, 3vw, 30px); padding: 16px 6px; border-top: 1px solid rgba(255,255,255,.1); opacity: calc(var(--r, 0)); transition: opacity .9s ease">
-        <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .06em; color: rgba(244,244,245,.84); white-space: nowrap; width: 96px">${esc(a.year)}</span>
-        <span style="flex: 1; font: 400 14.5px/1.7 'Noto Sans JP', sans-serif">${esc(a.name)}</span>
+        <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .06em; color: #cfcfd1; white-space: nowrap; width: 96px">${esc(a.year)}</span>
+        <span style="flex: 1; font: 400 16px/1.7 'Noto Sans JP', sans-serif">${esc(a.name)}</span>
       </div>`).join('\n');
 }
 
