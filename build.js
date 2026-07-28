@@ -718,8 +718,9 @@ function mediaCards() {
     const tag = (url && !hasVideo) ? 'a' : 'div';
     const linkAttrs = tag === 'a' ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
 
+    // カードの角丸は外側（16px）で付いているので、中の動画の角丸と枠は消す
     const video = hasVideo
-      ? `\n      <div class="yt-lite" data-ytid="${esc(m.ytid)}" data-title="${esc(m.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(m.thumb || '')}')">
+      ? `\n      <div class="yt-lite" data-ytid="${esc(m.ytid)}" data-title="${esc(m.title || '')}" style="border-radius: 0; border: 0; border-bottom: 1px solid rgba(255,255,255,.1); background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(m.thumb || '')}')">
         <button class="yt-play" type="button" aria-label="${esc(m.title || '動画')}を再生"></button>
       </div>`
       : (m.thumb ? `\n      <div style="aspect-ratio: 16 / 9; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.1)">
@@ -754,7 +755,11 @@ function mediaRows() {
   const items = mediaSorted();
   if (!items.length) return '';
   return items.map((m) => {
-    const url = String(m.url || '').trim();
+    /* 動画があるものは、告知ページより本編を見せたほうが親切なので
+       そちらへ飛ばす（告知へのリンクはプレスキットのカードに残る）。 */
+    const url = String(m.ytid || '').trim()
+      ? 'https://youtu.be/' + String(m.ytid).trim()
+      : String(m.url || '').trim();
     const tag = url ? 'a' : 'div';
     const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
     const arrow = url ? '↗' : '';
@@ -993,7 +998,10 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 ## メディア掲載
 
 ${(data.media || []).length
-    ? mediaSorted().map((m) => `- ${m.date}　${mediaOutlet(m)}「${m.title}」: ${m.summary}${m.url ? ' ' + m.url : ''}`).join('\n')
+    ? mediaSorted().map((m) => {
+      const links = [m.ytid ? 'https://youtu.be/' + m.ytid : '', m.url].filter(Boolean).join(' ');
+      return `- ${m.date}　${mediaOutlet(m)}「${m.title}」: ${m.summary}${links ? ' ' + links : ''}`;
+    }).join('\n')
     : '- （なし）'}
 
 ## ページ
