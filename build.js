@@ -97,7 +97,20 @@ const personLd = {
     'https://x.com/funa_sun273',
     'https://github.com/funasun/',
     'https://www.instagram.com/funa_sun273/'
-  ]
+  ],
+  /* 取り上げられた記事・番組。検索エンジンや AI に「第三者がこの人物を
+     どう扱ったか」を伝える枠。自己申告の経歴より重みを持つ情報になる。 */
+  subjectOf: (data.media || []).map((m) => {
+    const w = {
+      '@type': m.kind === 'テレビ' ? 'CreativeWork' : 'NewsArticle',
+      name: m.title,
+      datePublished: String(m.date || '').replaceAll('.', '-'),
+      about: { '@type': 'Person', name: '船越温' }
+    };
+    if (m.url) w.url = m.url;
+    if (m.outlet) w.publisher = { '@type': 'Organization', name: m.outlet };
+    return w;
+  })
 };
 
 function headHtml({ title, desc, canonicalPath, extraLd, prefix = '', ogImage }) {
@@ -680,6 +693,110 @@ function pressAwards() {
       </div>`).join('\n');
 }
 
+/* ---------------- メディア掲載（取材された記事・番組） ----------------
+   自分の活動記録（articles）とは別物として持つ。あちらは「やったこと」、
+   こちらは「外から取り上げられたこと」で、性質も出どころも違うため。
+   新しい順に並べる（日付は 2025.12.29 のような文字列なので辞書順で足りる）。 */
+function mediaSorted() {
+  return (data.media || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+
+// 「TBS『THE TIME,』／全国！中高生ニュース」のように、番組名があれば添える
+function mediaOutlet(m) {
+  return [m.outlet, m.program].filter((s) => String(s || '').trim()).join('／');
+}
+
+/* プレスキット用の詳しいカード。動画（ytid）があるときは、カード全体を
+   リンクにできない（動画の再生ボタンが押せなくなる）ので div にして、
+   下のリンクだけを押せるようにする。 */
+function mediaCards() {
+  const items = mediaSorted();
+  if (!items.length) return '';
+  return items.map((m) => {
+    const url = String(m.url || '').trim();
+    const hasVideo = !!String(m.ytid || '').trim();
+    const tag = (url && !hasVideo) ? 'a' : 'div';
+    const linkAttrs = tag === 'a' ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
+
+    const video = hasVideo
+      ? `\n      <div class="yt-lite" data-ytid="${esc(m.ytid)}" data-title="${esc(m.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(m.thumb || '')}')">
+        <button class="yt-play" type="button" aria-label="${esc(m.title || '動画')}を再生"></button>
+      </div>`
+      : (m.thumb ? `\n      <div style="aspect-ratio: 16 / 9; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.1)">
+        <img src="${esc(m.thumb)}" alt="${esc(m.title || '')}" style="width: 100%; height: 100%; object-fit: cover" loading="lazy">
+      </div>` : '');
+
+    const quote = String(m.quote || '').trim()
+      ? `\n        <blockquote style="margin: 16px 0 0; padding: 2px 0 2px 16px; border-left: 2px solid rgba(111,140,255,.55); font: 400 15px/1.8 'Noto Serif JP', serif; color: #e2e2e4; max-width: 34em">「${escLines(m.quote)}」</blockquote>`
+      : '';
+
+    const linkLine = url
+      ? `\n        <${tag === 'a' ? 'span' : 'a'}${tag === 'a' ? '' : ` href="${esc(url)}" target="_blank" rel="noopener"`} style="display: inline-block; margin-top: 18px; font: 400 13px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: var(--accent-text, #adbcff); text-decoration: none">${esc(m.kind === 'テレビ' ? '番組の告知を見る' : '記事を読む')}　↗</${tag === 'a' ? 'span' : 'a'}>`
+      : '';
+
+    return `      <${tag}${linkAttrs} data-reveal class="wcard" style="display: block; text-decoration: none; color: #f4f4f5; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; overflow: hidden; background: #0b0b0f; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease">${video}
+      <div style="padding: 24px 26px 28px">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px">
+          <span style="font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 10px; border: 1px solid rgba(111,140,255,.5); border-radius: 999px; color: var(--accent-text, #adbcff)">${esc(m.kind || '記事')}</span>
+          <span style="font: 400 13.5px 'Noto Sans JP', sans-serif; color: #d8d8da">${esc(mediaOutlet(m))}</span>
+          <span style="font: 400 13px 'EB Garamond', serif; letter-spacing: .08em; color: #c4c4c6">${esc(m.date || '')}</span>
+        </div>
+        <h3 style="margin: 0 0 10px; font: 500 clamp(17px, 1.9vw, 21px)/1.6 'Noto Sans JP', sans-serif">${esc(m.title || '')}</h3>
+        <p style="margin: 0; font: 400 15px/1.8 'Noto Sans JP', sans-serif; color: #cfcfd1; max-width: 34em; text-wrap: pretty">${escLines(m.summary || '')}</p>${quote}${linkLine}
+      </div>
+    </${tag}>`;
+  }).join('\n');
+}
+
+/* ホーム用の1行表示。ここは「こういう形で取り上げられた」が一目で分かれば
+   よいので、要約は載せず、媒体名と見出しだけにする。 */
+function mediaRows() {
+  const items = mediaSorted();
+  if (!items.length) return '';
+  return items.map((m) => {
+    const url = String(m.url || '').trim();
+    const tag = url ? 'a' : 'div';
+    const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
+    const arrow = url ? '↗' : '';
+    return `    <${tag}${linkAttrs} data-reveal data-m="wrap" class="hbg" style="display: flex; align-items: baseline; gap: clamp(16px, 3vw, 36px); padding: 22px 6px; border-top: 1px solid rgba(255,255,255,.1); text-decoration: none; color: #f4f4f5; opacity: calc(var(--r, 0)); transition: opacity .9s ease, background .3s ease">
+      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .08em; color: #cfcfd1; white-space: nowrap">${esc(m.date || '')}</span>
+      <span class="mrow-kind" style="flex: none; box-sizing: border-box; width: 74px; text-align: center; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 6px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(m.kind || '記事')}</span>
+      <span class="mrow-title" style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+        <span style="font: 400 17px/1.7 'Noto Sans JP', sans-serif">${esc(m.title || '')}</span>
+        <span style="font: 400 13.5px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(mediaOutlet(m))}</span>
+      </span>
+      <span class="mrow-arrow" style="color: var(--accent-text, #adbcff)">${arrow}</span>
+    </${tag}>`;
+  }).join('\n');
+}
+
+/* 掲載が0件のときは、見出しだけの空っぽの欄が残らないよう丸ごと出さない。
+   （{{T:…}} は差し替えのあとに処理されるので、ここに書いても編集画面から直せる） */
+function mediaSectionPress() {
+  if (!mediaSorted().length) return '';
+  return `<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:press.mediaEyebrow}}</p>
+  <p data-reveal style="margin: 0 0 34px; font: 400 14.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1; max-width: 34em; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:press.mediaLead}}</p>
+  <div data-m="stack" style="display: grid; grid-template-columns: 1fr; gap: 22px">
+${mediaCards()}
+  </div>
+</section>`;
+}
+
+function mediaSectionHome() {
+  if (!mediaSorted().length) return '';
+  return `<section id="media" style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw 0; max-width: 1280px; margin: 0 auto; box-sizing: border-box">
+  <div data-reveal style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
+    <p style="margin: 0; font: 500 12px 'EB Garamond', serif; letter-spacing: .38em; text-transform: uppercase; color: #cfcfd1">{{T:index.media.eyebrow}}</p>
+    <a href="press.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none">{{T:index.media.link}}</a>
+  </div>
+  <p data-reveal style="margin: 0 0 30px; font: 400 14.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1; max-width: 34em; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:index.media.lead}}</p>
+  <div style="display: flex; flex-direction: column">
+${mediaRows()}
+  </div>
+</section>`;
+}
+
 function pillarPhoto(key) {
   const p = (data.home.pillarPhotos || {})[key] || {};
   if (p.src) {
@@ -700,6 +817,7 @@ const pages = [
     desc: data.home.tagline,
     tokens: {
       '{{GAME_TILES}}': gameTiles(),
+      '{{MEDIA_SECTION}}': mediaSectionHome(),
       '{{NEWS_ROWS}}': newsRows(),
       '{{PHOTO_RESEARCH}}': pillarPhoto('research'),
       '{{PHOTO_POLITICS}}': pillarPhoto('politics'),
@@ -789,6 +907,7 @@ const pages = [
       '{{PRESS_FACTS}}': pressFacts(),
       '{{PRESS_BIO_SHORT}}': esc(data.press.bioShort),
       '{{PRESS_BIO_LONG}}': esc(data.press.bioLong),
+      '{{MEDIA_SECTION}}': mediaSectionPress(),
       '{{PRESS_PHOTOS}}': pressPhotos(),
       '{{PRESS_AWARDS}}': pressAwards(),
       '{{PRESS_EMAIL}}': esc(data.contact.email)
@@ -870,6 +989,12 @@ const llms = `# 船越温 / Tsutsumu Funakoshi — ポートフォリオ
 - 研究: 廃棄うどんを用いた高効率水素生成プロセスの設計と最適化（東京大学生産技術研究所 Aziz研究室の指導、現・東北大学）
 - 受賞: ${data.research.awards.map((a) => a.name).join(' / ')}
 - 音楽: かがわジュニア・フィルハーモニック・オーケストラ（KJO）所属。第25回定期演奏会コンサートマスター（予定）。第九バリトンソロ、香川ジュニア音楽コンクール銀賞
+
+## メディア掲載
+
+${(data.media || []).length
+    ? mediaSorted().map((m) => `- ${m.date}　${mediaOutlet(m)}「${m.title}」: ${m.summary}${m.url ? ' ' + m.url : ''}`).join('\n')
+    : '- （なし）'}
 
 ## ページ
 

@@ -20,6 +20,10 @@
   var CATEGORIES = ['Research', 'Politics', 'Music', 'Leadership'];
   var catOptions = CATEGORIES.map(function (c) { return { value: c, label: c }; });
 
+  // メディア掲載の「種類」。サイトでは丸いラベルとしてそのまま出る
+  var MEDIA_KINDS = ['テレビ', 'ラジオ', '新聞', '雑誌', '記事', 'Web'];
+  var mediaKindOptions = MEDIA_KINDS.map(function (c) { return { value: c, label: c }; });
+
   /* 「文章」タブ用の書き方を短くするための小道具。
      t  … 1行の文言（見出し・リンクの文字など）
      ta … 改行できる文言（改行するとサイトでもそこで改行される）
@@ -216,6 +220,35 @@
             { key: 'caption', label: 'キャプション', type: 'text' }
           ]
         }
+      ]
+    },
+
+    /* 取材されたもの（新聞・テレビ・記事）。自分の活動記録＝Archive とは別枠。
+       ホームとプレスキットの両方に、新しい順で自動的に並ぶ。 */
+    {
+      id: 'media', label: 'メディア掲載', base: '', arrayPath: 'media',
+      listLabel: '掲載', itemLabel: function (o) {
+        return (o.date || '') + ' ' + (o.outlet || '') + ' — ' + (o.title || '（見出し未入力）');
+      },
+      item: [
+        { key: 'date', label: '日付', type: 'text', placeholder: '2025.12.29',
+          hint: '放送日・掲載日。新しいものが自動で上に来ます。' },
+        { key: 'kind', label: '種類', type: 'select', options: mediaKindOptions,
+          hint: 'サイトでは丸いラベルとして出ます。' },
+        { key: 'outlet', label: '媒体名', type: 'text', placeholder: 'TBS『THE TIME,』' },
+        { key: 'program', label: '番組名・コーナー名', type: 'text', placeholder: '全国！中高生ニュース',
+          hint: '無ければ空のままで大丈夫です（媒体名だけが出ます）。' },
+        { key: 'title', label: '見出し', type: 'text',
+          hint: '記事のタイトル、または「どんな内容だったか」の一行。' },
+        { key: 'summary', label: '内容の説明', type: 'textarea',
+          hint: 'プレスキットのページに出ます。2〜3行くらいで。' },
+        { key: 'quote', label: '紹介された自分の言葉', type: 'text',
+          hint: '記事中で引用された発言があれば。かぎかっこは自動で付きます。無ければ空で。' },
+        { key: 'url', label: 'リンク先 URL', type: 'text', placeholder: 'https://…' },
+        { key: 'thumb', label: 'サムネイル画像', type: 'image',
+          hint: '自分で撮った写真のみ。番組や記事の画面を無断で載せないでください。' },
+        { key: 'ytid', label: 'YouTube の動画ID', type: 'text', placeholder: 'IW_ZmnryWgs',
+          hint: '動画を載せる許可がある場合のみ。YouTube の URL の v= のあとの文字列です。' }
       ]
     },
 

@@ -227,4 +227,10 @@ select.field option { background: #0a0a0e; color: #f4f4f5; }
   [data-m="fgrid"] { grid-template-columns: 1fr 1fr !important; gap: 34px 20px !important; }
   [data-m="fgrid"] > div:nth-child(1) { grid-column: 1 / -1; }
   [data-m="fgrid"] > div:nth-child(3) { grid-column: 1 / -1; order: 4; }
+  /* ホームのメディア掲載: 日付・種類の右に見出しを置くと幅が足りず
+     2〜3文字で折り返してしまうので、見出しだけ次の行に落とす。
+     矢印は「押せば飛ぶ」が行全体で分かるので、狭い画面では省く。 */
+  .mrow-title { flex-basis: 100% !important; }
+  .mrow-kind { width: auto !important; }
+  .mrow-arrow { display: none !important; }
 }
