@@ -14,6 +14,20 @@
   <p data-reveal style="margin: 0; font: 400 15.5px/1.8 'Noto Sans JP', sans-serif; color: #d8d8da; max-width: 34em; text-wrap: pretty; opacity: calc(var(--r, 0)); transition: opacity 1.2s ease .2s">{{T:contact.lead}}</p>
 </header>
 
+<!-- 記者向けの導線。プレスキットはフッターからしか辿れず「探している人に見つからない」
+     状態だったので、いちばん来る可能性が高いこのページの上部に置く。SNS カードと
+     同じ形にすると埋もれるため、青みの帯＋左の線で別枠だと分かる形にしている。 -->
+<section style="padding: 0 7vw 10vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <div data-reveal style="display: flex; align-items: center; flex-wrap: wrap; gap: 22px 32px; padding: 30px 34px; box-sizing: border-box; border: 1px solid rgba(111,140,255,.28); border-left: 2px solid var(--accent, #6f8cff); border-radius: 16px; background: linear-gradient(150deg, rgba(111,140,255,.1), rgba(111,140,255,.02)); opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease">
+    <div style="flex: 1 1 300px">
+      <p style="margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .3em; text-transform: uppercase; color: var(--accent-text, #adbcff)">{{T:contact.pressEyebrow}}</p>
+      <p style="margin: 0 0 12px; font: 500 clamp(18px, 2vw, 22px)/1.6 'Noto Serif JP', serif; letter-spacing: .06em">{{T:contact.pressTitle}}</p>
+      <p style="margin: 0; font: 400 14.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1; max-width: 38em; text-wrap: pretty">{{T:contact.pressLead}}</p>
+    </div>
+    <a href="press.html" class="pill" style="flex: none; padding: 13px 32px; border: 1px solid var(--accent, #6f8cff); border-radius: 999px; font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: var(--accent-text, #adbcff); text-decoration: none; white-space: nowrap; transition: background .3s ease, color .3s ease">{{T:contact.pressLink}}　→</a>
+  </div>
+</section>
+
 <section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
   <p data-reveal style="margin: 0 0 24px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:contact.socialEyebrow}}</p>
   <div data-m="stack" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px">
@@ -76,11 +90,15 @@
       <span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: #d8d8da">{{T:contact.fieldCategory}}</span>
       <select name="category" class="field" style="font: 400 15px 'Noto Sans JP', sans-serif; color: #f4f4f5; padding: 14px 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: #0a0a0e; outline: none; transition: border-color .3s ease; appearance: none; -webkit-appearance: none">
         <option>{{T:contact.category1}}</option>
-        <option>{{T:contact.category2}}</option>
+        <option data-press>{{T:contact.category2}}</option>
         <option>{{T:contact.category3}}</option>
         <option>{{T:contact.category4}}</option>
       </select>
     </label>
+
+    <!-- 「取材・出演のご依頼」を選んだときだけ出る案内。選んだ人にだけ見せるので、
+         他の用件で来た人のじゃまにならない。JS が動かない環境では単に出ないだけ。 -->
+    <p id="press-hint" hidden style="margin: -8px 0 0; font: 400 13.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1">{{T:contact.pressFormHint}}<a href="press.html" style="margin-left: 8px; color: var(--accent-text, #adbcff); text-decoration: none; white-space: nowrap">{{T:contact.pressLink}} →</a></p>
 
     <label style="display: flex; flex-direction: column; gap: 9px">
       <span style="font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: #d8d8da">{{T:contact.fieldMessage}} <span style="color: var(--accent-text, #adbcff)">*</span></span>
@@ -104,6 +122,18 @@
   if (!form) return;
   var status = document.getElementById('form-status');
   var btn = form.querySelector('button[type=submit]');
+
+  // 種類で「取材・出演のご依頼」が選ばれたらプレスキットの案内を出す。
+  // 選択肢の文言は /admin から変えられるので、文字列ではなく印（data-press）で見分ける。
+  var sel = form.querySelector('select[name=category]');
+  var hint = document.getElementById('press-hint');
+  var pressOpt = sel && sel.querySelector('option[data-press]');
+  if (sel && hint && pressOpt) {
+    var syncHint = function () { hint.hidden = sel.value !== pressOpt.value; };
+    sel.addEventListener('change', syncHint);
+    syncHint();
+  }
+
   function setStatus(msg, kind) {
     status.textContent = msg;
     status.style.color = kind === 'ok' ? '#86efac' : (kind === 'err' ? '#ffb3b3' : '#cfcfd1');

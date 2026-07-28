@@ -402,7 +402,8 @@
           t('timelineEyebrow', '歩みの欄のラベル'),
           t('ctaLine', 'ページ末尾の一文'),
           t('ctaLink1', 'ページ末尾のリンク1'),
-          t('ctaLink2', 'ページ末尾のリンク2')
+          t('ctaLink2', 'ページ末尾のリンク2'),
+          t('ctaLink3', 'ページ末尾のリンク3', 'プレスキットへのリンクです')
         ]),
         g('research', 'Research（研究）', [
           t('eyebrow', 'ページ上部の小さなラベル'),
@@ -461,6 +462,11 @@
           t('eyebrow', 'ページ上部の小さなラベル'),
           t('h1', '大見出し', '右の「。」は自動で付きます'),
           ta('lead', 'リード文'),
+          t('pressEyebrow', '取材の方向けの帯：小さなラベル'),
+          t('pressTitle', '取材の方向けの帯：見出し'),
+          ta('pressLead', '取材の方向けの帯：説明'),
+          t('pressLink', '取材の方向けの帯：ボタンの文字', 'フォームの案内の中のリンクにも使われます'),
+          ta('pressFormHint', 'フォームで「取材・出演のご依頼」を選んだときに出る案内'),
           t('socialEyebrow', 'SNSの欄のラベル'),
           t('instagramNote', 'Instagram の説明'),
           t('xNote', 'X / Twitter の説明'),
