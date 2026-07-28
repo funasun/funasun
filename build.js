@@ -749,29 +749,29 @@ function mediaCards() {
   }).join('\n');
 }
 
-/* ホーム用の1行表示。ここは「こういう形で取り上げられた」が一目で分かれば
-   よいので、要約は載せず、媒体名と見出しだけにする。 */
-function mediaRows() {
+/* ホーム用。すぐ下の「新着ニュース」が日付＋ラベル＋見出しの行リストなので、
+   ここも同じ形にすると、似た一覧が2つ続いて見分けがつかなくなる。
+   カードにして形を変え、媒体名を主役にする（誰が取り上げたかが要点なので）。 */
+function mediaCardsHome() {
   const items = mediaSorted();
   if (!items.length) return '';
   return items.map((m) => {
-    /* 動画があるものは、告知ページより本編を見せたほうが親切なので
-       そちらへ飛ばす（告知へのリンクはプレスキットのカードに残る）。 */
     const url = String(m.ytid || '').trim()
       ? 'https://youtu.be/' + String(m.ytid).trim()
       : String(m.url || '').trim();
     const tag = url ? 'a' : 'div';
     const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
-    const arrow = url ? '↗' : '';
-    return `    <${tag}${linkAttrs} data-reveal data-m="wrap" class="hbg" style="display: flex; align-items: baseline; gap: clamp(16px, 3vw, 36px); padding: 22px 6px; border-top: 1px solid rgba(255,255,255,.1); text-decoration: none; color: #f4f4f5; opacity: calc(var(--r, 0)); transition: opacity .9s ease, background .3s ease">
-      <span style="font: 400 13.5px 'EB Garamond', serif; letter-spacing: .08em; color: #cfcfd1; white-space: nowrap">${esc(m.date || '')}</span>
-      <span class="mrow-kind" style="flex: none; box-sizing: border-box; width: 74px; text-align: center; font: 400 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 3px 6px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #d8d8da">${esc(m.kind || '記事')}</span>
-      <span class="mrow-title" style="flex: 1; display: flex; flex-direction: column; gap: 4px">
-        <span style="font: 400 17px/1.7 'Noto Sans JP', sans-serif">${esc(m.title || '')}</span>
-        <span style="font: 400 13.5px/1.7 'Noto Sans JP', sans-serif; color: #cfcfd1">${esc(mediaOutlet(m))}</span>
-      </span>
-      <span class="mrow-arrow" style="color: var(--accent-text, #adbcff)">${arrow}</span>
-    </${tag}>`;
+    const cue = url
+      ? `\n        <span style="display: inline-block; margin-top: 16px; font: 400 12.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: var(--accent-text, #adbcff)">${esc(m.ytid ? '映像を見る' : '記事を読む')}　↗</span>`
+      : '';
+    return `      <${tag}${linkAttrs} data-reveal class="wcard" style="display: flex; flex-direction: column; padding: 26px 24px 24px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: linear-gradient(160deg, #0c0c11, #08080b); text-decoration: none; color: #f4f4f5; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 20px)); transition: opacity 1s ease, transform 1s ease, background .3s ease">
+        <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 14px">
+          <span style="font: 400 11px 'Noto Sans JP', sans-serif; letter-spacing: .12em; padding: 2px 9px; border: 1px solid rgba(111,140,255,.5); border-radius: 999px; color: var(--accent-text, #adbcff)">${esc(m.kind || '記事')}</span>
+          <span style="font: 400 12px 'EB Garamond', serif; letter-spacing: .08em; color: #c4c4c6">${esc(m.date || '')}</span>
+        </div>
+        <p style="margin: 0 0 10px; font: 500 14px/1.6 'Noto Sans JP', sans-serif; color: #e2e2e4">${esc(mediaOutlet(m))}</p>
+        <p style="margin: 0; font: 400 15.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1; text-wrap: pretty">${esc(m.title || '')}</p>${cue}
+      </${tag}>`;
   }).join('\n');
 }
 
@@ -790,14 +790,14 @@ ${mediaCards()}
 
 function mediaSectionHome() {
   if (!mediaSorted().length) return '';
-  return `<section id="media" style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw 0; max-width: 1280px; margin: 0 auto; box-sizing: border-box">
+  return `<section id="media" style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw 11vh; max-width: 1280px; margin: 0 auto; box-sizing: border-box">
   <div data-reveal style="display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
     <p style="margin: 0; font: 500 12px 'EB Garamond', serif; letter-spacing: .38em; text-transform: uppercase; color: #cfcfd1">{{T:index.media.eyebrow}}</p>
     <a href="press.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none">{{T:index.media.link}}</a>
   </div>
   <p data-reveal style="margin: 0 0 30px; font: 400 14.5px/1.75 'Noto Sans JP', sans-serif; color: #cfcfd1; max-width: 34em; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:index.media.lead}}</p>
-  <div style="display: flex; flex-direction: column">
-${mediaRows()}
+  <div data-m="stack" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px">
+${mediaCardsHome()}
   </div>
 </section>`;
 }
