@@ -6,12 +6,22 @@
    ・アップロードは「合言葉（env.UPLOAD_CODE）」を知っている人だけ。
    ・大きいファイルは分割（レジューム式）でアップロードするので GB 級もOK。
      分割データはブラウザ →(この Worker)→ Google と中継する。
+   ・複数ファイルは「まとめID（grp）」で束ね、/g/:id の1つのURLで渡せる。
    ・各ファイルに任意の「ダウンロード合言葉」と「有効期限」を付けられる。
      期限切れは毎日の cron ＋ アクセス時チェックで自動削除。
-   ・ダウンロードは必ず添付（強制ダウンロード）で返し、ブラウザ上で
-     実行されないようにする（悪用対策）。
    ・保管庫の合計上限（TOTAL_CAP）を超えるアップロードは断る＝無駄に
      Google の容量（＝Gmail 等と共有）を埋めない。
+
+   【中身のプレビューについて】
+   ダウンロードは今までどおり必ず添付（強制ダウンロード）で返す。
+   そのうえで、安全だと分かっている種類だけを /pv/:id で「そのまま表示」する。
+   安全の担保は次の3段構え。1つ破られても他で止まる:
+     1. 拡張子のホワイトリストだけを許可（html/svg/xml などは絶対に含めない）。
+        送った人が申告した種類は一切信用せず、この表だけで種類を決める。
+     2. X-Content-Type-Options: nosniff — 中身を見て種類を勝手に変えさせない。
+        画像として返したものは、中身がHTMLでも画像としてしか扱われない。
+     3. Content-Security-Policy: sandbox — 万一動いても隔離された出所として
+        扱われ、この Worker のドメインの何にも触れない。
 
    必要な Worker シークレット:
      UPLOAD_CODE           … アップロード用の合言葉
@@ -22,8 +32,11 @@
    エンドポイント（すべて JSON。ファイル本体だけ生バイト）:
      POST /create      … アップロード開始（合言葉チェック＋レジューム枠作成）
      PUT  /part        … 分割データを1つ中継する（?session=&start=&end=&total=）
-     GET  /f/:id       … ダウンロード用のページ（見た目つき）
-     GET  /dl/:id      … ファイル本体を返す（?h=合言葉のハッシュ）
+     GET  /f/:id       … 1ファイルのダウンロード用ページ（見た目つき）
+     GET  /g/:gid      … まとめたファイル一覧のページ
+     GET  /dl/:id      … ファイル本体を返す（強制ダウンロード / ?h=合言葉のハッシュ）
+     GET  /pv/:id      … ファイル本体を返す（そのまま表示・安全な種類のみ）
+     GET  /ok/:id      … 合言葉が合っているかだけ答える（?h=）
    ============================================================ */
 
 const ALLOW_ORIGINS = [
@@ -35,6 +48,32 @@ const TOTAL_CAP = 10 * 1024 * 1024 * 1024;     // 保管庫の合計上限 10GB�
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
+const MAX_GROUP = 30;                          // 1回のまとめに入れられるファイル数
+
+/* プレビューを許す拡張子だけの表。ここに無いものは一切そのまま表示しない。
+   html / htm / svg / xml / xhtml などは「書いた通りに動いてしまう」ため、
+   意図的に入れていない（入れると、この Worker のドメイン上で他人の書いた
+   ページが動くことになり、なりすましなどに使われる）。 */
+const PREVIEW_TYPES = {
+  // 画像（svg は動くので除外）
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp',
+  // 動画
+  mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime',
+  // 音声
+  mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', aac: 'audio/aac',
+  oga: 'audio/ogg', ogg: 'audio/ogg', flac: 'audio/flac',
+  // 書類
+  pdf: 'application/pdf',
+  // 文字だけのファイル（すべて text/plain として返す＝HTMLとしては解釈されない）
+  txt: 'text/plain', md: 'text/plain', csv: 'text/plain', tsv: 'text/plain',
+  log: 'text/plain', json: 'text/plain', yml: 'text/plain', yaml: 'text/plain',
+  ini: 'text/plain', conf: 'text/plain', js: 'text/plain', ts: 'text/plain',
+  css: 'text/plain', py: 'text/plain', rb: 'text/plain', c: 'text/plain',
+  h: 'text/plain', cpp: 'text/plain', java: 'text/plain', go: 'text/plain',
+  rs: 'text/plain', sh: 'text/plain', sql: 'text/plain'
+};
+const TEXT_PREVIEW_LIMIT = 300 * 1024;         // 文字ファイルの先読み上限 300KB
 
 function corsHeaders(origin) {
   const allow = ALLOW_ORIGINS.indexOf(origin) !== -1 ? origin : ALLOW_ORIGINS[0];
@@ -65,8 +104,36 @@ function humanSize(n) {
   return n.toFixed(n >= 10 || i === 0 ? 0 : 1) + ' ' + u[i];
 }
 function safeId(id) {
-  // Google の fileId は英数と - _ のみ
+  // Google の fileId・まとめID は英数と - _ のみ
   return String(id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
+}
+/* <script> の中に値を書き込むための変換。JSON.stringify だけでは、
+   ファイル名に </script> が入っていたときにそこでスクリプトが切れてしまい、
+   続きを地の文（＝HTML）として書けてしまう。< > & を必ず escape 表記にする。 */
+function jsStr(v) {
+  return JSON.stringify(v)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+}
+function extOf(filename) {
+  const m = String(filename || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : '';
+}
+// 送った人の申告ではなく、拡張子だけから種類を決める（なりすまし対策）
+function previewType(filename) {
+  return PREVIEW_TYPES[extOf(filename)] || null;
+}
+function previewKind(mime) {
+  if (!mime) return null;
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime === 'text/plain') return 'text';
+  return null;
+}
+function fmtDate(ms) {
+  const d = new Date(Number(ms) || 0);
+  return d.getFullYear() + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2);
 }
 
 /* ---------- Google OAuth / Drive API ---------- */
@@ -128,7 +195,10 @@ export default {
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
-      if (path.startsWith('/dl/') && request.method === 'GET') return await download(env, path.slice(4), url);
+      if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
+      if (path.startsWith('/ok/') && request.method === 'GET') return await checkPw(env, path.slice(4), url, origin);
+      if (path.startsWith('/dl/')) return await serveFile(env, path.slice(4), url, request, false);
+      if (path.startsWith('/pv/')) return await serveFile(env, path.slice(4), url, request, true);
       if (path === '/') return new Response('funasun-files', { status: 200, headers: corsHeaders(origin) });
     } catch (e) {
       return json({ message: (e && e.message) || 'サーバーでエラーが発生しました' }, 500, origin);
@@ -169,17 +239,19 @@ async function create(request, env, origin) {
   const filename = (String(b.filename || 'file')).slice(0, 200);
   const pw = typeof b.pwHash === 'string' ? b.pwHash.slice(0, 128) : '';
   const contentType = (String(b.contentType || 'application/octet-stream')).slice(0, 120);
+  // 複数ファイルを1つのURLで渡すための「まとめID」。ブラウザ側が乱数で作る。
+  const grp = safeId(b.group || '').slice(0, 40);
+  const idx = Math.max(0, Math.min(MAX_GROUP - 1, Number(b.index) || 0));
+
+  const props = {
+    app: APP_TAG,
+    pw: pw,
+    expiresAt: String(expiresAt),
+    ctype: contentType
+  };
+  if (grp) { props.grp = grp; props.idx = String(idx); }
 
   // レジューム式アップロードのセッションを作る
-  const metadata = {
-    name: filename,
-    appProperties: {
-      app: APP_TAG,
-      pw: pw,
-      expiresAt: String(expiresAt),
-      ctype: contentType
-    }
-  };
   const init = await fetch(
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id',
     {
@@ -190,7 +262,7 @@ async function create(request, env, origin) {
         'X-Upload-Content-Type': 'application/octet-stream',
         'X-Upload-Content-Length': String(size)
       },
-      body: JSON.stringify(metadata)
+      body: JSON.stringify({ name: filename, appProperties: props })
     }
   );
   const sessionUri = init.headers.get('Location');
@@ -237,12 +309,120 @@ async function uploadPart(request, env, url, origin) {
   return json({ message: 'アップロード中にエラーが発生しました' }, 502, origin);
 }
 
-/* ---------- ダウンロード ---------- */
+/* ---------- ファイル本体を返す（ダウンロード／プレビュー共通）---------- */
 
 function expired(meta) {
   const exp = Number((meta && meta.expiresAt) || 0);
   return exp > 0 && Date.now() > exp;
 }
+
+// 合言葉のチェック。合っていれば null、違えば返すべき Response
+function pwGate(meta, url, id, asJson) {
+  if (!meta.pw) return null;
+  const h = url.searchParams.get('h') || '';
+  if (h === meta.pw) return null;
+  if (asJson) return new Response(JSON.stringify({ ok: false }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  return htmlPage('合言葉が違います',
+    '<p class="muted">合言葉が正しくありません。<a href="/f/' + esc(id) + '">戻る</a></p>', 403);
+}
+
+async function serveFile(env, rawId, url, request, inline) {
+  const fileId = safeId(rawId);
+  const token = await getAccessToken(env);
+  const file = await driveMeta(token, fileId);
+  if (!file) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、削除されました。</p>', 404);
+  const meta = file.appProperties || {};
+  if (meta.app !== APP_TAG) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しません。</p>', 404);
+  if (expired(meta)) {
+    await driveDelete(token, fileId);
+    return htmlPage('期限切れ', '<p class="muted">このファイルは有効期限が切れて削除されました。</p>', 410);
+  }
+  const gate = pwGate(meta, url, rawId, false);
+  if (gate) return gate;
+
+  const filename = file.name || 'file';
+
+  // プレビューは「安全だと分かっている拡張子」だけ。種類も拡張子だけから決める。
+  let type = 'application/octet-stream';
+  if (inline) {
+    const t = previewType(filename);
+    if (!t) return htmlPage('プレビューできません', '<p class="muted">この種類のファイルは、そのまま表示できません。ダウンロードしてご覧ください。</p>', 415);
+    type = t;
+  }
+
+  // 途中から再開できるように Range をそのまま Google に渡す。
+  // Cloudflare は流しっぱなしの応答から Content-Length を外してしまうため、
+  // これが無いと途中で切れたダウンロードを再開できない（＝やり直しになる）。
+  const range = request.headers.get('Range') || '';
+  const gh = { Authorization: 'Bearer ' + token };
+  if (range) gh.Range = range;
+
+  const base = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media';
+  let res = await fetch(base, { headers: gh });
+
+  // Google が「あやしい」と判定したファイル（zip や実行ファイルで起きやすい）は
+  // 403 で落ちる。これが「ダウンロードできないことがある」の主因。
+  // acknowledgeAbuse を付ければ持ち主は取り出せる。ただし普通のファイルにまで
+  // 付けて回るのは避けたいので、断られたときだけ付け直して1回やり直す。
+  if (res.status === 403) {
+    res = await fetch(base + '&acknowledgeAbuse=true', { headers: gh });
+  }
+
+  if (!res.ok && res.status !== 206) {
+    // 何が起きたのか分かる形で返す（今までは全部「見つかりません」だった）
+    let detail = '';
+    try {
+      const j = await res.json();
+      detail = (j && j.error && j.error.message) ? j.error.message : '';
+    } catch (e) { /* 本文がJSONでないこともある */ }
+    if (res.status === 403) {
+      return htmlPage('ダウンロードできません',
+        '<p class="muted">Google 側でこのファイルの取得が拒否されました。<br>時間をおいて、もう一度お試しください。</p>'
+        + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 403);
+    }
+    if (res.status === 404) {
+      return htmlPage('ファイルが見つかりません', '<p class="muted">削除された可能性があります。</p>', 404);
+    }
+    return htmlPage('ダウンロードできません',
+      '<p class="muted">一時的にファイルを取り出せませんでした（' + esc(String(res.status)) + '）。<br>少し待ってから、もう一度お試しください。</p>'
+      + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 502);
+  }
+  if (!res.body) return htmlPage('ダウンロードできません', '<p class="muted">ファイルの中身を取り出せませんでした。</p>', 502);
+
+  const headers = new Headers();
+  headers.set('Content-Type', type);
+  headers.set('Content-Disposition',
+    (inline ? 'inline' : 'attachment') + "; filename*=UTF-8''" + encodeURIComponent(filename));
+  // 中身を見て種類を勝手に判断させない。画像として返したものは画像としてしか扱われない。
+  headers.set('X-Content-Type-Options', 'nosniff');
+  // 万一なにかが動いても、隔離された出所として扱わせる（このドメインに触れない）
+  headers.set('Content-Security-Policy', "default-src 'none'; media-src 'self'; img-src 'self'; object-src 'none'; sandbox");
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('Accept-Ranges', 'bytes');
+  // 部分取得のときは、どこからどこまでかを必ずそのまま伝える
+  const cr = res.headers.get('Content-Range');
+  if (cr) headers.set('Content-Range', cr);
+  const cl = res.headers.get('Content-Length') || (range ? '' : file.size);
+  if (cl) headers.set('Content-Length', String(cl));
+
+  return new Response(res.body, { status: res.status === 206 ? 206 : 200, headers: headers });
+}
+
+// 合言葉が合っているかだけを answer する（プレビュー前の確認用）
+async function checkPw(env, rawId, url, origin) {
+  const fileId = safeId(rawId);
+  const token = await getAccessToken(env);
+  const file = await driveMeta(token, fileId);
+  if (!file) return json({ ok: false, gone: true }, 404, origin);
+  const meta = file.appProperties || {};
+  if (meta.app !== APP_TAG) return json({ ok: false, gone: true }, 404, origin);
+  if (expired(meta)) return json({ ok: false, gone: true }, 410, origin);
+  if (!meta.pw) return json({ ok: true }, 200, origin);
+  const h = url.searchParams.get('h') || '';
+  return json({ ok: h === meta.pw }, h === meta.pw ? 200 : 403, origin);
+}
+
+/* ---------- ダウンロード用ページ ---------- */
 
 async function landing(env, id, url) {
   const fileId = safeId(id);
@@ -255,83 +435,231 @@ async function landing(env, id, url) {
     await driveDelete(token, fileId);
     return htmlPage('期限切れ', '<p class="muted">このファイルは有効期限が切れて削除されました。</p>', 410);
   }
+
   const filename = file.name || 'file';
-  const size = humanSize(file.size);
   const needsPw = !!meta.pw;
-  const expDate = new Date(Number(meta.expiresAt || 0));
-  const expStr = expDate.getFullYear() + '/' + ('0' + (expDate.getMonth() + 1)).slice(-2) + '/' + ('0' + expDate.getDate()).slice(-2);
-  const dlBase = url.origin + '/dl/' + encodeURIComponent(id);
+  const kind = previewKind(previewType(filename));
 
   const body = `
     <div class="card">
       <p class="eyebrow">Download — ダウンロード</p>
       <h1 class="fname">${esc(filename)}</h1>
-      <p class="meta">${esc(size)}　·　有効期限 ${esc(expStr)} まで</p>
+      <p class="meta">${esc(humanSize(file.size))}　·　有効期限 ${esc(fmtDate(meta.expiresAt))} まで</p>
       ${needsPw
         ? `<label class="lb">合言葉</label>
            <input id="pw" type="password" autocomplete="off" placeholder="合言葉を入力">
-           <button id="dl" class="btn">ダウンロード</button>
+           <button id="unlock" class="btn">開く</button>
            <p id="msg" class="msg"></p>`
-        : `<a class="btn" href="${esc(dlBase)}">ダウンロード</a>`}
+        : ''}
+      <div id="area" ${needsPw ? 'hidden' : ''}>
+        ${kind ? '<div id="pv" class="pv"></div>' : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>'}
+        <a id="dlbtn" class="btn" href="#">ダウンロード</a>
+      </div>
     </div>
     <script>
-      (function () {
-        var btn = document.getElementById('dl');
-        if (!btn) return;
-        var msg = document.getElementById('msg');
-        async function sha256hex(s) {
-          var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-          return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
-        }
-        btn.addEventListener('click', async function () {
-          var pw = document.getElementById('pw').value;
-          if (!pw) { msg.textContent = '合言葉を入力してください。'; return; }
-          msg.textContent = '確認中…';
-          var h = await sha256hex(pw);
-          location.href = ${JSON.stringify(dlBase)} + '?h=' + h;
-        });
-        document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
-      })();
+    (function () {
+      var ID = ${jsStr(encodeURIComponent(id))};
+      var KIND = ${jsStr(kind || '')};
+      var NAME = ${jsStr(filename)};
+      var NEEDS = ${needsPw ? 'true' : 'false'};
+      ${PREVIEW_JS}
+      function show(h) {
+        var q = h ? '?h=' + h : '';
+        document.getElementById('dlbtn').setAttribute('href', '/dl/' + ID + q);
+        document.getElementById('area').hidden = false;
+        var box = document.getElementById('pv');
+        if (box) renderPreview(box, '/pv/' + ID + q, KIND, NAME);
+      }
+      if (!NEEDS) { show(''); return; }
+      var btn = document.getElementById('unlock');
+      var msg = document.getElementById('msg');
+      btn.addEventListener('click', async function () {
+        var v = document.getElementById('pw').value;
+        if (!v) { msg.textContent = '合言葉を入力してください。'; return; }
+        msg.textContent = '確認中…';
+        var h = await sha256hex(v);
+        var r = await fetch('/ok/' + ID + '?h=' + h);
+        if (!r.ok) { msg.textContent = '合言葉が正しくありません。'; return; }
+        msg.textContent = '';
+        document.getElementById('pw').disabled = true;
+        btn.hidden = true;
+        show(h);
+      });
+      document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
+    })();
     </script>`;
-  return htmlPage(filename, body, 200);
+  return htmlPage(filename, body, 200, !!kind);
 }
 
-async function download(env, id, url) {
-  const fileId = safeId(id);
+/* ---------- まとめたファイル一覧のページ ---------- */
+
+async function groupLanding(env, gid, url) {
+  const groupId = safeId(gid);
+  if (!groupId) return htmlPage('見つかりません', '<p class="muted">このURLは正しくありません。</p>', 404);
   const token = await getAccessToken(env);
-  const file = await driveMeta(token, fileId);
-  if (!file) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、削除されました。</p>', 404);
-  const meta = file.appProperties || {};
-  if (meta.app !== APP_TAG) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しません。</p>', 404);
-  if (expired(meta)) {
-    await driveDelete(token, fileId);
-    return htmlPage('期限切れ', '<p class="muted">このファイルは有効期限が切れて削除されました。</p>', 410);
-  }
-  if (meta.pw) {
-    const h = url.searchParams.get('h') || '';
-    if (h !== meta.pw) return htmlPage('合言葉が違います', '<p class="muted">合言葉が正しくありません。<a href="/f/' + esc(id) + '">戻る</a></p>', 403);
-  }
+  const files = await listByGroup(token, groupId);
 
-  const res = await fetch(
-    'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media',
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  if (!res.ok || !res.body) return htmlPage('ファイルが見つかりません', '<p class="muted">削除された可能性があります。</p>', 404);
+  const now = Date.now();
+  const alive = [];
+  for (const f of files) {
+    const m = f.appProperties || {};
+    const exp = Number(m.expiresAt || 0);
+    if (exp > 0 && now > exp) { await driveDelete(token, f.id); continue; }
+    alive.push(f);
+  }
+  if (!alive.length) {
+    return htmlPage('見つかりません', '<p class="muted">このファイルは存在しないか、期限切れで削除されました。</p>', 404);
+  }
+  alive.sort(function (a, b) {
+    return (Number((a.appProperties || {}).idx) || 0) - (Number((b.appProperties || {}).idx) || 0);
+  });
 
-  const filename = file.name || 'file';
-  const headers = new Headers();
-  // 必ず添付（強制ダウンロード）＋汎用タイプで、ブラウザ上での実行を防ぐ
-  headers.set('Content-Type', 'application/octet-stream');
-  headers.set('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(filename));
-  if (file.size) headers.set('Content-Length', String(file.size));
-  headers.set('Cache-Control', 'private, no-store');
-  headers.set('X-Content-Type-Options', 'nosniff');
-  return new Response(res.body, { status: 200, headers: headers });
+  const needsPw = !!(alive[0].appProperties || {}).pw;
+  const exp = fmtDate((alive[0].appProperties || {}).expiresAt);
+  const totalSize = alive.reduce(function (s, f) { return s + (Number(f.size) || 0); }, 0);
+
+  const rows = alive.map(function (f) {
+    const name = f.name || 'file';
+    const kind = previewKind(previewType(name));
+    return `<li class="row" data-id="${esc(encodeURIComponent(f.id))}" data-kind="${esc(kind || '')}" data-name="${esc(name)}">
+        <div class="rtop">
+          <div class="rinfo">
+            <span class="rname">${esc(name)}</span>
+            <span class="rsize">${esc(humanSize(f.size))}</span>
+          </div>
+          <div class="racts">
+            ${kind ? '<button class="mini pvbtn" type="button">見る</button>' : ''}
+            <a class="mini dl" href="#">保存</a>
+          </div>
+        </div>
+        <div class="pv"></div>
+      </li>`;
+  }).join('\n');
+
+  const body = `
+    <div class="card wide">
+      <p class="eyebrow">Download — ダウンロード</p>
+      <h1 class="fname">${alive.length}個のファイル</h1>
+      <p class="meta">合計 ${esc(humanSize(totalSize))}　·　有効期限 ${esc(exp)} まで</p>
+      ${needsPw
+        ? `<label class="lb">合言葉</label>
+           <input id="pw" type="password" autocomplete="off" placeholder="合言葉を入力">
+           <button id="unlock" class="btn">開く</button>
+           <p id="msg" class="msg"></p>`
+        : ''}
+      <ul id="list" class="list" ${needsPw ? 'hidden' : ''}>${rows}</ul>
+    </div>
+    <script>
+    (function () {
+      var NEEDS = ${needsPw ? 'true' : 'false'};
+      var FIRST = ${jsStr(encodeURIComponent(alive[0].id))};
+      ${PREVIEW_JS}
+      function wire(h) {
+        var q = h ? '?h=' + h : '';
+        document.getElementById('list').hidden = false;
+        [].forEach.call(document.querySelectorAll('.row'), function (row) {
+          var id = row.getAttribute('data-id');
+          var kind = row.getAttribute('data-kind');
+          var name = row.getAttribute('data-name');
+          row.querySelector('.dl').setAttribute('href', '/dl/' + id + q);
+          var btn = row.querySelector('.pvbtn');
+          if (!btn) return;
+          var box = row.querySelector('.pv');
+          var open = false;
+          btn.addEventListener('click', function () {
+            open = !open;
+            btn.textContent = open ? '閉じる' : '見る';
+            if (!open) { box.innerHTML = ''; return; }
+            renderPreview(box, '/pv/' + id + q, kind, name);
+          });
+        });
+      }
+      if (!NEEDS) { wire(''); return; }
+      var btn = document.getElementById('unlock');
+      var msg = document.getElementById('msg');
+      btn.addEventListener('click', async function () {
+        var v = document.getElementById('pw').value;
+        if (!v) { msg.textContent = '合言葉を入力してください。'; return; }
+        msg.textContent = '確認中…';
+        var h = await sha256hex(v);
+        var r = await fetch('/ok/' + FIRST + '?h=' + h);
+        if (!r.ok) { msg.textContent = '合言葉が正しくありません。'; return; }
+        msg.textContent = '';
+        document.getElementById('pw').disabled = true;
+        btn.hidden = true;
+        wire(h);
+      });
+      document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
+    })();
+    </script>`;
+  return htmlPage(alive.length + '個のファイル', body, 200, true);
 }
+
+async function listByGroup(token, groupId) {
+  const q = "appProperties has { key='app' and value='" + APP_TAG + "' }"
+    + " and appProperties has { key='grp' and value='" + groupId + "' }"
+    + ' and trashed=false';
+  const u = 'https://www.googleapis.com/drive/v3/files'
+    + '?q=' + encodeURIComponent(q)
+    + '&fields=' + encodeURIComponent('files(id,name,size,appProperties)')
+    + '&pageSize=' + MAX_GROUP;
+  const res = await fetch(u, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('ファイル一覧の取得に失敗しました');
+  const j = await res.json();
+  return (j && j.files) || [];
+}
+
+/* ---------- プレビューを描くための共通スクリプト ----------
+   ダウンロードページとまとめページの両方に埋め込む。
+   文字ファイルは textContent で入れるので、中身がHTMLでも絶対に解釈されない。 */
+
+const PREVIEW_JS = `
+      async function sha256hex(s) {
+        var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+      }
+      function renderPreview(box, src, kind, name) {
+        box.innerHTML = '';
+        if (kind === 'image') {
+          var img = document.createElement('img');
+          img.src = src; img.alt = name; img.loading = 'lazy';
+          img.onerror = function () { box.textContent = 'プレビューを読み込めませんでした。'; };
+          box.appendChild(img);
+        } else if (kind === 'video') {
+          var v = document.createElement('video');
+          v.src = src; v.controls = true; v.preload = 'metadata'; v.playsInline = true;
+          box.appendChild(v);
+        } else if (kind === 'audio') {
+          var a = document.createElement('audio');
+          a.src = src; a.controls = true; a.preload = 'metadata';
+          box.appendChild(a);
+        } else if (kind === 'pdf') {
+          var f = document.createElement('iframe');
+          f.src = src; f.setAttribute('sandbox', ''); f.title = name;
+          box.appendChild(f);
+        } else if (kind === 'text') {
+          var pre = document.createElement('pre');
+          pre.textContent = '読み込み中…';
+          box.appendChild(pre);
+          var cut = false;
+          fetch(src, { headers: { Range: 'bytes=0-' + ${TEXT_PREVIEW_LIMIT} } })
+            .then(function (r) {
+              if (!r.ok && r.status !== 206) throw new Error();
+              // 「bytes 0-307200/1234567」の形。最後まで取れていなければ途中表示と分かる
+              var m = /bytes (\\d+)-(\\d+)\\/(\\d+)/.exec(r.headers.get('Content-Range') || '');
+              if (m) cut = Number(m[2]) + 1 < Number(m[3]);
+              return r.text();
+            })
+            .then(function (t) {
+              pre.textContent = t + (cut ? '\\n\\n…（長いので途中まで表示しています。全部見るには保存してください）' : '');
+            })
+            .catch(function () { pre.textContent = 'プレビューを読み込めませんでした。'; });
+        }
+      }`;
 
 /* ---------- 見た目つきHTML ---------- */
 
-function htmlPage(title, inner, status) {
+function htmlPage(title, inner, status, wide) {
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
@@ -341,7 +669,7 @@ function htmlPage(title, inner, status) {
   * { box-sizing:border-box; }
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
     background:#060608; color:#f4f4f5; font-family:'Noto Sans JP',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
-  .card { width:100%; max-width:460px; padding:38px 34px; border:1px solid rgba(255,255,255,.12);
+  .card { width:100%; max-width:${wide ? '720px' : '460px'}; padding:38px 34px; border:1px solid rgba(255,255,255,.12);
     border-radius:18px; background:linear-gradient(160deg,#0c0c11,#08080b); text-align:center; }
   .eyebrow { margin:0 0 14px; font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:rgba(244,244,245,.45); }
   .fname { margin:0 0 8px; font-size:20px; font-weight:600; word-break:break-word; }
@@ -356,7 +684,30 @@ function htmlPage(title, inner, status) {
   .msg { margin:14px 0 0; font-size:13px; min-height:18px; color:#ff8a8a; }
   .muted { color:rgba(244,244,245,.55); font-size:14px; line-height:1.9; }
   a { color:var(--accent); }
-</style></head><body>${inner.indexOf('class="card"') === -1 ? '<div class="card">' + inner + '</div>' : inner}</body></html>`;
+  /* プレビュー */
+  .pv:empty { display:none; }
+  .pv { margin:0 0 20px; }
+  .pv img, .pv video { max-width:100%; max-height:56vh; border-radius:12px; display:block; margin:0 auto; background:#000; }
+  .pv audio { width:100%; }
+  .pv iframe { width:100%; height:56vh; border:0; border-radius:12px; background:#fff; }
+  .pv pre { max-height:44vh; overflow:auto; text-align:left; margin:0; padding:16px 18px; border-radius:12px;
+    background:#08080c; border:1px solid rgba(255,255,255,.1); font:400 12.5px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:#dcdce0; white-space:pre-wrap; word-break:break-word; }
+  .nopv { margin:0 0 20px; font-size:13px; }
+  /* まとめ一覧 */
+  .list { list-style:none; margin:0; padding:0; text-align:left; }
+  .row { padding:16px 0; border-top:1px solid rgba(255,255,255,.1); }
+  .rtop { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+  .rinfo { display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 200px; }
+  .rname { font-size:14px; word-break:break-all; }
+  .rsize { font-size:11.5px; color:rgba(244,244,245,.5); }
+  .racts { display:flex; gap:8px; flex:none; }
+  .mini { padding:8px 16px; border-radius:999px; font-size:12.5px; cursor:pointer; text-decoration:none;
+    border:1px solid rgba(255,255,255,.22); background:none; color:#f4f4f5; }
+  .mini.dl { border-color:var(--accent); color:var(--accent); }
+  .mini:hover { background:rgba(255,255,255,.06); }
+  .row .pv { margin:16px 0 0; }
+</style></head><body>${inner.indexOf('class="card') === -1 ? '<div class="card">' + inner + '</div>' : inner}</body></html>`;
   return new Response(html, { status: status || 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 

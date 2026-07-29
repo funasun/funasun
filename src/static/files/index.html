@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <!-- files/index.html — ファイル共有（ギガファイル便ふう）アップロード画面。
      合言葉を知っている人だけがアップロードでき、共有URLが発行される。
-     大きいファイルは分割してアップロードするので GB 級も送れる。 -->
+     大きいファイルは分割してアップロードするので GB 級も送れる。
+     複数選ぶと1つのURLにまとまる（受け取る側は一覧から個別に保存できる）。 -->
 <html lang="ja">
 <head>
 <meta charset="utf-8">
@@ -27,7 +28,15 @@
   .drop.over { border-color: var(--accent); background: #0d0d16; }
   .drop p { margin: 6px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
   .drop .pick { font: 500 14px 'Noto Sans JP', sans-serif; color: #f4f4f5; }
-  .filename { margin-top: 10px; font: 400 13px 'Noto Sans JP', sans-serif; color: var(--accent-text, #adbcff); word-break: break-all; }
+  /* 選んだファイルの一覧 */
+  .files { list-style: none; margin: 12px 0 0; padding: 0; }
+  .files li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #0a0a0e; }
+  .files .nm { flex: 1 1 auto; min-width: 0; font: 400 13px 'Noto Sans JP', sans-serif; word-break: break-all; }
+  .files .sz { flex: none; font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.6); }
+  .files .rm { flex: none; padding: 4px 10px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2); background: none; color: rgba(244,244,245,.8); cursor: pointer; }
+  .files .rm:hover { background: rgba(255,255,255,.07); }
+  .files .st { flex: none; font-size: 12px; color: var(--accent-text); }
+  .total { margin: 12px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.72); }
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 26px; }
   button { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 12px 28px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
   button:hover { opacity: .88; }
@@ -47,18 +56,19 @@
 <div class="wrap">
   <p class="eyebrow">File Share — ファイル共有</p>
   <h1>ファイルを送る</h1>
-  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。大きいファイル（最大2GB）も送れます。期限が来たら自動で消えます。</p>
+  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。1ファイル最大2GB、まとめて30個まで。期限が来たら自動で消えます。</p>
 
   <label>アップロード用の合言葉 <span class="hint">（船越から共有された合言葉）</span></label>
   <input id="code" type="password" autocomplete="off" placeholder="合言葉">
 
-  <label>ファイル</label>
+  <label>ファイル <span class="hint">（複数まとめて選べます）</span></label>
   <div id="drop" class="drop">
     <span class="pick">ここにドラッグ、またはクリックして選択</span>
-    <p>最大 2GB</p>
-    <div id="fname" class="filename"></div>
+    <p>1ファイル最大 2GB ／ 30個まで</p>
   </div>
-  <input id="file" type="file" style="display:none">
+  <input id="file" type="file" multiple style="display:none">
+  <ul id="files" class="files"></ul>
+  <p id="total" class="total"></p>
 
   <label>有効期限</label>
   <select id="expiry">
@@ -79,7 +89,7 @@
   <p id="msg" class="msg" role="status" aria-live="polite"></p>
 
   <div id="result" class="result">
-    <span style="font:500 12px 'Noto Sans JP',sans-serif; letter-spacing:.1em; color: rgba(244,244,245,.88)">共有URL（この2つを相手に伝える）</span>
+    <span style="font:500 12px 'Noto Sans JP',sans-serif; letter-spacing:.1em; color: rgba(244,244,245,.88)">共有URL</span>
     <div class="u">
       <input id="rurl" type="text" readonly>
       <button id="copy" type="button" style="padding:12px 18px">コピー</button>
@@ -93,6 +103,8 @@
 <script>
 (function () {
   var WORKER_URL = 'https://funasun-files.takakouseitokai.workers.dev';
+  var MAX_FILES = 30;
+  var MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
   var $ = function (id) { return document.getElementById(id); };
   var fileInput = $('file');
@@ -101,14 +113,9 @@
   var bar = $('bar');
   var barI = $('bar-i');
   var btn = $('btn-up');
-  var chosen = null;
+  var chosen = [];   // 選ばれたファイルたち
 
   function setMsg(t, c) { msg.textContent = t; msg.className = 'msg' + (c ? ' ' + c : ''); }
-
-  function pickFile(f) {
-    chosen = f || null;
-    $('fname').textContent = f ? (f.name + '（' + humanSize(f.size) + '）') : '';
-  }
   function humanSize(n) {
     if (n < 1024) return n + ' B';
     var u = ['KB', 'MB', 'GB', 'TB'], i = -1;
@@ -119,9 +126,58 @@
     var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
     return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
   }
+  function randomId() {
+    var a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+
+  // 一覧を描き直す。名前は textContent で入れるので、変なファイル名でも安全。
+  function renderList() {
+    var ul = $('files');
+    ul.innerHTML = '';
+    chosen.forEach(function (f, i) {
+      var li = document.createElement('li');
+      var nm = document.createElement('span');
+      nm.className = 'nm'; nm.textContent = f.name;
+      var sz = document.createElement('span');
+      sz.className = 'sz'; sz.textContent = humanSize(f.size);
+      var rm = document.createElement('button');
+      rm.className = 'rm'; rm.type = 'button'; rm.textContent = '外す';
+      rm.addEventListener('click', function () { chosen.splice(i, 1); renderList(); });
+      li.appendChild(nm); li.appendChild(sz); li.appendChild(rm);
+      ul.appendChild(li);
+    });
+    var total = chosen.reduce(function (s, f) { return s + f.size; }, 0);
+    $('total').textContent = chosen.length
+      ? chosen.length + '個 ／ 合計 ' + humanSize(total)
+      : '';
+  }
+
+  // 同じファイルを二重に足さない（名前＋サイズ＋更新日時で見分ける）
+  function addFiles(list) {
+    var added = 0, tooBig = 0;
+    for (var i = 0; i < list.length; i++) {
+      var f = list[i];
+      if (f.size > MAX_BYTES) { tooBig++; continue; }
+      if (chosen.length >= MAX_FILES) break;
+      var dup = chosen.some(function (c) {
+        return c.name === f.name && c.size === f.size && c.lastModified === f.lastModified;
+      });
+      if (dup) continue;
+      chosen.push(f); added++;
+    }
+    renderList();
+    if (tooBig) setMsg(tooBig + '個のファイルは大きすぎるため外しました（1ファイル上限2GB）。', 'err');
+    else if (chosen.length >= MAX_FILES) setMsg('一度に送れるのは' + MAX_FILES + '個までです。', 'info');
+    else if (added) setMsg('', '');
+  }
 
   drop.addEventListener('click', function () { fileInput.click(); });
-  fileInput.addEventListener('change', function () { pickFile(fileInput.files[0]); });
+  fileInput.addEventListener('change', function () {
+    addFiles(fileInput.files);
+    fileInput.value = '';   // 同じファイルを選び直せるように毎回空にする
+  });
   ['dragenter', 'dragover'].forEach(function (ev) {
     drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
   });
@@ -129,14 +185,48 @@
     drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
   });
   drop.addEventListener('drop', function (e) {
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
   });
+
+  // 1つ分のアップロード。done は全体の進捗表示に使う。
+  async function uploadOne(file, opts) {
+    var res = await fetch(WORKER_URL + '/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: opts.code, filename: file.name, size: file.size,
+        contentType: file.type || 'application/octet-stream',
+        expiryDays: opts.days, pwHash: opts.pwHash,
+        group: opts.group, index: opts.index
+      })
+    });
+    var cj = await res.json();
+    if (!res.ok) throw new Error('「' + file.name + '」' + (cj.message || 'アップロードを開始できませんでした'));
+
+    var partSize = cj.partSize;
+    var shareUrl = '';
+    for (var offset = 0; offset < file.size; offset += partSize) {
+      var end = Math.min(offset + partSize, file.size);
+      var pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(cj.sessionUri) +
+        '&start=' + offset + '&end=' + end + '&total=' + file.size, {
+        method: 'PUT', body: file.slice(offset, end)
+      });
+      var pj = await pr.json();
+      if (!pr.ok) throw new Error('「' + file.name + '」' + (pj.message || 'アップロード中にエラーが発生しました'));
+      if (pj.done) shareUrl = pj.url;
+      opts.onProgress(end - offset);
+    }
+    if (!shareUrl) throw new Error('「' + file.name + '」の保存を確定できませんでした');
+    return shareUrl;
+  }
 
   btn.addEventListener('click', async function () {
     var code = $('code').value.trim();
     if (!code) { setMsg('アップロード用の合言葉を入力してください。', 'err'); return; }
-    if (!chosen) { setMsg('ファイルを選んでください。', 'err'); return; }
-    if (chosen.size > 2 * 1024 * 1024 * 1024) { setMsg('ファイルが大きすぎます（上限2GB）。', 'err'); return; }
+    if (!chosen.length) { setMsg('ファイルを選んでください。', 'err'); return; }
+
+    var files = chosen.slice();
+    var grandTotal = files.reduce(function (s, f) { return s + f.size; }, 0);
+    var sent = 0;
 
     btn.disabled = true;
     $('result').style.display = 'none';
@@ -147,44 +237,35 @@
     try {
       var pwHash = '';
       if ($('dlpw').value) pwHash = await sha256hex($('dlpw').value);
+      // 2個以上なら「まとめID」を作り、1つのURLで渡せるようにする
+      var group = files.length > 1 ? randomId() : '';
+      var lastUrl = '';
 
-      var res = await fetch(WORKER_URL + '/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: code, filename: chosen.name, size: chosen.size,
-          contentType: chosen.type || 'application/octet-stream',
-          expiryDays: Number($('expiry').value), pwHash: pwHash
-        })
-      });
-      var cj = await res.json();
-      if (!res.ok) throw new Error(cj.message || 'アップロードを開始できませんでした');
-
-      var partSize = cj.partSize;
-      var total = chosen.size;
-      var shareUrl = '';
-      for (var offset = 0; offset < total; offset += partSize) {
-        var end = Math.min(offset + partSize, total);
-        var chunk = chosen.slice(offset, end);
-        var pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(cj.sessionUri) +
-          '&start=' + offset + '&end=' + end + '&total=' + total, {
-          method: 'PUT', body: chunk
+      for (var i = 0; i < files.length; i++) {
+        setMsg('アップロード中… ' + (i + 1) + '/' + files.length + '「' + files[i].name + '」', 'info');
+        lastUrl = await uploadOne(files[i], {
+          code: code, days: Number($('expiry').value), pwHash: pwHash,
+          group: group, index: i,
+          onProgress: function (n) {
+            sent += n;
+            var pct = Math.min(100, Math.round(sent / grandTotal * 100));
+            barI.style.width = pct + '%';
+          }
         });
-        var pj = await pr.json();
-        if (!pr.ok) throw new Error(pj.message || 'アップロード中にエラーが発生しました');
-        if (pj.done) shareUrl = pj.url;
-        barI.style.width = Math.round(end / total * 100) + '%';
-        setMsg('アップロード中… ' + Math.round(end / total * 100) + '%', 'info');
       }
 
-      if (!shareUrl) throw new Error('保存の確定に失敗しました');
-
+      var shareUrl = group ? WORKER_URL + '/g/' + group : lastUrl;
+      var expText = $('expiry').selectedOptions[0].text;
       setMsg('完了しました。', 'ok');
       $('rurl').value = shareUrl;
-      $('rnote').textContent = $('dlpw').value
-        ? 'この URL と「ダウンロード合言葉」を相手に伝えてください。' + $('expiry').selectedOptions[0].text + '。'
-        : 'この URL を相手に伝えてください。' + $('expiry').selectedOptions[0].text + '。';
+      $('rnote').textContent =
+        (group ? files.length + '個のファイルが1つのURLにまとまりました。' : '')
+        + ($('dlpw').value
+          ? 'この URL と「ダウンロード合言葉」を相手に伝えてください。'
+          : 'この URL を相手に伝えてください。')
+        + expText + '。';
       $('result').style.display = 'block';
-      pickFile(null); fileInput.value = '';
+      chosen = []; renderList();
     } catch (e) {
       setMsg(e.message || '失敗しました。もう一度お試しください。', 'err');
     } finally {
