@@ -509,14 +509,238 @@
         return;
       }
 
+      // まとめて操作する帯（PDFが2つ以上あるときだけ意味がある）
+      var pdfs = d.files.filter(isMergeable);
+      if (pdfs.length >= 2) box.appendChild(mergeBar(pdfs));
+      box.appendChild(mergeOut);
+
       d.files.forEach(function (f) {
         box.appendChild(fileCard(f));
       });
+      refreshMergeBar();
+    }
+
+    /* ---- 預かっているPDFを、その場で1つにまとめる ----
+       ファイルはブラウザが直接ダウンロードして、ブラウザの中でつなぐ。
+       サーバーで処理しないので、追加の費用も預かりも発生しない。 */
+    var picked = {};                 // 選んだファイルの id
+    var mergeOut = el('div', {});    // まとめた結果を出す場所
+    var mergeBarEl = null;
+    var mergeCount = null;
+    var mergeBtn = null;
+
+    // 期限切れ・合言葉つきは、そのままでは中身を取れないので選ばせない
+    function isMergeable(f) {
+      return /\.pdf$/i.test(f.name || '') && !f.expired && !f.locked;
+    }
+
+    function mergeBar(pdfs) {
+      mergeCount = el('span', { class: 'fh', text: '' });
+      mergeBtn = el('button', {
+        class: 'mini pick', type: 'button', text: '選んだPDFを1つにまとめる',
+        onclick: function () { doMerge(pdfs); }
+      });
+      mergeBarEl = el('div', { class: 'card', style: 'padding:12px 14px;margin-bottom:18px' }, [
+        el('p', { class: 'fh', style: 'margin:0 0 10px', text:
+          'PDFを選んでまとめられます（' + pdfs.length + '件が対象）。まとめる作業はこのブラウザの中で行われます。' }),
+        el('div', { class: 'itembtns', style: 'flex-wrap:wrap' }, [
+          el('button', {
+            class: 'mini', type: 'button', text: 'ぜんぶ選ぶ',
+            onclick: function () { pdfs.forEach(function (f) { picked[f.id] = true; }); draw(); }
+          }),
+          el('button', {
+            class: 'mini', type: 'button', text: '選択を外す',
+            onclick: function () { picked = {}; draw(); }
+          }),
+          mergeBtn
+        ]),
+        el('p', { style: 'margin:10px 0 0' }, [mergeCount])
+      ]);
+      return mergeBarEl;
+    }
+
+    function refreshMergeBar() {
+      if (!mergeCount) return;
+      var n = Object.keys(picked).filter(function (k) { return picked[k]; }).length;
+      mergeCount.textContent = n ? n + '件を選択中（上から順につながります）' : 'まだ何も選んでいません';
+      if (mergeBtn) {
+        mergeBtn.disabled = n < 2;
+        mergeBtn.textContent = n >= 2 ? '選んだ' + n + '件を1つにまとめる' : '選んだPDFを1つにまとめる';
+      }
+    }
+
+    function doMerge(pdfs) {
+      var chosen = pdfs.filter(function (f) { return picked[f.id]; });
+      if (chosen.length < 2) return;
+      var T = window.FileTools;
+      if (!T) { setStatus('変換の部品を読み込めていません。ページを再読み込みしてください。', 'err'); return; }
+
+      mergeBtn.disabled = true;
+      mergeOut.innerHTML = '';
+      setStatus('ファイルを取り寄せています…', 'info');
+
+      var got = [];
+      chosen.reduce(function (chain, f, i) {
+        return chain.then(function () {
+          setStatus('取り寄せ中… ' + (i + 1) + ' / ' + chosen.length + '「' + f.name + '」', 'info');
+          return fetch(f.downloadUrl, { mode: 'cors', credentials: 'omit' }).then(function (res) {
+            if (!res.ok) throw new Error('「' + f.name + '」を取り寄せられませんでした（' + res.status + '）');
+            return res.blob();
+          }).then(function (b) { got.push(T.toFile(b, f.name)); });
+        });
+      }, Promise.resolve()).then(function () {
+        setStatus('まとめています…', 'info');
+        return T.mergePdf(got, function (done, total, name) {
+          setStatus('まとめています… ' + done + ' / ' + total + (name ? '（' + name + '）' : ''), 'info');
+        });
+      }).then(function (blob) {
+        // 何ページになったかも数えて見せる（抜けていないか確かめられるように）
+        return T.pdfPageCount(T.toFile(blob, 'merged.pdf')).catch(function () { return 0; })
+          .then(function (pages) {
+            setStatus(chosen.length + '個をまとめました（' + humanBytes(blob.size) + '）', 'ok');
+            mergeOut.appendChild(mergedCard(blob, chosen, pages));
+            mergeBtn.disabled = false;
+          });
+      }).catch(function (e) {
+        setStatus(e.message, 'err');
+        mergeBtn.disabled = false;
+      });
+    }
+
+    /* まとめた結果のカード。保存するだけでも、共有し直してもよい。
+       元のファイルを消すのは、置き直しが成功したあとにだけ聞く
+       （先に消すと、置き直しに失敗したときに何も残らないため）。 */
+    function mergedCard(blob, sources, pages) {
+      var name = (window.FileTools.baseName(sources[0].name)) + '_まとめ.pdf';
+      var nameInput = el('input', { class: 'urlbox', type: 'text', value: name });
+      var days = el('select', {}, [
+        el('option', { value: '1', text: '1日' }),
+        el('option', { value: '3', text: '3日' }),
+        el('option', { value: '7', text: '7日', selected: 'selected' }),
+        el('option', { value: '30', text: '30日' })
+      ]);
+      var result = el('div', {});
+
+      var shareBtn = el('button', {
+        class: 'mini pick', type: 'button', text: 'このサイトで共有し直す',
+        onclick: function () {
+          shareBtn.disabled = true;
+          uploadAsOwner(blob, nameInput.value || name, Number(days.value), function (t) { setStatus(t, 'info'); })
+            .then(function (url) {
+              setStatus('共有しました', 'ok');
+              result.innerHTML = '';
+              result.appendChild(urlRow('新しい受け取りページ', url, '相手に渡すのはこれ'));
+              result.appendChild(el('p', { style: 'margin:12px 0 0' }, [
+                el('button', {
+                  class: 'mini del', type: 'button', text: 'まとめる前の' + sources.length + '件を削除する',
+                  onclick: function () {
+                    if (!confirm('まとめる前の' + sources.length + '件を削除します。元に戻せません。よろしいですか？')) return;
+                    setStatus('削除中…', 'info');
+                    sources.reduce(function (chain, f) {
+                      return chain.then(function () { return filesApi('/admin/del', { id: f.id }); });
+                    }, Promise.resolve()).then(function () {
+                      setStatus(sources.length + '件を削除しました', 'ok');
+                      picked = {}; filesCache = null; draw(); load();
+                    }).catch(function (e) { setStatus(e.message, 'err'); });
+                  }
+                })
+              ]));
+              shareBtn.disabled = false;
+            }).catch(function (e) {
+              setStatus(e.message, 'err');
+              shareBtn.disabled = false;
+            });
+        }
+      });
+
+      return el('div', { class: 'card', style: 'margin-bottom:18px;border-color:rgba(111,140,255,.4)' }, [
+        el('div', { class: 'card-head' }, [
+          el('span', {
+            class: 'card-title',
+            text: 'まとめたPDF（' + (pages ? '全' + pages + 'ページ・' : '') + humanBytes(blob.size) + '）'
+          })
+        ]),
+        el('div', { class: 'card-body' }, [
+          el('div', { class: 'urlrow' }, [
+            el('span', { class: 'urllabel', text: 'ファイル名' }),
+            nameInput,
+            el('button', {
+              class: 'mini pick', type: 'button', text: '保存',
+              onclick: function () { window.FileTools.download(blob, nameInput.value || name); }
+            })
+          ]),
+          el('div', { class: 'urlrow' }, [
+            el('span', { class: 'urllabel', text: '公開する期間' }),
+            days,
+            shareBtn
+          ]),
+          result
+        ])
+      ]);
+    }
+
+    /* 持ち主として置き直す。合言葉ではなく Google ログインで通す
+       （管理画面に合言葉を埋め込まずに済み、合言葉を変えても壊れない）。 */
+    function uploadAsOwner(blob, name, expiryDays, onStep) {
+      var base = (window.ADMIN_CONFIG || {}).filesUrl;
+      return window.AdminAuth.getIdToken(false).then(function (idToken) {
+        onStep('置き場所を用意しています…');
+        return fetch(base + '/create', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken: idToken, filename: name, size: blob.size,
+            contentType: 'application/pdf', expiryDays: expiryDays
+          })
+        }).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (j) {
+            if (!res.ok) throw new Error(j.message || 'アップロードを開始できませんでした');
+            return j;
+          });
+        });
+      }).then(function (cj) {
+        var shareUrl = '';
+        var offsets = [];
+        for (var o = 0; o < blob.size; o += cj.partSize) offsets.push(o);
+        return offsets.reduce(function (chain, off, i) {
+          return chain.then(function () {
+            var end = Math.min(off + cj.partSize, blob.size);
+            onStep('送信中… ' + Math.round(end / blob.size * 100) + '%');
+            return fetch(base + '/part?session=' + encodeURIComponent(cj.sessionUri) +
+              '&start=' + off + '&end=' + end + '&total=' + blob.size,
+              { method: 'PUT', body: blob.slice(off, end) })
+              .then(function (pr) {
+                return pr.json().catch(function () { return {}; }).then(function (pj) {
+                  if (!pr.ok) throw new Error(pj.message || 'アップロード中にエラーが発生しました');
+                  if (pj.done) shareUrl = pj.url;
+                });
+              });
+          });
+        }, Promise.resolve()).then(function () {
+          if (!shareUrl) throw new Error('保存を確定できませんでした');
+          return shareUrl;
+        });
+      });
+    }
+
+    function humanBytes(n) {
+      if (window.FileTools) return window.FileTools.humanSize(n);
+      return Math.round(n / 1024) + ' KB';
     }
 
     function fileCard(f) {
-      var head = el('div', { class: 'card-head' }, [
-        el('span', { class: 'card-title', text: f.name }),
+      var headKids = [];
+      if (isMergeable(f)) {
+        var cb = el('input', { type: 'checkbox', style: 'flex:none;width:16px;height:16px;accent-color:var(--accent,#6f8cff)' });
+        cb.checked = !!picked[f.id];
+        cb.title = 'まとめる対象にする';
+        cb.addEventListener('change', function () {
+          picked[f.id] = cb.checked;
+          refreshMergeBar();
+        });
+        headKids.push(cb);
+      }
+      headKids.push(el('span', { class: 'card-title', text: f.name }));
+      var head = el('div', { class: 'card-head' }, headKids.concat([
         el('div', { class: 'itembtns' }, [
           el('button', {
             class: 'mini del', type: 'button', text: '削除',
@@ -530,7 +754,7 @@
             }
           })
         ])
-      ]);
+      ]));
 
       var meta = [f.sizeText];
       if (f.expired) meta.push('期限切れ（まもなく自動削除）');

@@ -85,6 +85,7 @@
     <p class="tools-t">送る前に整える <span class="hint">（この端末の中だけで処理します）</span></p>
     <div class="tools-b">
       <button id="t-merge" type="button" class="tbtn" hidden>PDFを1つにまとめる</button>
+      <button id="t-i2p" type="button" class="tbtn" hidden>画像を1つのPDFにまとめる</button>
       <button id="t-webp" type="button" class="tbtn" hidden>画像を軽くする（webp）</button>
     </div>
     <p id="t-msg" class="tools-m"></p>
@@ -186,9 +187,12 @@
     if (!T) { $('tools').hidden = true; return; }
     var pdfs = chosen.filter(T.isPdf);
     var imgs = chosen.filter(function (f) { return T.isImage(f) && !/\.webp$/i.test(f.name); });
+    // webp にしたものも「PDFにまとめる」対象。軽くしてから1冊にできるように
+    var allImgs = chosen.filter(T.isImage);
     $('t-merge').hidden = pdfs.length < 2;
+    $('t-i2p').hidden = allImgs.length < 1;
     $('t-webp').hidden = imgs.length < 1;
-    $('tools').hidden = $('t-merge').hidden && $('t-webp').hidden;
+    $('tools').hidden = $('t-merge').hidden && $('t-webp').hidden && $('t-i2p').hidden;
     if ($('tools').hidden) setToolMsg('');
   }
   function setToolMsg(t, c) {
@@ -196,7 +200,7 @@
     $('t-msg').className = 'tools-m' + (c ? ' ' + c : '');
   }
   function toolsBusy(on) {
-    $('t-merge').disabled = on; $('t-webp').disabled = on; btn.disabled = on;
+    $('t-merge').disabled = on; $('t-webp').disabled = on; $('t-i2p').disabled = on; btn.disabled = on;
   }
 
   // 同じファイルを二重に足さない（名前＋サイズ＋更新日時で見分ける）
@@ -249,6 +253,31 @@
       chosen.unshift(T.toFile(blob, name));
       renderList();
       setToolMsg(pdfs.length + '個のPDFを「' + name + '」にまとめました。', 'ok');
+      toolsBusy(false);
+    }).catch(function (e) {
+      setToolMsg(e.message, 'err');
+      toolsBusy(false);
+    });
+  });
+
+  /* --- 画像を1つのPDFにまとめる ---
+     写真を何枚も送るより、1冊のPDFにした方が相手が見やすい。
+     並びは一覧に出ている順のまま。 */
+  $('t-i2p').addEventListener('click', function () {
+    var T = window.FileTools;
+    var imgs = chosen.filter(T.isImage);
+    if (!imgs.length) return;
+    toolsBusy(true);
+    setToolMsg('PDFにしています…（' + imgs.length + '枚）');
+    T.imagesToPdf(imgs, { size: 'fit', margin: 0 }, function (done, total, name) {
+      setToolMsg('PDFにしています… ' + done + ' / ' + total + (name ? '（' + name + '）' : ''));
+    }).then(function (blob) {
+      var name = T.baseName(imgs[0].name) + '_まとめ.pdf';
+      // 元の画像は一覧から外し、代わりにPDFを1つ入れる
+      chosen = chosen.filter(function (f) { return !T.isImage(f); });
+      chosen.unshift(T.toFile(blob, name));
+      renderList();
+      setToolMsg(imgs.length + '枚の画像を「' + name + '」にまとめました。', 'ok');
       toolsBusy(false);
     }).catch(function (e) {
       setToolMsg(e.message, 'err');

@@ -209,8 +209,8 @@ export default {
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
       if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
       if (path.startsWith('/ok/') && request.method === 'GET') return await checkPw(env, path.slice(4), url, origin);
-      if (path.startsWith('/dl/')) return await serveFile(env, path.slice(4), url, request, false);
-      if (path.startsWith('/pv/')) return await serveFile(env, path.slice(4), url, request, true);
+      if (path.startsWith('/dl/')) return await serveFile(env, path.slice(4), url, request, false, origin);
+      if (path.startsWith('/pv/')) return await serveFile(env, path.slice(4), url, request, true, origin);
       if (path === '/') return new Response('funasun-files', { status: 200, headers: corsHeaders(origin) });
     } catch (e) {
       return json({ message: (e && e.message) || 'サーバーでエラーが発生しました' }, 500, origin);
@@ -227,11 +227,22 @@ export default {
 /* ---------- アップロード ---------- */
 
 async function create(request, env, origin) {
-  if (!env.UPLOAD_CODE) return json({ message: 'アップロードの設定が未完了です（合言葉が未登録）' }, 500, origin);
   let b;
   try { b = await request.json(); } catch (e) { return json({ message: 'リクエストが不正です' }, 400, origin); }
+  if (!b) return json({ message: 'リクエストが不正です' }, 400, origin);
 
-  if (!b || b.code !== env.UPLOAD_CODE) return json({ message: 'アップロード用の合言葉が違います。' }, 403, origin);
+  /* 置き場所を作ってよい人かを確かめる。入り口は2つある。
+       ・合言葉（UPLOAD_CODE）… ファイルを送ってもらう人に教えるふつうの入り口
+       ・Googleログイン        … 持ち主だけ。/admin で、まとめ直したPDFを
+                                置き直すときに使う。こうしておけば管理画面に
+                                合言葉を埋め込まずに済み、合言葉を変えても壊れない。 */
+  if (b.idToken) {
+    const bad = await verifyOwner(b.idToken, origin);
+    if (bad) return bad;
+  } else {
+    if (!env.UPLOAD_CODE) return json({ message: 'アップロードの設定が未完了です（合言葉が未登録）' }, 500, origin);
+    if (b.code !== env.UPLOAD_CODE) return json({ message: 'アップロード用の合言葉が違います。' }, 403, origin);
+  }
 
   const size = Number(b.size) || 0;
   if (size <= 0) return json({ message: 'ファイルが空です。' }, 400, origin);
@@ -338,7 +349,7 @@ function pwGate(meta, url, id, asJson) {
     '<p class="muted">合言葉が正しくありません。<a href="/f/' + esc(id) + '">戻る</a></p>', 403);
 }
 
-async function serveFile(env, rawId, url, request, inline) {
+async function serveFile(env, rawId, url, request, inline, origin) {
   const fileId = safeId(rawId);
   const token = await getAccessToken(env);
   const file = await driveMeta(token, fileId);
@@ -416,6 +427,18 @@ async function serveFile(env, rawId, url, request, inline) {
   if (cr) headers.set('Content-Range', cr);
   const cl = res.headers.get('Content-Length') || (range ? '' : file.size);
   if (cl) headers.set('Content-Length', String(cl));
+
+  /* 自分のサイト（/tools/ や /admin/）からは、このファイルを JavaScript で
+     読めるようにする。「共有URLを貼るだけでPDFをまとめる」ためには、
+     ブラウザがファイルの中身を読めないと始まらない。
+     許すのは自分のドメインだけ。URLを知っている人は元々ダウンロードできるので、
+     これで新しく見える人が増えるわけではない。
+     元のファイル名を JavaScript 側から使えるように、その見出しも公開する。 */
+  if (ALLOW_ORIGINS.indexOf(origin) !== -1) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length');
+    headers.set('Vary', 'Origin');
+  }
 
   return new Response(res.body, { status: res.status === 206 ? 206 : 200, headers: headers });
 }
@@ -775,6 +798,15 @@ async function requireOwner(request, env, origin) {
   const idToken = body && body.idToken;
   if (!idToken) return { err: json({ message: 'ログインが必要です' }, 401, origin) };
 
+  const bad = await verifyOwner(idToken, origin);
+  if (bad) return { err: bad };
+  return { body: body };
+}
+
+/* IDトークンが本当に持ち主のものか、Google に聞いて確かめる。
+   自分で中身を読まずに聞きに行くので、偽物のトークンは必ず弾かれる。
+   合っていれば null、だめならそのまま返せるエラー応答を返す。 */
+async function verifyOwner(idToken, origin) {
   let email, verified;
   try {
     const r = await fetch(
@@ -783,18 +815,18 @@ async function requireOwner(request, env, origin) {
     );
     const j = await r.json();
     if (!r.ok || !j.users || !j.users[0]) {
-      return { err: json({ message: 'ログインの確認に失敗しました。ログインし直してください。' }, 401, origin) };
+      return json({ message: 'ログインの確認に失敗しました。ログインし直してください。' }, 401, origin);
     }
     email = j.users[0].email;
     verified = j.users[0].emailVerified;
   } catch (e) {
-    return { err: json({ message: 'ログイン確認でエラーが発生しました' }, 502, origin) };
+    return json({ message: 'ログイン確認でエラーが発生しました' }, 502, origin);
   }
 
   if (email !== OWNER_EMAIL || !verified) {
-    return { err: json({ message: 'このアカウントには権限がありません。' }, 403, origin) };
+    return json({ message: 'このアカウントには権限がありません。' }, 403, origin);
   }
-  return { body: body };
+  return null;
 }
 
 // 預かっている全ファイルを、渡すためのURL付きで返す
