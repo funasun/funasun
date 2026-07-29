@@ -42,6 +42,8 @@
   .updated { margin: 34px 0 0; font: 400 12px ui-monospace, Menlo, monospace; color: rgba(244,244,245,.78); }
   .foot { margin: 60px 0 0; font: 400 12px 'Noto Sans JP', sans-serif; }
   .foot a { color: rgba(244,244,245,.84); text-decoration: none; }
+  .foot a + a { margin-left: 18px; }
+  .foot a:hover { color: #f4f4f5; }
 </style>
 </head>
 <body>
@@ -63,7 +65,9 @@
     <p id="c-note" class="note"></p>
     <div id="c-links" class="links"></div>
     <p id="c-updated" class="updated"></p>
-    <p class="foot"><a href="/">← 船越温 公式サイトへ</a></p>
+    <!-- 編集は持ち主だけ（開くと Google ログインを求められる）。
+         Works に置くと来訪者には無用なので、使う人が来るこのページに置く。 -->
+    <p class="foot"><a href="/">← 船越温 公式サイトへ</a><a href="/share/edit.html">このページを編集する</a></p>
   </div>
 </div>
 
