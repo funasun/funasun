@@ -382,6 +382,10 @@
                     blob: blob,
                     width: canvas.width,
                     height: canvas.height,
+                    /* 紙そのものの大きさ(pt)。回転を入れたあとの、見えている向きでの値。
+                       ページ番号の見本が「何ptのところに置くか」を計算するのに要る。 */
+                    ptWidth: base.width,
+                    ptHeight: base.height,
                     url: URL.createObjectURL(blob)
                   };
                   acc.push(r);
@@ -472,15 +476,40 @@
        opts.quality… 中に入れるJPEGの画質 */
   var PAGE_SIZES = { a4: [595.28, 841.89], letter: [612, 792], b5: [498.9, 708.66] };
 
+  /* ---- 画像1枚を紙のどこに置くかを決める ----
+     joinLayout と同じ考えで、本番とプレビューが同じ答えを使うために外に出してある。
+     返す座標は PDF の単位(pt)。y は紙の下からの高さ（PDFの数え方）。 */
+  function pageLayout(imgW, imgH, opts) {
+    opts = opts || {};
+    var size = opts.size || 'fit';
+    var orient = opts.orient || 'auto';
+    var margin = Math.max(0, Number(opts.margin) || 0);
+    var pw, ph;
+    if (size === 'fit') {
+      pw = imgW + margin * 2;
+      ph = imgH + margin * 2;
+    } else {
+      var base = PAGE_SIZES[size] || PAGE_SIZES.a4;
+      var tall = orient === 'portrait' ? true
+        : orient === 'landscape' ? false
+        : imgH >= imgW;               // auto: 画像の形に合わせる
+      pw = tall ? base[0] : base[1];
+      ph = tall ? base[1] : base[0];
+    }
+    // 余白の内側に、縦横比を保ったまま目一杯入れて中央に置く
+    var boxW = Math.max(1, pw - margin * 2);
+    var boxH = Math.max(1, ph - margin * 2);
+    var k = Math.min(boxW / imgW, boxH / imgH);
+    var dw = imgW * k, dh = imgH * k;
+    return { pw: pw, ph: ph, x: (pw - dw) / 2, y: (ph - dh) / 2, w: dw, h: dh, margin: margin };
+  }
+
   function imagesToPdf(files, opts, onProgress) {
     opts = opts || {};
     if (!files || !files.length) return Promise.reject(new Error('画像を1つ以上選んでください。'));
     var bad = files.filter(function (f) { return !isImage(f); });
     if (bad.length) return Promise.reject(new Error('画像でないものが混ざっています：' + bad[0].name));
 
-    var size = opts.size || 'fit';
-    var orient = opts.orient || 'auto';
-    var margin = Math.max(0, Number(opts.margin) || 0);
     var quality = typeof opts.quality === 'number' ? opts.quality : 0.9;
 
     return loadPdfLib().then(function (PDFLib) {
@@ -490,30 +519,9 @@
             if (onProgress) onProgress(i, files.length, f.name);
             return toJpegBytes(f, quality).then(function (r) {
               return out.embedJpg(r.bytes).then(function (img) {
-                var pw, ph;
-                if (size === 'fit') {
-                  pw = r.width + margin * 2;
-                  ph = r.height + margin * 2;
-                } else {
-                  var base = PAGE_SIZES[size] || PAGE_SIZES.a4;
-                  var tall = orient === 'portrait' ? true
-                    : orient === 'landscape' ? false
-                    : r.height >= r.width;          // auto: 画像の形に合わせる
-                  pw = tall ? base[0] : base[1];
-                  ph = tall ? base[1] : base[0];
-                }
-                var page = out.addPage([pw, ph]);
-                // 余白の内側に、縦横比を保ったまま目一杯入れて中央に置く
-                var boxW = Math.max(1, pw - margin * 2);
-                var boxH = Math.max(1, ph - margin * 2);
-                var k = Math.min(boxW / r.width, boxH / r.height);
-                var dw = r.width * k, dh = r.height * k;
-                page.drawImage(img, {
-                  x: (pw - dw) / 2,
-                  y: (ph - dh) / 2,
-                  width: dw,
-                  height: dh
-                });
+                var L = pageLayout(r.width, r.height, opts);
+                var page = out.addPage([L.pw, L.ph]);
+                page.drawImage(img, { x: L.x, y: L.y, width: L.w, height: L.h });
               });
             });
           });
@@ -563,15 +571,62 @@
        opts.gap   … すき間(px)
        opts.bg    … 背景色（'#ffffff' など。'transparent' で透明）
        opts.format… 'image/png' / 'image/jpeg' / 'image/webp' */
+  /* ---- つないだときの配置を決める ----
+     ここ1か所だけで計算して、本番の joinImages と、画面のプレビューの
+     両方が同じ答えを使う。別々に計算すると、見えている絵と出来上がりが
+     少しずつずれていき、あとで原因が分からなくなる。
+     sizes は [{width, height}, ...]（画像そのものは要らない）。 */
+  var MAX_CANVAS_PIXELS = 268435456;   // これを超えるとブラウザが描けない
+
+  function joinLayout(sizes, opts) {
+    opts = opts || {};
+    var dir = opts.dir === 'h' ? 'h' : 'v';
+    var align = opts.align || 'fit';
+    var gap = Math.max(0, Number(opts.gap) || 0);
+
+    // 'fit' は、縦につなぐなら幅を、横に並べるなら高さを、いちばん大きいものにそろえる
+    var target = 0;
+    sizes.forEach(function (s) {
+      target = Math.max(target, dir === 'v' ? s.width : s.height);
+    });
+    var boxes = sizes.map(function (s) {
+      if (align !== 'fit') return { w: s.width, h: s.height };
+      var k = dir === 'v' ? target / s.width : target / s.height;
+      return { w: Math.round(s.width * k), h: Math.round(s.height * k) };
+    });
+
+    var total = 0, cross = 0;
+    boxes.forEach(function (bx) {
+      total += (dir === 'v' ? bx.h : bx.w);
+      cross = Math.max(cross, dir === 'v' ? bx.w : bx.h);
+    });
+    if (boxes.length) total += gap * (boxes.length - 1);
+
+    var pos = 0;
+    var placed = boxes.map(function (bx) {
+      var off = align === 'center' ? Math.round((cross - (dir === 'v' ? bx.w : bx.h)) / 2)
+        : align === 'end' ? (cross - (dir === 'v' ? bx.w : bx.h))
+        : 0;
+      var r = dir === 'v' ? { x: off, y: pos, w: bx.w, h: bx.h }
+        : { x: pos, y: off, w: bx.w, h: bx.h };
+      pos += (dir === 'v' ? bx.h : bx.w) + gap;
+      return r;
+    });
+
+    var W = dir === 'v' ? cross : total;
+    var H = dir === 'v' ? total : cross;
+    return {
+      boxes: placed, width: W, height: H, dir: dir,
+      tooBig: W * H > MAX_CANVAS_PIXELS
+    };
+  }
+
   function joinImages(files, opts, onProgress) {
     opts = opts || {};
     if (!files || files.length < 2) return Promise.reject(new Error('つなげるには、画像を2つ以上選んでください。'));
     var bad = files.filter(function (f) { return !isImage(f); });
     if (bad.length) return Promise.reject(new Error('画像でないものが混ざっています：' + bad[0].name));
 
-    var dir = opts.dir === 'h' ? 'h' : 'v';
-    var align = opts.align || 'fit';
-    var gap = Math.max(0, Number(opts.gap) || 0);
     var bg = opts.bg || '#ffffff';
     var format = opts.format || 'image/png';
     var quality = typeof opts.quality === 'number' ? opts.quality : 0.9;
@@ -584,29 +639,10 @@
         }).then(function (b) { acc.push(b); return acc; });
       });
     }, Promise.resolve([])).then(function (bitmaps) {
-      // 'fit' は、縦につなぐなら幅を、横に並べるなら高さを、いちばん大きいものにそろえる
-      var target = 0;
-      bitmaps.forEach(function (b) {
-        target = Math.max(target, dir === 'v' ? b.width : b.height);
-      });
-
-      var boxes = bitmaps.map(function (b) {
-        if (align !== 'fit') return { w: b.width, h: b.height };
-        var k = dir === 'v' ? target / b.width : target / b.height;
-        return { w: Math.round(b.width * k), h: Math.round(b.height * k) };
-      });
-
-      var total = 0, cross = 0;
-      boxes.forEach(function (bx) {
-        total += (dir === 'v' ? bx.h : bx.w);
-        cross = Math.max(cross, dir === 'v' ? bx.w : bx.h);
-      });
-      total += gap * (boxes.length - 1);
-
-      var W = dir === 'v' ? cross : total;
-      var H = dir === 'v' ? total : cross;
+      var lay = joinLayout(bitmaps, opts);
+      var W = lay.width, H = lay.height;
       // ブラウザが扱える大きさには限りがある。超えるなら、はっきり伝えて止める。
-      if (W * H > 268435456) {
+      if (lay.tooBig) {
         throw new Error('つないだ画像が大きすぎます（' + W + '×' + H + 'px）。枚数を減らすか、先に「画像を軽くする」で小さくしてからお試しください。');
       }
 
@@ -615,15 +651,9 @@
       var cx = canvas.getContext('2d');
       if (bg !== 'transparent') { cx.fillStyle = bg; cx.fillRect(0, 0, W, H); }
 
-      var pos = 0;
       bitmaps.forEach(function (b, i) {
-        var bx = boxes[i];
-        var off = align === 'center' ? Math.round((cross - (dir === 'v' ? bx.w : bx.h)) / 2)
-          : align === 'end' ? (cross - (dir === 'v' ? bx.w : bx.h))
-          : 0;
-        if (dir === 'v') cx.drawImage(b, off, pos, bx.w, bx.h);
-        else cx.drawImage(b, pos, off, bx.w, bx.h);
-        pos += (dir === 'v' ? bx.h : bx.w) + gap;
+        var bx = lay.boxes[i];
+        cx.drawImage(b, bx.x, bx.y, bx.w, bx.h);
         if (b.close) b.close();
       });
 
@@ -651,15 +681,44 @@
        opts.from   … 何ページ目から入れるか（1始まり）
        opts.style  … '1' / '1 / 10' / '- 1 -'
        opts.size   … 文字の大きさ(pt) */
-  function addPageNumbers(file, opts) {
+  /* ---- 番号の「文字」と「置き場所」を決める ----
+     ここも本番とプレビューで共有する。プレビューだけ別に計算すると、
+     置き場所や書き方がずれて、確認の意味がなくなる。 */
+  function numberOpts(opts) {
     opts = opts || {};
-    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
-    var pos = opts.pos || 'bc';
     var start = Number(opts.start); if (!isFinite(start)) start = 1;
-    var from = Math.max(1, Number(opts.from) || 1);
-    var style = opts.style || '1';
-    var size = Math.max(6, Math.min(48, Number(opts.size) || 11));
-    var margin = Math.max(0, Number(opts.margin) || 24);
+    return {
+      pos: opts.pos || 'bc',
+      start: start,
+      from: Math.max(1, Number(opts.from) || 1),
+      style: opts.style || '1',
+      size: Math.max(6, Math.min(48, Number(opts.size) || 11)),
+      margin: Math.max(0, Number(opts.margin) || 24)
+    };
+  }
+  // i は0始まりのページ番号、count はPDFの総ページ数
+  function numberTextFor(i, count, o) {
+    if (i + 1 < o.from) return null;              // ここより前には付けない
+    var total = count - (o.from - 1);
+    var n = o.start + (i - (o.from - 1));
+    return o.style === '1 / 10' ? (n + ' / ' + (o.start + total - 1))
+      : o.style === '- 1 -' ? ('- ' + n + ' -')
+      : String(n);
+  }
+  /* 見えている紙（回転を考えたあと）の中での置き場所。
+     vw,vh は見えている紙の幅と高さ、tw は文字の横幅。
+     y は下からの高さ（PDFの数え方）。 */
+  function numberSpot(vw, vh, tw, o) {
+    var side = o.pos.charAt(1);
+    return {
+      x: side === 'l' ? o.margin : side === 'r' ? (vw - o.margin - tw) : (vw - tw) / 2,
+      y: o.pos.charAt(0) === 't' ? (vh - o.margin - o.size) : o.margin
+    };
+  }
+
+  function addPageNumbers(file, opts) {
+    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
+    var o = numberOpts(opts);
 
     return loadPdfLib().then(function (PDFLib) {
       return readBuffer(file)
@@ -667,13 +726,9 @@
         .then(function (doc) {
           return doc.embedFont(PDFLib.StandardFonts.Helvetica).then(function (font) {
             var pages = doc.getPages();
-            var total = pages.length - (from - 1);
             pages.forEach(function (page, i) {
-              if (i + 1 < from) return;
-              var n = start + (i - (from - 1));
-              var text = style === '1 / 10' ? (n + ' / ' + (start + total - 1))
-                : style === '- 1 -' ? ('- ' + n + ' -')
-                : String(n);
+              var text = numberTextFor(i, pages.length, o);
+              if (text === null) return;
 
               // ページの向きを見て、見える通りの「下」「右」に置く
               var r = 0;
@@ -682,15 +737,13 @@
               var vw = (r === 90 || r === 270) ? ph : pw;   // 見えている幅
               var vh = (r === 90 || r === 270) ? pw : ph;   // 見えている高さ
 
-              var tw = font.widthOfTextAtSize(text, size);
-              var side = pos.charAt(1);
-              var vx = side === 'l' ? margin : side === 'r' ? (vw - margin - tw) : (vw - tw) / 2;
-              var vy = pos.charAt(0) === 't' ? (vh - margin - size) : margin;
+              var tw = font.widthOfTextAtSize(text, o.size);
+              var spot = numberSpot(vw, vh, tw, o);
 
               // 見えている位置を、回転前の紙の座標に戻す
-              var p = unrotate(vx, vy, r, pw, ph);
+              var p = unrotate(spot.x, spot.y, r, pw, ph);
               page.drawText(text, {
-                x: p.x, y: p.y, size: size, font: font,
+                x: p.x, y: p.y, size: o.size, font: font,
                 rotate: PDFLib.degrees(r),
                 color: PDFLib.rgb(0.25, 0.25, 0.28)
               });
@@ -863,6 +916,14 @@
     pdfToImages: pdfToImages,
     imagesToPdf: imagesToPdf,
     joinImages: joinImages,
+    // 配置の計算だけを取り出したもの。画面のプレビューがこれを使うので、
+    // 見えている絵と出来上がりが必ず一致する。
+    joinLayout: joinLayout,
+    pageLayout: pageLayout,
+    numberOpts: numberOpts,
+    numberTextFor: numberTextFor,
+    numberSpot: numberSpot,
+    createBitmap: createBitmap,
     renderPages: renderPages,
     pdfPageCount: pdfPageCount,
     parsePages: parsePages,

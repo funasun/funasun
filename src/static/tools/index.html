@@ -102,6 +102,27 @@
   .card .bar button:disabled { opacity: .25; cursor: default; }
   .card .bar button.del:hover { border-color: #ff9d9d; color: #ffb3b3; }
 
+  /* ---- できあがりの見本（キャンバス） ----
+     ボタンを押す前に、出来上がるものそのものを見せる場所。
+     置き場所や大きさの計算は tools.js の joinLayout / pageLayout / numberSpot を
+     そのまま呼んでいるので、ここに見えている絵と保存されるものは必ず一致する。
+     見本のためだけの計算をこの画面に書いてはいけない（少しずつずれていくため）。 */
+  .stage { margin-top: 20px; border: 1px solid var(--line); border-radius: 14px; background: #08080c; overflow: hidden; }
+  .stage[hidden] { display: none; }
+  .stage .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .stage .top b { font: 500 11.5px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.9); }
+  .stage .dim { margin-left: auto; font: 400 11px ui-monospace, Menlo, monospace; color: var(--accent-text); }
+  .stage .view { position: relative; padding: 0; }
+  /* touch-action は none にしない。見本が画面の半分を占めるので、
+     指で触れたときに縦スクロールまで止めると、ページから出られなくなる。 */
+  .stage canvas { display: block; width: 100%; touch-action: pan-y; }
+  .stage canvas.grab { cursor: grab; }
+  .stage canvas.grabbing { cursor: grabbing; }
+  .stage .tip { margin: 0; padding: 9px 14px 11px; border-top: 1px solid rgba(255,255,255,.07);
+    font: 300 11px/1.65 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.58); }
+  .stage .tip:empty { display: none; }
+
   /* URLから取り込む欄（たたんでおく） */
   details.urlbox { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: #08080c; }
   details.urlbox > summary { padding: 10px 14px; cursor: pointer; font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.8); }
@@ -318,6 +339,13 @@
       </div>
     </div>
 
+    <!-- 本物のページを描いて、その上に番号を置いてみせる -->
+    <div class="stage" id="num-stage" hidden>
+      <div class="top"><b>番号の見本</b><span class="dim" id="num-dim"></span></div>
+      <div class="view"><canvas id="num-canvas"></canvas></div>
+      <p class="tip" id="num-tip"></p>
+    </div>
+
     <div class="row">
       <button class="go" id="num-go" type="button" disabled>番号をつける</button>
       <button class="ghost" id="num-clear" type="button">選び直す</button>
@@ -359,6 +387,13 @@
     <div id="topic-pages-wrap">
       <label>ページ <span class="hint">1-3,5 ／ 空なら全部</span></label>
       <input id="topic-pages" type="text" placeholder="空なら全ページ">
+    </div>
+
+    <!-- どのページが、何pxの画像になるかの見本 -->
+    <div class="stage" id="topic-stage" hidden>
+      <div class="top"><b>できあがりの見本</b><span class="dim" id="topic-dim"></span></div>
+      <div class="view"><canvas id="topic-canvas"></canvas></div>
+      <p class="tip" id="topic-tip"></p>
     </div>
 
     <div class="row">
@@ -403,6 +438,13 @@
         <label>余白 <span class="hint">pt</span></label>
         <input id="i2p-margin" type="number" min="0" max="200" value="0">
       </div>
+    </div>
+
+    <!-- 紙のどこに画像が乗るかの見本。余白の点線はつかんで動かせる -->
+    <div class="stage" id="i2p-stage" hidden>
+      <div class="top"><b>紙の上の見本</b><span class="dim" id="i2p-dim"></span></div>
+      <div class="view"><canvas id="i2p-canvas"></canvas></div>
+      <p class="tip" id="i2p-tip"></p>
     </div>
 
     <div class="row">
@@ -463,6 +505,13 @@
       </div>
     </div>
 
+    <!-- 出来上がりの見本。絵の上で直接つかんで並べ替えられる -->
+    <div class="stage" id="join-stage" hidden>
+      <div class="top"><b>できあがりの見本</b><span class="dim" id="join-dim"></span></div>
+      <div class="view"><canvas id="join-canvas"></canvas></div>
+      <p class="tip" id="join-tip"></p>
+    </div>
+
     <div class="row">
       <button class="go" id="join-go" type="button" disabled>つなげる</button>
       <button class="ghost" id="join-clear" type="button">全部外す</button>
@@ -498,6 +547,13 @@
         <label>画質 <span class="hint" id="webp-q-val">82</span></label>
         <input id="webp-q" type="range" min="40" max="100" value="82">
       </div>
+    </div>
+
+    <!-- 元とwebpを並べて見くらべる。真ん中の線を動かすと境目が動く -->
+    <div class="stage" id="webp-stage" hidden>
+      <div class="top"><b>前とあとの見くらべ</b><span class="dim" id="webp-dim"></span></div>
+      <div class="view"><canvas id="webp-canvas"></canvas></div>
+      <p class="tip" id="webp-tip"></p>
     </div>
 
     <div class="row">
@@ -727,6 +783,112 @@
 
   function hideOutput(outId) { $(outId).style.display = 'none'; }
 
+  /* ================= できあがりの見本（キャンバス） =================
+     道具ごとに描く中身は違うが、面倒なところは同じなので1か所にまとめる。
+       ・画面の細かさ（devicePixelRatio）に合わせて実際の点の数をそろえる。
+         そろえないと線や文字がぼやけて、見本の役に立たない。
+       ・続けて呼ばれても、実際に描くのは次の1コマで1回だけにする。
+       ・幅が変わったら描き直す。
+     spec.height(W) は「その幅なら高さが何px要るか」を返す。
+     spec.paint(cx, W, H) が中身を描く。W と H は見た目の px。 */
+  var stages = [];
+  function makeStage(prefix, spec) {
+    var el = $(prefix + '-stage');
+    var cv = $(prefix + '-canvas');
+    var cx = cv.getContext('2d');
+    var queued = false;
+
+    function paint() {
+      queued = false;
+      if (el.hidden) return;
+      var W = Math.max(120, Math.round(cv.parentNode.clientWidth));
+      var H = Math.max(48, Math.round(spec.height(W) || 48));
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var pw = Math.round(W * dpr), ph = Math.round(H * dpr);
+      if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+      cv.style.height = H + 'px';
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx.clearRect(0, 0, W, H);
+      spec.paint(cx, W, H);
+    }
+
+    var api = {
+      el: el, canvas: cv,
+      render: function () { if (!queued) { queued = true; requestAnimationFrame(paint); } },
+      show: function (on) { el.hidden = !on; if (on) api.render(); },
+      // 指やマウスの位置を、見本の中の座標に直す
+      at: function (e) {
+        var r = cv.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      },
+      width: function () { return Math.max(120, Math.round(cv.parentNode.clientWidth)); }
+    };
+    stages.push(api);
+    return api;
+  }
+  window.addEventListener('resize', function () {
+    stages.forEach(function (s) { if (!s.el.hidden) s.render(); });
+  });
+
+  /* 見本用の小さい画像。
+     描き直すたびに元の大きな画像を扱うと重いので、長辺900pxまでに縮めて覚えておく。
+     ただし置き場所の計算には必ず「元の大きさ」を使う。縮めた大きさで計算すると、
+     画面に出る「出来上がりの大きさ」が嘘になってしまう。 */
+  var bmCache = {};
+  function previewBitmap(f) {
+    var k = fileKey(f);
+    if (bmCache[k]) return bmCache[k];
+    bmCache[k] = T.createBitmap(f).then(function (bm) {
+      var w = bm.width, h = bm.height;
+      var s = Math.min(1, 900 / Math.max(w, h));
+      if (s === 1 || !window.createImageBitmap) return { bm: bm, width: w, height: h, file: f };
+      return createImageBitmap(bm, {
+        resizeWidth: Math.max(1, Math.round(w * s)),
+        resizeHeight: Math.max(1, Math.round(h * s)), resizeQuality: 'medium'
+      }).then(function (small) {
+        if (bm.close) bm.close();
+        return { bm: small, width: w, height: h, file: f };
+      }).catch(function () { return { bm: bm, width: w, height: h, file: f }; });
+    }).catch(function () { return null; });
+    return bmCache[k];
+  }
+
+  /* 透明なところは市松模様で見せる（画像を扱うソフトと同じ見せ方） */
+  var checkerTile = null;
+  function checkerFill(cx) {
+    if (!checkerTile) {
+      var c = document.createElement('canvas');
+      c.width = c.height = 16;
+      var g = c.getContext('2d');
+      g.fillStyle = '#d5d5dc'; g.fillRect(0, 0, 16, 16);
+      g.fillStyle = '#f1f1f4'; g.fillRect(0, 0, 8, 8); g.fillRect(8, 8, 8, 8);
+      checkerTile = c;
+    }
+    return cx.createPattern(checkerTile, 'repeat');
+  }
+
+  // 見本がまだ描けないときの一言
+  function stageNote(cx, W, H, text) {
+    cx.save();
+    cx.fillStyle = 'rgba(244,244,245,.55)';
+    cx.font = '12px "Noto Sans JP", sans-serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(text, W / 2, H / 2);
+    cx.restore();
+  }
+
+  // 何番目かの丸い札。並べ替えているとき、どれがどれか分かるように
+  function stageBadge(cx, x, y, n) {
+    cx.save();
+    cx.beginPath(); cx.arc(x, y, 9.5, 0, Math.PI * 2);
+    cx.fillStyle = '#6f8cff'; cx.fill();
+    cx.fillStyle = '#060608';
+    cx.font = '500 11px "Noto Sans JP", sans-serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(String(n), x, y + .5);
+    cx.restore();
+  }
+
   function iconBtn(label, title, disabled, fn, cls) {
     var b = document.createElement('button');
     b.type = 'button'; b.textContent = label; b.title = title; b.disabled = !!disabled;
@@ -806,6 +968,8 @@
       setDropSlim(prefix, !!state.file);
       $(prefix + '-go').disabled = !state.file;
       hideOutput(prefix + '-out');
+      // 選んだとき・外したときの両方で呼ばれる（見本を出したり消したりするのに使う）
+      if (state.onChange) state.onChange(state.file);
     }
     $(prefix + '-clear').addEventListener('click', function () {
       state.file = null; draw(); setMsg(prefix + '-msg', ''); setCount(prefix + '-count', '');
@@ -1046,12 +1210,7 @@
   });
 
   /* ============ ページ番号 ============ */
-  var num = singlePicker('num', function (pdf) {
-    setCount('num-count', '');
-    T.pdfPageCount(pdf).then(function (n) {
-      setCount('num-count', '全' + n + 'ページ');
-    }).catch(function (e) { setMsg('num-msg', e.message, 'err'); });
-  });
+  /* 選ぶところと見本は、この下の「番号の見本」のところでまとめて作っている */
 
   $('num-go').addEventListener('click', function () {
     $('num-go').disabled = true;
@@ -1073,11 +1232,195 @@
     });
   });
 
+  /* ---- 番号の見本 ----
+     本物のページを pdf.js で描いて、その上に番号を置いてみせる。
+     文字と置き場所は tools.js の numberTextFor / numberSpot が決めるので、
+     番号をつけるボタンを押したときと同じ場所に、同じ書き方で出る。
+     （文字の幅だけは画面の Helvetica で測っているので、ごくわずかに違うことがある） */
+  var numCount = 0;                 // PDFの総ページ数
+  var numShots = {};                // 描いたページを覚えておく（何度も描かない）
+  var numToken = 0;
+  var numHits = [];                 // 番号をつかめる場所（描くたびに作り直す）
+
+  function numOptsNow() {
+    return T.numberOpts({
+      pos: $('num-pos').value, style: $('num-style').value,
+      from: Number($('num-from').value), start: Number($('num-start').value),
+      size: Number($('num-size').value), margin: Number($('num-margin').value)
+    });
+  }
+  // 見本に出すページ（番号が始まるページと、いちばん最後のページ）
+  function numWanted() {
+    if (!numCount) return [];
+    var o = numOptsNow();
+    var a = Math.max(0, Math.min(numCount - 1, o.from - 1));
+    var b = numCount - 1;
+    return a === b ? [a] : [a, b];
+  }
+  function numShot(i) {
+    if (!num.file) return null;
+    var k = fileKey(num.file) + '#' + i;
+    if (numShots[k]) return numShots[k].bm ? numShots[k] : null;
+    numShots[k] = { bm: null };
+    var my = numToken;
+    T.renderPages(num.file, { pages: [i], maxEdge: 900 }).then(function (list) {
+      var r = list[0];
+      if (!r) return;
+      return T.createBitmap(r.blob).then(function (bm) {
+        if (my !== numToken) return;
+        numShots[k] = { bm: bm, ptW: r.ptWidth, ptH: r.ptHeight };
+        numRefresh();
+      });
+    }).catch(function () {});
+    return null;
+  }
+
+  function numPlan(W) {
+    var want = numWanted();
+    if (!want.length) return null;
+    var pad = 14, gap = 14, maxH = 300;
+    var shots = want.map(numShot);
+    var ready = shots.filter(Boolean);
+    if (!ready.length) return null;
+    var mw = 0, mh = 0;
+    ready.forEach(function (r) { mw = Math.max(mw, r.ptW); mh = Math.max(mh, r.ptH); });
+    var cols = ready.length;
+    var cell = (W - pad * 2 - gap * (cols - 1)) / cols;
+    var s = Math.min(cell / mw, maxH / mh);
+    return { pad: pad, gap: gap, cell: cell, s: s, shots: ready, want: want, rowH: mh * s };
+  }
+
+  var numStage = makeStage('num', {
+    height: function (W) { var p = numPlan(W); return p ? p.pad * 2 + p.rowH + 16 : 72; },
+    paint: function (cx, W, H) {
+      numHits = [];
+      var p = numPlan(W);
+      if (!p) { stageNote(cx, W, H, num.file ? 'ページを描いています…' : ''); return; }
+      var o = numOptsNow();
+      p.shots.forEach(function (r, k) {
+        var pW = r.ptW * p.s, pH = r.ptH * p.s;
+        var px = p.pad + k * (p.cell + p.gap) + (p.cell - pW) / 2;
+        var py = p.pad + (p.rowH - pH) / 2;
+        cx.save();
+        cx.fillStyle = '#fff';
+        cx.shadowColor = 'rgba(0,0,0,.5)'; cx.shadowBlur = 8; cx.shadowOffsetY = 2;
+        cx.fillRect(px, py, pW, pH);
+        cx.restore();
+        cx.drawImage(r.bm, px, py, pW, pH);
+
+        var idx = p.want[k];
+        var text = T.numberTextFor(idx, numCount, o);
+        if (text !== null) {
+          cx.save();
+          cx.font = (o.size * p.s) + 'px Helvetica, Arial, sans-serif';
+          var twPt = cx.measureText(text).width / p.s;      // ptに直して置き場所を決める
+          var spot = T.numberSpot(r.ptW, r.ptH, twPt, o);
+          // PDFは下からの高さで数える。文字の下端（ベースライン）がその高さに来る
+          var tx = px + spot.x * p.s;
+          var ty = py + (r.ptH - spot.y) * p.s;
+          cx.fillStyle = 'rgb(64,64,71)';
+          cx.textBaseline = 'alphabetic';
+          cx.fillText(text, tx, ty);
+          cx.restore();
+          var box = { x: tx - 6, y: ty - o.size * p.s - 4, w: twPt * p.s + 12, h: o.size * p.s + 10,
+            page: { px: px, py: py, pW: pW, pH: pH, s: p.s } };
+          numHits.push(box);
+          cx.save();
+          cx.strokeStyle = 'rgba(111,140,255,.6)'; cx.setLineDash([3, 3]);
+          cx.strokeRect(box.x, box.y, box.w, box.h);
+          cx.restore();
+        }
+        // 何ページ目を見せているか
+        cx.save();
+        cx.fillStyle = 'rgba(244,244,245,.55)';
+        cx.font = '10.5px "Noto Sans JP", sans-serif';
+        cx.textAlign = 'center';
+        cx.fillText((idx + 1) + 'ページ目' + (text === null ? '（番号なし）' : ''), px + pW / 2, py + pH + 12);
+        cx.restore();
+      });
+    }
+  });
+
+  function numRefresh() {
+    numStage.show(!!num.file);
+    numStage.render();
+    var o = numOptsNow();
+    var dim = $('num-dim'), tip = $('num-tip');
+    if (!num.file || !numCount) { dim.textContent = ''; tip.textContent = ''; return; }
+    var tsuku = numCount - (o.from - 1);       // 番号がつくページ数
+    dim.textContent = Math.max(0, tsuku) + 'ページに番号 ／ 端から ' + o.margin + 'pt';
+    tip.textContent = '番号をつかんで動かすと、置く場所と端からの余白が変わります。';
+  }
+
+  var num = singlePicker('num', function (pdf) {
+    setCount('num-count', '');
+    T.pdfPageCount(pdf).then(function (n) {
+      numCount = n;
+      setCount('num-count', '全' + n + 'ページ');
+      numRefresh();
+    }).catch(function (e) { setMsg('num-msg', e.message, 'err'); });
+  });
+  num.onChange = function (f) {
+    numToken++;
+    numShots = {};
+    if (!f) { numCount = 0; }
+    numRefresh();
+  };
+  ['num-pos', 'num-style', 'num-from', 'num-start', 'num-size', 'num-margin'].forEach(function (id) {
+    $(id).addEventListener('input', numRefresh);
+    $(id).addEventListener('change', numRefresh);
+  });
+
+  /* 番号をつかんで動かす。近い角に寄せて、端からの距離を余白として読む。 */
+  (function () {
+    var cv = numStage.canvas;
+    var drag = null;
+    function grabbed(pt) {
+      for (var i = 0; i < numHits.length; i++) {
+        var b = numHits[i];
+        if (pt.x >= b.x - 6 && pt.x <= b.x + b.w + 6 && pt.y >= b.y - 6 && pt.y <= b.y + b.h + 6) return b;
+      }
+      return null;
+    }
+    function apply(pt, b) {
+      var g = b.page;
+      if (!g) return;
+      var rx = (pt.x - g.px) / g.pW;                   // 紙の中の位置（0〜1）
+      var ry = (pt.y - g.py) / g.pH;
+      var side = rx < 1 / 3 ? 'l' : rx > 2 / 3 ? 'r' : 'c';
+      var updown = ry < .5 ? 't' : 'b';
+      $('num-pos').value = updown + side;
+      // 端からの距離をptに直す。上寄せなら上から、下寄せなら下から
+      var dPx = updown === 't' ? (pt.y - g.py) : (g.py + g.pH - pt.y);
+      $('num-margin').value = String(Math.max(0, Math.min(200, Math.round(dPx / g.s))));
+      numRefresh();
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') return;   // 指のときはページのスクロールを邪魔しない
+      var b = grabbed(numStage.at(e));
+      if (!b) return;
+      drag = b;
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      cv.classList.add('grabbing');
+      e.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (drag) { apply(numStage.at(e), drag); return; }
+      if (e.pointerType !== 'mouse') return;
+      cv.classList.toggle('grab', !!grabbed(numStage.at(e)));
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      cv.addEventListener(ev, function () { drag = null; cv.classList.remove('grabbing'); });
+    });
+  })();
+
   /* ============ PDFを画像にする ============ */
   var topic = singlePicker('topic', function (pdf) {
     setCount('topic-count', '');
     T.pdfPageCount(pdf).then(function (n) {
+      topicCount = n;
       setCount('topic-count', '全' + n + 'ページ');
+      topicRefresh();
     }).catch(function (e) { setMsg('topic-msg', e.message, 'err'); });
   });
 
@@ -1109,6 +1452,116 @@
     });
   });
 
+  /* ---- PDF→画像の見本 ----
+     どのページが選ばれていて、1枚が何pxになるかを、押す前に見せる。
+     「細かさ」という言葉だけでは何pxになるか分からないため。 */
+  var topicCount = 0, topicShots = {}, topicToken = 0;
+  var TOPIC_MAX = 6;
+
+  function topicWanted() {
+    if (!topicCount) return { list: [], err: '' };
+    var spec = $('topic-pages').value.trim();
+    if (!spec) { var a = []; for (var i = 0; i < topicCount; i++) a.push(i); return { list: a, err: '' }; }
+    try { return { list: T.parsePages(spec, topicCount), err: '' }; }
+    catch (e) { return { list: [], err: e.message }; }
+  }
+  function topicShot(i) {
+    if (!topic.file) return null;
+    var k = fileKey(topic.file) + '#' + i;
+    if (topicShots[k]) return topicShots[k].bm ? topicShots[k] : null;
+    topicShots[k] = { bm: null };
+    var my = topicToken;
+    T.renderPages(topic.file, { pages: [i], maxEdge: 320 }).then(function (list) {
+      var r = list[0];
+      if (!r) return;
+      return T.createBitmap(r.blob).then(function (bm) {
+        if (my !== topicToken) return;
+        topicShots[k] = { bm: bm, ptW: r.ptWidth, ptH: r.ptHeight, page: i + 1 };
+        // 描き直すだけでなく上の数字も出し直す。紙の大きさが分かるのはここが初めてなので
+        topicRefresh();
+      });
+    }).catch(function () {});
+    return null;
+  }
+  function topicPlan(W) {
+    var want = topicWanted();
+    if (!want.list.length) return null;
+    var show = want.list.slice(0, TOPIC_MAX);
+    var shots = show.map(topicShot).filter(Boolean);
+    if (!shots.length) return null;
+    var pad = 14, gap = 10, maxH = 190;
+    var mw = 0, mh = 0;
+    shots.forEach(function (r) { mw = Math.max(mw, r.ptW); mh = Math.max(mh, r.ptH); });
+    var cols = shots.length;
+    var cell = (W - pad * 2 - gap * (cols - 1)) / cols;
+    var s = Math.min(cell / mw, maxH / mh);
+    return { pad: pad, gap: gap, cell: cell, s: s, shots: shots, rowH: mh * s, total: want.list.length };
+  }
+
+  var topicStage = makeStage('topic', {
+    height: function (W) { var p = topicPlan(W); return p ? p.pad * 2 + p.rowH + 16 : 72; },
+    paint: function (cx, W, H) {
+      var p = topicPlan(W);
+      if (!p) {
+        stageNote(cx, W, H, topicWanted().err || (topic.file ? 'ページを描いています…' : ''));
+        return;
+      }
+      p.shots.forEach(function (r, k) {
+        var pW = r.ptW * p.s, pH = r.ptH * p.s;
+        var px = p.pad + k * (p.cell + p.gap) + (p.cell - pW) / 2;
+        var py = p.pad + (p.rowH - pH) / 2;
+        cx.save();
+        cx.fillStyle = '#fff';
+        cx.shadowColor = 'rgba(0,0,0,.5)'; cx.shadowBlur = 8; cx.shadowOffsetY = 2;
+        cx.fillRect(px, py, pW, pH);
+        cx.restore();
+        cx.drawImage(r.bm, px, py, pW, pH);
+        cx.save();
+        cx.fillStyle = 'rgba(244,244,245,.55)';
+        cx.font = '10.5px "Noto Sans JP", sans-serif';
+        cx.textAlign = 'center';
+        cx.fillText(r.page + 'ページ目', px + pW / 2, py + pH + 12);
+        cx.restore();
+      });
+      if (p.total > TOPIC_MAX) {
+        cx.save();
+        cx.fillStyle = 'rgba(244,244,245,.5)';
+        cx.font = '10.5px "Noto Sans JP", sans-serif';
+        cx.textAlign = 'right';
+        cx.fillText('ほか ' + (p.total - TOPIC_MAX) + ' 枚', W - 10, H - 6);
+        cx.restore();
+      }
+    }
+  });
+
+  function topicRefresh() {
+    topicStage.show(!!topic.file);
+    topicStage.render();
+    var dim = $('topic-dim'), tip = $('topic-tip');
+    if (!topic.file || !topicCount) { dim.textContent = ''; tip.textContent = ''; return; }
+    var want = topicWanted();
+    var p = topicPlan(topicStage.width());
+    var dpi = Number($('topic-dpi').value);
+    var per = '';
+    if (p && p.shots[0]) {
+      // pt は 1/72 インチ。細かさ(dpi)を掛けると、出来上がりの点の数になる
+      per = Math.round(p.shots[0].ptW * dpi / 72) + '×' + Math.round(p.shots[0].ptH * dpi / 72) + 'px ／ ';
+    }
+    dim.textContent = per + want.list.length + '枚 ／ ' + $('topic-format').value;
+    tip.textContent = want.err ? '※ ' + want.err : '';
+    $('topic-go').disabled = !want.list.length;
+  }
+
+  ['topic-format', 'topic-dpi', 'topic-pages'].forEach(function (id) {
+    $(id).addEventListener('input', topicRefresh);
+    $(id).addEventListener('change', topicRefresh);
+  });
+  topic.onChange = function (f) {
+    topicToken++; topicShots = {};
+    if (!f) topicCount = 0;
+    topicRefresh();
+  };
+
   /* ============ 画像をPDFにする ============ */
   var i2pFiles = [];
   wireDrop('i2p-drop', 'i2p-file', function (list) {
@@ -1133,6 +1586,7 @@
     setCount('i2p-count', i2pFiles.length ? i2pFiles.length + '枚 → ' + i2pFiles.length + 'ページ' : '');
     $('i2p-go').disabled = !i2pFiles.length;
     hideOutput('i2p-out');
+    i2pPrep();
   }
   // 「画像と同じ大きさ」のときは紙の向きを選ぶ意味がないので、選べなくする
   $('i2p-size').addEventListener('change', function () {
@@ -1142,6 +1596,178 @@
   $('i2p-clear').addEventListener('click', function () {
     i2pFiles = []; drawI2p(); setMsg('i2p-msg', '');
   });
+
+  /* ---- 紙の上の見本 ----
+     どの位置にどれだけの大きさで画像が乗るかは、tools.js の pageLayout が決める。
+     PDFにするボタンを押したときと同じ関数なので、見えている通りのものができる。 */
+  var i2pReady = [], i2pToken = 0;
+  var I2P_MAX = 8;            // 見本に並べる枚数の上限（多すぎると1枚が小さすぎて見えない）
+  var I2P_LABELS = { fit: '画像と同じ', a4: 'A4', b5: 'B5', letter: 'レター' };
+
+  function i2pOpts() {
+    return { size: $('i2p-size').value, orient: $('i2p-orient').value, margin: Number($('i2p-margin').value) || 0 };
+  }
+  function i2pPrep() {
+    var my = ++i2pToken;
+    if (!i2pFiles.length) { i2pReady = []; i2pRefresh(); return; }
+    Promise.all(i2pFiles.slice(0, I2P_MAX).map(previewBitmap)).then(function (list) {
+      if (my !== i2pToken) return;
+      i2pReady = list.filter(Boolean);
+      i2pRefresh();
+    });
+  }
+
+  /* 見本の並べ方を決める。ページはぜんぶ同じ倍率で描く
+     （紙ごとに倍率を変えると、A4とB5の違いが見えなくなってしまう）。 */
+  function i2pPlan(W) {
+    if (!i2pReady.length) return null;
+    var o = i2pOpts(), pad = 14, gap = 12, maxTileH = 240;
+    var pages = i2pReady.map(function (r) { return T.pageLayout(r.width, r.height, o); });
+    var pw = 0, ph = 0;
+    pages.forEach(function (L) { pw = Math.max(pw, L.pw); ph = Math.max(ph, L.ph); });
+    var cols = Math.max(1, Math.min(pages.length, 4, Math.floor((W - pad * 2 + gap) / (120 + gap))));
+    var cell = (W - pad * 2 - gap * (cols - 1)) / cols;
+    var s = Math.min(cell / pw, maxTileH / ph);
+    var rows = Math.ceil(pages.length / cols);
+    return { o: o, pages: pages, cols: cols, cell: cell, s: s, pad: pad, gap: gap,
+      rowH: ph * s, rows: rows, maxPw: pw, maxPh: ph };
+  }
+
+  var i2pStage = makeStage('i2p', {
+    height: function (W) {
+      var p = i2pPlan(W);
+      return p ? p.pad * 2 + p.rows * p.rowH + (p.rows - 1) * p.gap : 72;
+    },
+    paint: function (cx, W, H) {
+      var p = i2pPlan(W);
+      if (!p) { stageNote(cx, W, H, '見本をつくっています…'); return; }
+      i2pReady.forEach(function (r, i) {
+        var L = p.pages[i];
+        var col = i % p.cols, row = Math.floor(i / p.cols);
+        // 紙は真ん中ぞろえ。上の辺をそろえると、大きさの違いが分かりにくい
+        var px = p.pad + col * (p.cell + p.gap) + (p.cell - L.pw * p.s) / 2;
+        var py = p.pad + row * (p.rowH + p.gap) + (p.rowH - L.ph * p.s) / 2;
+        var pW = L.pw * p.s, pH = L.ph * p.s;
+
+        cx.save();
+        cx.fillStyle = '#ffffff';
+        cx.shadowColor = 'rgba(0,0,0,.5)'; cx.shadowBlur = 8; cx.shadowOffsetY = 2;
+        cx.fillRect(px, py, pW, pH);
+        cx.restore();
+
+        // 画像。PDFは下からの高さで数えるので、上からの位置に直す
+        var ix = px + L.x * p.s;
+        var iy = py + (L.ph - L.y - L.h) * p.s;
+        if (r.bm) cx.drawImage(r.bm, ix, iy, L.w * p.s, L.h * p.s);
+
+        /* 余白の線。ここをつかむと余白を変えられる。
+           余白0のときも紙の縁にぴったり重ねて描く。線が消えてしまうと、
+           つかむものが無くなって「動かせる」ことに気づけないため。 */
+        var m = L.margin * p.s;
+        cx.save();
+        cx.strokeStyle = 'rgba(111,140,255,.75)'; cx.lineWidth = 1; cx.setLineDash([4, 3]);
+        cx.strokeRect(px + m, py + m, Math.max(1, pW - m * 2), Math.max(1, pH - m * 2));
+        cx.restore();
+        cx.save();
+        cx.strokeStyle = 'rgba(0,0,0,.35)';
+        cx.strokeRect(px + .5, py + .5, pW - 1, pH - 1);
+        cx.restore();
+        if (i2pReady.length > 1 && pW > 30) stageBadge(cx, px + 12, py + 12, i + 1);
+      });
+      if (i2pFiles.length > I2P_MAX) {
+        stageNote(cx, W, H - 6, '（ほか ' + (i2pFiles.length - I2P_MAX) + ' ページは同じ作りです）');
+      }
+    }
+  });
+
+  function i2pRefresh() {
+    i2pStage.show(i2pFiles.length > 0);
+    i2pStage.render();
+    var o = i2pOpts();
+    var dim = $('i2p-dim'), tip = $('i2p-tip');
+    if (!i2pReady.length) { dim.textContent = ''; tip.textContent = ''; return; }
+    /* 紙の大きさは1枚ごとに違うことがある（「画像と同じ」のときや、
+       向きを「画像に合わせる」にしていて たて と よこ が混ざっているとき）。
+       そのときに1ページ目の数字だけ出すと、全ページ同じだと思わせてしまう。
+       ぜんぶ同じときだけ数字を出す。 */
+    var Ls = i2pReady.map(function (r) { return T.pageLayout(r.width, r.height, o); });
+    var same = Ls.every(function (L) { return L.pw === Ls[0].pw && L.ph === Ls[0].ph; });
+    var tate = Ls[0].ph >= Ls[0].pw;
+    dim.textContent = (I2P_LABELS[o.size] || o.size)
+      + (same ? ' ' + (tate ? 'たて' : 'よこ') + ' ' + Math.round(Ls[0].pw) + '×' + Math.round(Ls[0].ph) + 'pt' : '')
+      + ' ／ ' + i2pFiles.length + 'ページ';
+    tip.textContent = o.size === 'fit'
+      ? '紙の大きさを選ぶと、余白の点線をつかんで動かせるようになります。'
+      : '余白の点線をつかんで動かすと、余白の大きさを変えられます。';
+  }
+
+  ['i2p-size', 'i2p-orient', 'i2p-margin'].forEach(function (id) {
+    $(id).addEventListener('input', i2pRefresh);
+    $(id).addEventListener('change', i2pRefresh);
+  });
+
+  /* 余白の点線をつかんで動かす。
+     紙の左の辺から指までの距離を、そのまま余白(pt)として読む。 */
+  (function () {
+    var cv = i2pStage.canvas;
+    var drag = null;
+
+    // 紙の縁からの距離（見た目のpx）。紙の外なら負になる
+    function edgeDist(pt, b) {
+      return Math.min(pt.x - b.px, b.px + b.pW - pt.x, pt.y - b.py, b.py + b.pH - pt.y);
+    }
+    /* いま出ている余白の線の近く（10px以内）を指しているか。
+       紙の真ん中を押しただけで余白が跳ね上がる、という驚きを避けるため、
+       線のそばでしかつかめないようにしている。 */
+    function near(pt, p) {
+      /* 「画像と同じ大きさ」のときは、余白を増やすと紙のほうが外に広がるだけで
+         線は動かない。つかめるように見えて動かないのは嘘になるので、外しておく。 */
+      if (p.o.size === 'fit') return null;
+      for (var i = 0; i < i2pReady.length; i++) {
+        var L = p.pages[i];
+        var col = i % p.cols, row = Math.floor(i / p.cols);
+        var b = {
+          px: p.pad + col * (p.cell + p.gap) + (p.cell - L.pw * p.s) / 2,
+          py: p.pad + row * (p.rowH + p.gap) + (p.rowH - L.ph * p.s) / 2,
+          pW: L.pw * p.s, pH: L.ph * p.s, L: L
+        };
+        if (Math.abs(edgeDist(pt, b) - L.margin * p.s) <= 10) return b;
+      }
+      return null;
+    }
+    // 紙の縁からの距離を、そのまま余白(pt)として読む
+    function marginAt(pt, b, s) {
+      var m = Math.round(edgeDist(pt, b) / s);
+      var cap = Math.floor(Math.min(b.L.pw, b.L.ph) / 2) - 1;
+      return Math.max(0, Math.min(200, cap, m));
+    }
+    function apply(pt) {
+      var p = i2pPlan(i2pStage.width());
+      if (!p || !drag) return;
+      $('i2p-margin').value = String(marginAt(pt, drag, p.s));
+      i2pRefresh();
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') return;   // 指のときはページのスクロールを邪魔しない
+      var p = i2pPlan(i2pStage.width());
+      if (!p) return;
+      var h = near(i2pStage.at(e), p);
+      if (!h) return;
+      drag = h;
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      cv.classList.add('grabbing');
+      apply(i2pStage.at(e));
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (drag) { apply(i2pStage.at(e)); return; }
+      if (e.pointerType !== 'mouse') return;
+      var p = i2pPlan(i2pStage.width());
+      cv.classList.toggle('grab', !!(p && near(i2pStage.at(e), p)));
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      cv.addEventListener(ev, function () { drag = null; cv.classList.remove('grabbing'); });
+    });
+  })();
   $('i2p-go').addEventListener('click', function () {
     $('i2p-go').disabled = true;
     T.imagesToPdf(i2pFiles, {
@@ -1162,6 +1788,13 @@
 
   /* ============ 画像をつなげる ============ */
   var joinFiles = [];
+  var joinReady = [];        // 見本用に読み込んだもの。並びは joinFiles と同じにしておく
+  var joinToken = 0;         // 読み込みの途中で選び直されたら、古い結果は捨てる
+  var joinHover = -1;        // マウスが乗っている絵
+  var joinSel = -1;          // 押して選んだ絵（指でも入れかえられるように）
+  var joinFrom = -1;         // つかんで動かしている絵
+  var joinTo = -1;           // どの隙間に落とすか
+
   wireDrop('join-drop', 'join-file', function (list) {
     var imgs = list.filter(T.isImage);
     var skipped = list.length - imgs.length;
@@ -1184,10 +1817,240 @@
     setCount('join-count', joinFiles.length ? joinFiles.length + '枚' : '');
     $('join-go').disabled = joinFiles.length < 2;
     hideOutput('join-out');
+    joinPrep();
   }
   $('join-clear').addEventListener('click', function () {
-    joinFiles = []; drawJoin(); setMsg('join-msg', '');
+    joinFiles = []; joinSel = -1; drawJoin(); setMsg('join-msg', '');
   });
+
+  /* ---- ここから見本 ----
+     置き場所は tools.js の joinLayout に決めてもらう。つなげるボタンを押したときと
+     同じ関数なので、ここに見えている絵と保存される画像は必ず一致する。 */
+  function joinOpts() {
+    return {
+      dir: $('join-dir').value, align: $('join-align').value,
+      gap: Number($('join-gap').value), bg: $('join-bg').value, format: $('join-format').value
+    };
+  }
+
+  // 選ばれている画像を見本用に読み込む。読み終わったら描き直す。
+  function joinPrep() {
+    var my = ++joinToken;
+    if (!joinFiles.length) { joinReady = []; joinSel = -1; joinRefresh(); return; }
+    Promise.all(joinFiles.map(function (f) {
+      // 読めなかったものも席は空けておく（並びがずれると入れかえが狂うため）
+      return previewBitmap(f).then(function (r) {
+        return r || { bm: null, width: 400, height: 300, file: f, bad: true };
+      });
+    })).then(function (list) {
+      if (my !== joinToken) return;
+      joinReady = list;
+      joinRefresh();
+    });
+  }
+
+  // 見本の中でどこに何を描くか。高さを測るときも描くときも同じものを使う。
+  function joinPlan(W) {
+    if (!joinReady.length) return null;
+    var pad = 14, maxH = 460;
+    var lay = T.joinLayout(joinReady, joinOpts());
+    if (!lay.width || !lay.height) return null;
+    var s = Math.min((W - pad * 2) / lay.width, maxH / lay.height, 2);
+    return { lay: lay, s: s, pad: pad, ox: (W - lay.width * s) / 2, oy: pad,
+      w: lay.width * s, h: lay.height * s };
+  }
+
+  var joinStage = makeStage('join', {
+    height: function (W) { var p = joinPlan(W); return p ? p.h + p.pad * 2 : 72; },
+    paint: function (cx, W, H) {
+      var p = joinPlan(W);
+      if (!p) { stageNote(cx, W, H, '見本をつくっています…'); return; }
+      var bg = $('join-bg').value;
+
+      // 下地。透明なら市松模様で「何もない」ことを見せる
+      cx.save();
+      cx.fillStyle = bg === 'transparent' ? checkerFill(cx) : bg;
+      cx.fillRect(p.ox, p.oy, p.w, p.h);
+      cx.restore();
+
+      joinReady.forEach(function (r, i) {
+        var b = p.lay.boxes[i];
+        if (!b) return;
+        var x = p.ox + b.x * p.s, y = p.oy + b.y * p.s, w = b.w * p.s, h = b.h * p.s;
+        if (r.bm) {
+          cx.save();
+          if (i === joinFrom) cx.globalAlpha = .4;      // 動かしている最中は薄く
+          cx.drawImage(r.bm, x, y, w, h);
+          cx.restore();
+        } else {
+          // 読めなかった画像。席は空けたまま、ここが駄目だと分かるようにしておく
+          cx.save();
+          cx.fillStyle = '#3a2a2e'; cx.fillRect(x, y, w, h);
+          cx.fillStyle = '#ffb3b3'; cx.font = '11px "Noto Sans JP", sans-serif';
+          cx.textAlign = 'center'; cx.textBaseline = 'middle';
+          cx.fillText('読み込めません', x + w / 2, y + h / 2);
+          cx.restore();
+        }
+        // 選んでいる／乗っている絵の縁取り
+        var mark = (i === joinSel) ? '#6f8cff' : (i === joinHover && joinFrom < 0) ? 'rgba(173,188,255,.75)' : null;
+        if (mark) {
+          cx.save();
+          cx.strokeStyle = mark; cx.lineWidth = 2;
+          cx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+          cx.restore();
+        }
+        if (joinReady.length > 1 && w > 26 && h > 26) stageBadge(cx, x + 13, y + 13, i + 1);
+      });
+
+      // 全体の縁（背景が白いときに、どこまでが1枚か分かるように）
+      cx.save();
+      cx.strokeStyle = 'rgba(255,255,255,.22)';
+      cx.strokeRect(p.ox + .5, p.oy + .5, p.w - 1, p.h - 1);
+      cx.restore();
+
+      // どの隙間に入るかの線
+      if (joinFrom >= 0 && joinTo >= 0) {
+        var v = p.lay.dir === 'v';
+        var n = joinReady.length;
+        var at;
+        if (joinTo >= n) {
+          var last = p.lay.boxes[n - 1];
+          at = v ? p.oy + (last.y + last.h) * p.s : p.ox + (last.x + last.w) * p.s;
+        } else {
+          var bx = p.lay.boxes[joinTo];
+          at = v ? p.oy + bx.y * p.s : p.ox + bx.x * p.s;
+        }
+        cx.save();
+        cx.strokeStyle = '#6f8cff'; cx.lineWidth = 3; cx.lineCap = 'round';
+        cx.beginPath();
+        if (v) { cx.moveTo(p.ox, at); cx.lineTo(p.ox + p.w, at); }
+        else { cx.moveTo(at, p.oy); cx.lineTo(at, p.oy + p.h); }
+        cx.stroke();
+        cx.restore();
+      }
+    }
+  });
+
+  // 見本まわりの表示をまとめて整える
+  function joinRefresh() {
+    joinStage.show(joinFiles.length > 0);
+    joinStage.render();
+    var dim = $('join-dim'), tip = $('join-tip');
+    if (!joinReady.length) { dim.textContent = ''; tip.textContent = ''; return; }
+    var lay = T.joinLayout(joinReady, joinOpts());
+    dim.textContent = lay.width + ' × ' + lay.height + ' px';
+    var notes = [];
+    /* 指で操作している人に「つかんで動かす」とだけ書くと、できない操作を案内してしまう
+       （指のときはページのスクロールを守るため、動かす操作は受けていない）。
+       どちらの人にも当てはまる書き方にしておく。 */
+    if (joinReady.length > 1) {
+      notes.push('絵を押して選び、置きたい場所の絵を押すと入れかわります。パソコンならつかんで動かせます。');
+    }
+    if (lay.tooBig) notes.push('※ 大きすぎてブラウザが作れません。すき間を減らすか、枚数を減らしてください。');
+    if (joinOpts().bg === 'transparent' && joinOpts().format !== 'image/png') notes.push('※ 透明が残るのは png のときだけです。');
+    tip.textContent = notes.join(' ');
+    $('join-go').disabled = joinFiles.length < 2 || lay.tooBig;
+  }
+
+  // つまみを動かしたら、その場で見本が変わる
+  ['join-dir', 'join-align', 'join-gap', 'join-bg', 'join-format'].forEach(function (id) {
+    $(id).addEventListener('input', joinRefresh);
+    $(id).addEventListener('change', joinRefresh);
+  });
+
+  /* 絵の上での並べ替え。
+     ・つかんで動かす（マウス）
+     ・押して選び、置きたい絵を押す（指でも使えるように）
+     指でなぞったときはページのスクロールを邪魔しないよう、動かす操作はしない。 */
+  (function () {
+    var cv = joinStage.canvas;
+    var start = null, moved = false, touch = false;
+
+    function hit(pt, p) {
+      for (var i = joinReady.length - 1; i >= 0; i--) {
+        var b = p.lay.boxes[i];
+        if (!b) continue;
+        var x = p.ox + b.x * p.s, y = p.oy + b.y * p.s;
+        if (pt.x >= x && pt.x <= x + b.w * p.s && pt.y >= y && pt.y <= y + b.h * p.s) return i;
+      }
+      return -1;
+    }
+    // つなぐ向きに沿って、何番目の隙間に落とすかを決める
+    function slot(pt, p) {
+      var v = p.lay.dir === 'v', k = 0;
+      p.lay.boxes.forEach(function (b, i) {
+        var c = v ? p.oy + (b.y + b.h / 2) * p.s : p.ox + (b.x + b.w / 2) * p.s;
+        if ((v ? pt.y : pt.x) > c) k = i + 1;
+      });
+      return k;
+    }
+    function move(from, to) {
+      if (from < 0 || to < 0 || from === to) return false;
+      if (joinReady.length !== joinFiles.length) return false;
+      joinFiles.splice(to, 0, joinFiles.splice(from, 1)[0]);
+      joinReady.splice(to, 0, joinReady.splice(from, 1)[0]);  // 見本もその場で合わせる（ちらつかせない）
+      return true;
+    }
+
+    cv.addEventListener('pointerdown', function (e) {
+      var p = joinPlan(joinStage.width());
+      if (!p || joinReady.length < 2) return;
+      touch = e.pointerType === 'touch';
+      var i = hit(joinStage.at(e), p);
+      if (i < 0) { if (joinSel >= 0) { joinSel = -1; joinStage.render(); } return; }
+      start = { i: i, x: e.clientX, y: e.clientY };
+      moved = false;
+      if (!touch) { try { cv.setPointerCapture(e.pointerId); } catch (x) {} }
+    });
+
+    cv.addEventListener('pointermove', function (e) {
+      var p = joinPlan(joinStage.width());
+      if (!p) return;
+      var pt = joinStage.at(e);
+      if (start && !touch) {
+        if (!moved && Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 6) {
+          moved = true; joinFrom = start.i; joinSel = -1;
+          cv.classList.add('grabbing');
+        }
+        if (moved) { joinTo = slot(pt, p); joinStage.render(); return; }
+      }
+      if (e.pointerType === 'mouse') {
+        var h = hit(pt, p);
+        if (h !== joinHover) {
+          joinHover = h;
+          cv.classList.toggle('grab', h >= 0);
+          joinStage.render();
+        }
+      }
+    });
+
+    function finish(e) {
+      var wasFrom = joinFrom, wasTo = joinTo, s = start, m = moved;
+      start = null; moved = false; joinFrom = -1; joinTo = -1;
+      cv.classList.remove('grabbing');
+      if (!s) return;
+      if (m && wasFrom >= 0) {                       // つかんで動かした
+        var to = wasTo > wasFrom ? wasTo - 1 : wasTo;
+        if (move(wasFrom, to)) { drawJoin(); return; }
+        joinStage.render();
+        return;
+      }
+      // 押しただけ＝選ぶ／入れかえる
+      if (joinSel < 0) joinSel = s.i;
+      else if (joinSel === s.i) joinSel = -1;
+      else { var f = joinSel; joinSel = -1; if (move(f, s.i)) { drawJoin(); return; } }
+      joinStage.render();
+    }
+    cv.addEventListener('pointerup', finish);
+    cv.addEventListener('pointercancel', function () {
+      start = null; moved = false; joinFrom = -1; joinTo = -1;
+      cv.classList.remove('grabbing');
+      joinStage.render();
+    });
+    cv.addEventListener('pointerleave', function () {
+      if (joinHover !== -1) { joinHover = -1; cv.classList.remove('grab'); joinStage.render(); }
+    });
+  })();
   $('join-go').addEventListener('click', function () {
     $('join-go').disabled = true;
     T.joinImages(joinFiles, {
@@ -1229,12 +2092,174 @@
     setCount('webp-count', webpFiles.length ? webpFiles.length + '枚 ／ ' + T.humanSize(total) : '');
     $('webp-go').disabled = !webpFiles.length;
     hideOutput('webp-out');
+    webpPrep();
   }
 
   $('webp-q').addEventListener('input', function () { $('webp-q-val').textContent = $('webp-q').value; });
   $('webp-clear').addEventListener('click', function () {
     webpFiles = []; drawWebp(); setMsg('webp-msg', '');
   });
+
+  /* ---- 前とあとの見くらべ ----
+     画質のつまみをどこまで下げてよいかは、見てみないと決められない。
+     1枚目だけを本当に webp にしてみて、元と並べ、大きさも実測で出す。
+     推定ではなく本物を作っているので、ここに出る数字はそのまま結果になる。 */
+  var webpBase = null;       // 元の画像（見本用に縮めたもの）
+  var webpAfter = null;      // webp にしてみたもの { bm, size, w, h }
+  var webpSplit = .5;        // 境目の位置（0〜1）
+  var webpBusy = false, webpTimer = 0, webpToken = 0;
+
+  function webpOptsNow() {
+    return { maxEdge: Number($('webp-size').value), quality: Number($('webp-q').value) / 100 };
+  }
+  function webpPlan(W) {
+    if (!webpBase) return null;
+    var pad = 14, maxH = 380;
+    var w = webpBase.width, h = webpBase.height;
+    var s = Math.min((W - pad * 2) / w, maxH / h, 1.5);
+    return { pad: pad, s: s, w: w * s, h: h * s, ox: (W - w * s) / 2, oy: pad };
+  }
+
+  var webpStage = makeStage('webp', {
+    height: function (W) { var p = webpPlan(W); return p ? p.h + p.pad * 2 : 72; },
+    paint: function (cx, W, H) {
+      var p = webpPlan(W);
+      if (!p) { stageNote(cx, W, H, webpFiles.length ? '見本をつくっています…' : ''); return; }
+      var cut = p.ox + p.w * webpSplit;
+
+      // 左は元のまま
+      cx.save();
+      cx.beginPath(); cx.rect(p.ox, p.oy, cut - p.ox, p.h); cx.clip();
+      cx.drawImage(webpBase.bm, p.ox, p.oy, p.w, p.h);
+      cx.restore();
+
+      // 右は webp にしたもの（まだ出来ていなければ元を薄く出しておく）
+      cx.save();
+      cx.beginPath(); cx.rect(cut, p.oy, p.ox + p.w - cut, p.h); cx.clip();
+      if (webpAfter) cx.drawImage(webpAfter.bm, p.ox, p.oy, p.w, p.h);
+      else { cx.globalAlpha = .35; cx.drawImage(webpBase.bm, p.ox, p.oy, p.w, p.h); }
+      cx.restore();
+
+      // 境目の線とつまみ
+      cx.save();
+      cx.strokeStyle = '#fff'; cx.lineWidth = 2;
+      cx.beginPath(); cx.moveTo(cut, p.oy); cx.lineTo(cut, p.oy + p.h); cx.stroke();
+      cx.fillStyle = '#fff';
+      cx.beginPath(); cx.arc(cut, p.oy + p.h / 2, 9, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#060608';
+      cx.font = '10px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText('◀▶', cut, p.oy + p.h / 2 + .5);
+      cx.restore();
+
+      // どちら側が何なのかを書いておく
+      function tag(text, x, align) {
+        cx.save();
+        cx.font = '11px "Noto Sans JP", sans-serif';
+        var w = cx.measureText(text).width + 12;
+        var bx = align === 'left' ? x : x - w;
+        cx.fillStyle = 'rgba(6,6,8,.66)';
+        cx.fillRect(bx, p.oy + 8, w, 20);
+        cx.fillStyle = '#f4f4f5'; cx.textAlign = 'left'; cx.textBaseline = 'middle';
+        cx.fillText(text, bx + 6, p.oy + 18.5);
+        cx.restore();
+      }
+      if (cut - p.ox > 60) tag('元', p.ox + 8, 'left');
+      if (p.ox + p.w - cut > 70) tag(webpBusy ? 'webp（計算中）' : 'webp', p.ox + p.w - 8, 'right');
+    }
+  });
+
+  // 1枚目を本当に webp にしてみる。つまみを動かすたびに走るので、少し待ってからにする
+  function webpTry() {
+    clearTimeout(webpTimer);
+    webpTimer = setTimeout(function () {
+      if (!webpFiles.length) return;
+      var my = ++webpToken;
+      webpBusy = true;
+      webpStage.render();
+      T.toWebp(webpFiles[0], webpOptsNow()).then(function (r) {
+        return T.createBitmap(r.blob).then(function (bm) {
+          if (my !== webpToken) { if (bm.close) bm.close(); return; }
+          if (webpAfter && webpAfter.bm && webpAfter.bm.close) webpAfter.bm.close();
+          webpAfter = { bm: bm, size: r.after, w: r.width, h: r.height, before: r.before };
+          webpBusy = false;
+          webpRefresh();
+        });
+      }).catch(function () {
+        if (my !== webpToken) return;
+        webpAfter = null; webpBusy = false;
+        webpRefresh();
+      });
+    }, 220);
+  }
+
+  function webpPrep() {
+    var my = ++webpToken;
+    webpAfter = null;
+    if (!webpFiles.length) { webpBase = null; webpRefresh(); return; }
+    previewBitmap(webpFiles[0]).then(function (r) {
+      if (my !== webpToken) return;
+      webpBase = r;
+      webpRefresh();
+      webpTry();
+    });
+  }
+
+  function webpRefresh() {
+    webpStage.show(webpFiles.length > 0);
+    webpStage.render();
+    var dim = $('webp-dim'), tip = $('webp-tip');
+    if (!webpBase) { dim.textContent = ''; tip.textContent = ''; return; }
+    if (!webpAfter) {
+      dim.textContent = webpBusy ? '計算中…' : '';
+      tip.textContent = '';
+      return;
+    }
+    var pct = webpAfter.before ? Math.round((1 - webpAfter.size / webpAfter.before) * 100) : 0;
+    dim.textContent = T.humanSize(webpAfter.before) + ' → ' + T.humanSize(webpAfter.size)
+      + (pct > 0 ? '（' + pct + '%減）' : '') + ' ／ ' + webpAfter.w + '×' + webpAfter.h + 'px';
+    tip.textContent = '真ん中の線を左右に動かすと、境目が動きます。左が元、右が webp です。'
+      + (webpFiles.length > 1 ? '（見本は1枚目。ほかの' + (webpFiles.length - 1) + '枚も同じ設定で変換します）' : '');
+  }
+
+  ['webp-size', 'webp-q'].forEach(function (id) {
+    // つまみを動かした瞬間から「計算中」にする。空欄がちらつくのを避けるため
+    var again = function () { webpAfter = null; webpBusy = true; webpRefresh(); webpTry(); };
+    $(id).addEventListener('input', again);
+    $(id).addEventListener('change', again);
+  });
+
+  // 境目のつまみを動かす
+  (function () {
+    var cv = webpStage.canvas;
+    var drag = false;
+    function set(pt) {
+      var p = webpPlan(webpStage.width());
+      if (!p) return;
+      webpSplit = Math.max(0, Math.min(1, (pt.x - p.ox) / p.w));
+      webpStage.render();
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') return;   // 指のときはページのスクロールを邪魔しない
+      var p = webpPlan(webpStage.width());
+      if (!p) return;
+      var pt = webpStage.at(e);
+      if (pt.y < p.oy || pt.y > p.oy + p.h) return;
+      drag = true;
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      cv.classList.add('grabbing');
+      set(pt);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (drag) { set(webpStage.at(e)); return; }
+      if (e.pointerType !== 'mouse') return;
+      var p = webpPlan(webpStage.width());
+      var pt = webpStage.at(e);
+      cv.classList.toggle('grab', !!(p && pt.y >= p.oy && pt.y <= p.oy + p.h));
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) {
+      cv.addEventListener(ev, function () { drag = false; cv.classList.remove('grabbing'); });
+    });
+  })();
 
   $('webp-go').addEventListener('click', function () {
     $('webp-go').disabled = true;
