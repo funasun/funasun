@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<!-- tools/index.html — ファイルのちょっとした加工道具。
+     PDFをまとめる／ばらす、画像を webp にする。
+     処理はすべてブラウザの中だけで完結し、ファイルはどこにも送らない。
+     中身の処理は /tools/tools.js（ファイル共有ページと共通）。 -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ファイル変換ツール — 船越温</title>
+<meta name="description" content="PDFの結合・分割、画像のwebp変換ができる小さな道具。すべてブラウザの中で処理され、ファイルはどこにも送信されません。">
+<meta name="theme-color" content="#060608">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Noto+Serif+JP:wght@600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #6f8cff; --accent-text: #adbcff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #060608; color: #f4f4f5; -webkit-font-smoothing: antialiased; font-family: 'Noto Sans JP', sans-serif; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 8vh 24px 14vh; }
+  .eyebrow { margin: 0 0 12px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: rgba(244,244,245,.84); }
+  h1 { margin: 0 0 10px; font: 600 clamp(24px, 3.5vw, 34px)/1.4 'Noto Serif JP', serif; }
+  .sub { margin: 0 0 26px; font: 400 13px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  .privacy { margin: 0 0 34px; padding: 14px 18px; border: 1px solid rgba(111,140,255,.28); border-left: 2px solid var(--accent);
+    border-radius: 12px; background: linear-gradient(150deg, rgba(111,140,255,.1), rgba(111,140,255,.02));
+    font: 400 12.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.9); }
+
+  /* 道具の切り替え */
+  nav.picker { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 26px; }
+  nav.picker button { flex: 1 1 auto; padding: 11px 14px; font: 400 13px 'Noto Sans JP', sans-serif; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.18); background: none; color: rgba(244,244,245,.86); cursor: pointer; }
+  nav.picker button.on { border-color: var(--accent); background: rgba(111,140,255,.14); color: #f4f4f5; }
+  nav.picker button:hover { border-color: rgba(111,140,255,.5); }
+
+  section.tool { display: none; }
+  section.tool.on { display: block; }
+  h2 { margin: 0 0 8px; font: 600 18px 'Noto Serif JP', serif; }
+  .lead { margin: 0 0 20px; font: 400 12.5px/1.9 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.8); }
+
+  label { display: block; margin: 20px 0 8px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: rgba(244,244,245,.88); }
+  .hint { font-weight: 300; color: rgba(244,244,245,.78); letter-spacing: 0; }
+  input[type=text], input[type=number], select { width: 100%; font: 400 14px 'Noto Sans JP', sans-serif; padding: 12px 14px;
+    border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+
+  .drop { margin-top: 8px; padding: 34px 20px; border: 1.5px dashed rgba(255,255,255,.24); border-radius: 14px; background: #0a0a0e;
+    text-align: center; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+  .drop.over { border-color: var(--accent); background: #0d0d16; }
+  .drop p { margin: 6px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  .drop .pick { font: 500 14px 'Noto Sans JP', sans-serif; color: #f4f4f5; }
+
+  ul.files { list-style: none; margin: 12px 0 0; padding: 0; }
+  ul.files li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 8px;
+    border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #0a0a0e; }
+  ul.files .nm { flex: 1 1 auto; min-width: 0; font: 400 13px 'Noto Sans JP', sans-serif; word-break: break-all; }
+  ul.files .sz { flex: none; font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.6); }
+  ul.files .mv, ul.files .rm { flex: none; padding: 4px 9px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.2);
+    background: none; color: rgba(244,244,245,.8); cursor: pointer; }
+  ul.files .mv:hover, ul.files .rm:hover { background: rgba(255,255,255,.07); }
+  ul.files .mv:disabled { opacity: .3; cursor: default; }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 24px; }
+  button.go { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 12px 28px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
+  button.go:hover { opacity: .88; }
+  button.go:disabled { opacity: .4; cursor: default; }
+  button.ghost { font: 400 13px 'Noto Sans JP', sans-serif; padding: 10px 20px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.25); background: none; color: rgba(244,244,245,.9); }
+
+  .msg { margin: 14px 0 0; font: 400 13px/1.8 'Noto Sans JP', sans-serif; min-height: 20px; }
+  .msg.err { color: #ffb3b3; } .msg.ok { color: #86efac; } .msg.info { color: rgba(244,244,245,.84); }
+
+  .out { display: none; margin-top: 22px; padding: 18px 20px; border: 1px solid rgba(111,140,255,.4); border-radius: 14px; background: #0b0b12; }
+  .out h3 { margin: 0 0 10px; font: 500 13px 'Noto Sans JP', sans-serif; letter-spacing: .08em; color: rgba(244,244,245,.9); }
+  .out ul { list-style: none; margin: 0; padding: 0; }
+  .out li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .out li:first-child { border-top: none; }
+  .out .nm { flex: 1 1 200px; min-width: 0; font: 400 13px 'Noto Sans JP', sans-serif; word-break: break-all; }
+  .out .sz { font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.66); }
+  .out .save { padding: 6px 14px; font-size: 12.5px; border-radius: 999px; border: 1px solid var(--accent); background: none;
+    color: var(--accent-text); cursor: pointer; }
+  .out .save:hover { background: rgba(111,140,255,.14); }
+  .out .allsave { margin-top: 14px; }
+
+  .back { display: inline-block; margin-top: 44px; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); text-decoration: none; }
+  .back + .back { margin-left: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Tools — ファイル変換</p>
+  <h1>ファイルのちょっとした加工</h1>
+  <p class="sub">PDFをまとめたり、必要なページだけ取り出したり、写真を軽い webp にしたりできます。</p>
+
+  <p class="privacy"><b>ファイルはどこにも送信されません。</b>すべてあなたのブラウザの中だけで処理されます。インターネットにつながっていなくても（一度ページを開いた後なら）動きます。</p>
+
+  <nav class="picker" id="picker">
+    <button type="button" data-tool="merge" class="on">PDFをまとめる</button>
+    <button type="button" data-tool="split">PDFをばらす</button>
+    <button type="button" data-tool="webp">画像を軽くする（webp）</button>
+  </nav>
+
+  <!-- ============ PDF結合 ============ -->
+  <section class="tool on" id="tool-merge">
+    <h2>PDFをまとめる</h2>
+    <p class="lead">複数のPDFを、上から順に1つのファイルにつなげます。順番は矢印で入れ替えられます。</p>
+
+    <label>PDFを選ぶ <span class="hint">（2つ以上）</span></label>
+    <div class="drop" id="merge-drop">
+      <span class="pick">ここにドラッグ、またはクリックして選択</span>
+      <p>PDFファイルのみ</p>
+    </div>
+    <input id="merge-file" type="file" accept="application/pdf,.pdf" multiple style="display:none">
+    <ul class="files" id="merge-list"></ul>
+
+    <div class="row">
+      <button class="go" id="merge-go" type="button" disabled>まとめる</button>
+      <button class="ghost" id="merge-clear" type="button">選び直す</button>
+    </div>
+    <p class="msg" id="merge-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="merge-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
+  <!-- ============ PDF分割 ============ -->
+  <section class="tool" id="tool-split">
+    <h2>PDFをばらす</h2>
+    <p class="lead">1つのPDFから、ページを取り出したり、1ページずつに分けたりします。</p>
+
+    <label>PDFを選ぶ</label>
+    <div class="drop" id="split-drop">
+      <span class="pick">ここにドラッグ、またはクリックして選択</span>
+      <p>PDFファイルを1つ</p>
+    </div>
+    <input id="split-file" type="file" accept="application/pdf,.pdf" style="display:none">
+    <ul class="files" id="split-list"></ul>
+
+    <label>やりかた</label>
+    <select id="split-mode">
+      <option value="each">1ページずつ、別々のファイルにする</option>
+      <option value="pick">指定したページだけ取り出す</option>
+      <option value="split">指定したページと、それ以外に分ける</option>
+    </select>
+
+    <div id="split-pages-wrap" style="display:none">
+      <label>ページ <span class="hint">（例：1-3,5,8- ／ 空なら全部）</span></label>
+      <input id="split-pages" type="text" placeholder="1-3,5">
+    </div>
+
+    <div class="row">
+      <button class="go" id="split-go" type="button" disabled>ばらす</button>
+      <button class="ghost" id="split-clear" type="button">選び直す</button>
+    </div>
+    <p class="msg" id="split-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="split-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
+  <!-- ============ webp変換 ============ -->
+  <section class="tool" id="tool-webp">
+    <h2>画像を軽くする（webp）</h2>
+    <p class="lead">写真やスクリーンショットを webp という軽い形式に変えます。見た目はほぼ変わらないのに、容量がかなり小さくなります。</p>
+
+    <label>画像を選ぶ <span class="hint">（まとめて選べます）</span></label>
+    <div class="drop" id="webp-drop">
+      <span class="pick">ここにドラッグ、またはクリックして選択</span>
+      <p>png / jpg / gif など</p>
+    </div>
+    <input id="webp-file" type="file" accept="image/*" multiple style="display:none">
+    <ul class="files" id="webp-list"></ul>
+
+    <label>大きさ</label>
+    <select id="webp-size">
+      <option value="0">元のまま</option>
+      <option value="2400">長辺 2400px まで縮める</option>
+      <option value="1800" selected>長辺 1800px まで縮める（おすすめ）</option>
+      <option value="1200">長辺 1200px まで縮める</option>
+      <option value="800">長辺 800px まで縮める</option>
+    </select>
+
+    <label>画質 <span class="hint">（右ほどきれい・重い）</span> <span id="webp-q-val">82</span></label>
+    <input id="webp-q" type="range" min="40" max="100" value="82">
+
+    <div class="row">
+      <button class="go" id="webp-go" type="button" disabled>変換する</button>
+      <button class="ghost" id="webp-clear" type="button">選び直す</button>
+    </div>
+    <p class="msg" id="webp-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="webp-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
+  <a href="/" class="back">← サイトトップへ戻る</a>
+  <a href="/files/" class="back">ファイルを送る →</a>
+</div>
+
+<script src="/tools/tools.js"></script>
+<script>
+(function () {
+  'use strict';
+  var T = window.FileTools;
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---- 道具の切り替え ----
+  $('picker').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tool]');
+    if (!b) return;
+    [].forEach.call($('picker').children, function (x) { x.classList.toggle('on', x === b); });
+    ['merge', 'split', 'webp'].forEach(function (id) {
+      $('tool-' + id).classList.toggle('on', id === b.getAttribute('data-tool'));
+    });
+  });
+
+  /* ドラッグ＆ドロップ＋クリックで選ぶ、を1か所にまとめた小道具。
+     accept で受け付けるものを絞り、外れたものは名前を挙げて知らせる。 */
+  function wireDrop(dropId, inputId, accept, onFiles) {
+    var drop = $(dropId), input = $(inputId);
+    drop.addEventListener('click', function () { input.click(); });
+    input.addEventListener('change', function () {
+      onFiles([].slice.call(input.files));
+      input.value = '';   // 同じファイルをもう一度選べるように
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+    });
+    drop.addEventListener('drop', function (e) {
+      var list = e.dataTransfer && e.dataTransfer.files ? [].slice.call(e.dataTransfer.files) : [];
+      onFiles(list);
+    });
+  }
+
+  function setMsg(id, text, cls) {
+    var n = $(id);
+    n.textContent = text || '';
+    n.className = 'msg' + (cls ? ' ' + cls : '');
+  }
+
+  // 同じファイルを二重に足さない
+  function dedupe(existing, incoming) {
+    var key = function (f) { return f.name + '|' + f.size + '|' + f.lastModified; };
+    var seen = {};
+    existing.forEach(function (f) { seen[key(f)] = true; });
+    var added = [];
+    incoming.forEach(function (f) { if (!seen[key(f)]) { seen[key(f)] = true; added.push(f); } });
+    return added;
+  }
+
+  // できあがりを並べる（1つずつ保存 ＋ まとめて保存）
+  function showOutput(outId, items) {
+    var box = $(outId);
+    var ul = box.querySelector('ul');
+    ul.innerHTML = '';
+    var old = box.querySelector('.allsave');
+    if (old) old.remove();
+
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      var nm = document.createElement('span');
+      nm.className = 'nm'; nm.textContent = it.name;
+      var sz = document.createElement('span');
+      sz.className = 'sz'; sz.textContent = it.note || T.humanSize(it.blob.size);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'save'; btn.textContent = '保存';
+      btn.addEventListener('click', function () { T.download(it.blob, it.name); });
+      li.appendChild(nm); li.appendChild(sz); li.appendChild(btn);
+      ul.appendChild(li);
+    });
+
+    if (items.length > 1) {
+      var all = document.createElement('button');
+      all.type = 'button'; all.className = 'ghost allsave'; all.textContent = 'ぜんぶ保存（' + items.length + '個）';
+      all.addEventListener('click', function () {
+        // まとめて保存。ブラウザに一度に投げると止められることがあるので少しずつ
+        items.forEach(function (it, i) {
+          setTimeout(function () { T.download(it.blob, it.name); }, i * 350);
+        });
+      });
+      box.appendChild(all);
+    }
+    box.style.display = 'block';
+  }
+
+  function hideOutput(outId) { $(outId).style.display = 'none'; }
+
+  /* ============ PDFをまとめる ============ */
+  var mergeFiles = [];
+  wireDrop('merge-drop', 'merge-file', null, function (list) {
+    var pdfs = list.filter(T.isPdf);
+    var skipped = list.length - pdfs.length;
+    mergeFiles = mergeFiles.concat(dedupe(mergeFiles, pdfs));
+    drawMerge();
+    setMsg('merge-msg', skipped ? skipped + '個はPDFではないので外しました。' : '', skipped ? 'err' : '');
+  });
+
+  function drawMerge() {
+    var ul = $('merge-list');
+    ul.innerHTML = '';
+    mergeFiles.forEach(function (f, i) {
+      ul.appendChild(fileRow(f, i, {
+        move: mergeFiles, redraw: drawMerge,
+        onRemove: function () { mergeFiles.splice(i, 1); drawMerge(); }
+      }));
+    });
+    $('merge-go').disabled = mergeFiles.length < 2;
+    hideOutput('merge-out');
+  }
+
+  /* 一覧の1行。move に配列を渡すと上下の入れ替えボタンが付く
+     （PDFをつなげる順番を決められるように）。 */
+  function fileRow(f, i, opts) {
+    var li = document.createElement('li');
+    var nm = document.createElement('span');
+    nm.className = 'nm'; nm.textContent = (opts.move ? (i + 1) + '. ' : '') + f.name;
+    var sz = document.createElement('span');
+    sz.className = 'sz'; sz.textContent = T.humanSize(f.size);
+    li.appendChild(nm); li.appendChild(sz);
+
+    if (opts.move) {
+      var arr = opts.move;
+      li.appendChild(moveBtn('↑', '上へ', i === 0, function () { swap(arr, i, i - 1); opts.redraw(); }));
+      li.appendChild(moveBtn('↓', '下へ', i === arr.length - 1, function () { swap(arr, i, i + 1); opts.redraw(); }));
+    }
+
+    var rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'rm'; rm.textContent = '外す';
+    rm.addEventListener('click', opts.onRemove);
+    li.appendChild(rm);
+    return li;
+  }
+  function moveBtn(label, title, disabled, fn) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'mv'; b.textContent = label; b.title = title;
+    b.disabled = disabled;
+    b.addEventListener('click', fn);
+    return b;
+  }
+  function swap(arr, a, b) { var t = arr[a]; arr[a] = arr[b]; arr[b] = t; }
+
+  $('merge-clear').addEventListener('click', function () {
+    mergeFiles = []; drawMerge(); setMsg('merge-msg', '');
+  });
+
+  $('merge-go').addEventListener('click', function () {
+    $('merge-go').disabled = true;
+    setMsg('merge-msg', '読み込み中…', 'info');
+    T.mergePdf(mergeFiles, function (done, total, name) {
+      setMsg('merge-msg', 'まとめています… ' + done + ' / ' + total + (name ? '（' + name + '）' : ''), 'info');
+    }).then(function (blob) {
+      setMsg('merge-msg', 'できました。', 'ok');
+      showOutput('merge-out', [{ name: T.baseName(mergeFiles[0].name) + '_まとめ.pdf', blob: blob }]);
+      $('merge-go').disabled = false;
+    }).catch(function (e) {
+      setMsg('merge-msg', e.message, 'err');
+      $('merge-go').disabled = false;
+    });
+  });
+
+  /* ============ PDFをばらす ============ */
+  var splitFile = null;
+  wireDrop('split-drop', 'split-file', null, function (list) {
+    var pdf = list.filter(T.isPdf)[0];
+    if (!pdf) { setMsg('split-msg', 'PDFを選んでください。', 'err'); return; }
+    splitFile = pdf;
+    drawSplit();
+    setMsg('split-msg', 'ページ数を調べています…', 'info');
+    T.pdfPageCount(pdf).then(function (n) {
+      setMsg('split-msg', '全' + n + 'ページです。', '');
+    }).catch(function (e) { setMsg('split-msg', e.message, 'err'); });
+  });
+
+  function drawSplit() {
+    var ul = $('split-list');
+    ul.innerHTML = '';
+    if (splitFile) ul.appendChild(fileRow(splitFile, 0, {
+      onRemove: function () { splitFile = null; drawSplit(); setMsg('split-msg', ''); }
+    }));
+    $('split-go').disabled = !splitFile;
+    hideOutput('split-out');
+  }
+
+  $('split-mode').addEventListener('change', function () {
+    $('split-pages-wrap').style.display = $('split-mode').value === 'each' ? 'none' : 'block';
+  });
+
+  $('split-clear').addEventListener('click', function () {
+    splitFile = null; drawSplit(); setMsg('split-msg', '');
+  });
+
+  $('split-go').addEventListener('click', function () {
+    $('split-go').disabled = true;
+    setMsg('split-msg', '読み込み中…', 'info');
+    var mode = $('split-mode').value;
+    /* 「1ページずつ」ではページ欄を隠している。隠れている欄に前の入力が
+       残っていても使わない（見えていない指定が効くと、選んだ通りにならない）。 */
+    var pages = mode === 'each' ? '' : $('split-pages').value;
+    T.splitPdf(splitFile, { mode: mode, pages: pages }, function (done, total, label) {
+      setMsg('split-msg', '処理中… ' + done + ' / ' + total + (label ? '（' + label + '）' : ''), 'info');
+    }).then(function (items) {
+      setMsg('split-msg', items.length + '個のファイルができました。', 'ok');
+      showOutput('split-out', items);
+      $('split-go').disabled = false;
+    }).catch(function (e) {
+      setMsg('split-msg', e.message, 'err');
+      $('split-go').disabled = false;
+    });
+  });
+
+  /* ============ webp変換 ============ */
+  var webpFiles = [];
+  wireDrop('webp-drop', 'webp-file', null, function (list) {
+    var imgs = list.filter(T.isImage);
+    var skipped = list.length - imgs.length;
+    webpFiles = webpFiles.concat(dedupe(webpFiles, imgs));
+    drawWebp();
+    setMsg('webp-msg', skipped ? skipped + '個は画像ではないので外しました。' : '', skipped ? 'err' : '');
+  });
+
+  function drawWebp() {
+    var ul = $('webp-list');
+    ul.innerHTML = '';
+    webpFiles.forEach(function (f, i) {
+      ul.appendChild(fileRow(f, i, { onRemove: function () { webpFiles.splice(i, 1); drawWebp(); } }));
+    });
+    $('webp-go').disabled = !webpFiles.length;
+    hideOutput('webp-out');
+  }
+
+  $('webp-q').addEventListener('input', function () { $('webp-q-val').textContent = $('webp-q').value; });
+  $('webp-clear').addEventListener('click', function () {
+    webpFiles = []; drawWebp(); setMsg('webp-msg', '');
+  });
+
+  $('webp-go').addEventListener('click', function () {
+    $('webp-go').disabled = true;
+    var opts = { maxEdge: Number($('webp-size').value), quality: Number($('webp-q').value) / 100 };
+    var out = [], errors = [];
+
+    webpFiles.reduce(function (chain, f, i) {
+      return chain.then(function () {
+        setMsg('webp-msg', '変換中… ' + (i + 1) + ' / ' + webpFiles.length + '（' + f.name + '）', 'info');
+        return T.toWebp(f, opts).then(function (r) {
+          var pct = r.before ? Math.round((1 - r.after / r.before) * 100) : 0;
+          out.push({
+            name: r.name, blob: r.blob,
+            note: T.humanSize(r.before) + ' → ' + T.humanSize(r.after) + (pct > 0 ? '（' + pct + '%減）' : '')
+          });
+        }).catch(function (e) { errors.push(e.message); });
+      });
+    }, Promise.resolve()).then(function () {
+      $('webp-go').disabled = false;
+      if (out.length) {
+        showOutput('webp-out', out);
+        var saved = out.reduce(function (s, o) { return s + o.blob.size; }, 0);
+        var before = webpFiles.reduce(function (s, f) { return s + f.size; }, 0);
+        setMsg('webp-msg', out.length + '個できました。合計 ' + T.humanSize(before) + ' → ' + T.humanSize(saved)
+          + (errors.length ? '／' + errors.length + '個は変換できませんでした：' + errors[0] : ''), errors.length ? 'info' : 'ok');
+      } else {
+        setMsg('webp-msg', errors[0] || '変換できませんでした。', 'err');
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

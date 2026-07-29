@@ -499,7 +499,11 @@
           t('toTop', '上に戻るリンクの文字')
         ])
       ]
-    }
+    },
+
+    /* 預かっているファイルの一覧。ここだけ中身が data.json ではなく
+       ファイル共有 Worker 側にあるので、専用の画面を出す（custom）。 */
+    { id: 'files', label: '預かりファイル', custom: 'files' }
   ];
 
   global.SCHEMA = SCHEMA;

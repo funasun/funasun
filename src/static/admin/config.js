@@ -3,12 +3,14 @@
    ------------------------------------------------------------
    workerUrl … 保存を代行する Cloudflare Worker のURL。
                デプロイ後に発行される「…workers.dev」のURLをここに貼る。
+   filesUrl  … ファイル共有の Worker のURL。「預かりファイル」タブが使う。
    firebase  … Googleログイン用の設定（共有機能と同じ funasun-share）。
                apiKey 等は公開されても安全な情報（Firebase の設計上の前提）。
    ============================================================ */
 window.ADMIN_CONFIG = {
   // ↓↓↓ Cloudflare Worker をデプロイしたら、そのURLをここに貼り付ける ↓↓↓
   workerUrl: 'https://funasun-admin.takakouseitokai.workers.dev',   // 例: 'https://funasun-admin.xxxxx.workers.dev'
+  filesUrl: 'https://funasun-files.takakouseitokai.workers.dev',
 
   firebase: {
     apiKey: 'AIzaSyCbi7N4rV7L04rusvzVHQ2SjPoKdqaNg2k',

@@ -37,12 +37,22 @@
      GET  /dl/:id      … ファイル本体を返す（強制ダウンロード / ?h=合言葉のハッシュ）
      GET  /pv/:id      … ファイル本体を返す（そのまま表示・安全な種類のみ）
      GET  /ok/:id      … 合言葉が合っているかだけ答える（?h=）
+     POST /admin/list  … 預かっている全ファイルとURLの一覧（本人のみ）
+     POST /admin/del   … ファイルを1つ消す（本人のみ）
+
+   【管理用（/admin/*）について】
+   /admin の編集ツールから呼ぶ。合言葉ではなく Google ログイン（Firebase の
+   IDトークン）で本人確認する。合言葉はアップロードする人みんなで共有する
+   ものなので、「全ファイルの一覧」や「削除」を任せるには弱すぎるため。
    ============================================================ */
 
 const ALLOW_ORIGINS = [
   'https://tsutsumufunakoshi.com',
   'https://www.tsutsumufunakoshi.com'
 ];
+// 管理用エンドポイントを使えるのはこの人だけ（/admin と同じ持ち主）
+const OWNER_EMAIL = 'tsutsumufunakoshi@gmail.com';
+const FIREBASE_API_KEY = 'AIzaSyCbi7N4rV7L04rusvzVHQ2SjPoKdqaNg2k';
 const MAX_BYTES = 2 * 1024 * 1024 * 1024;      // 1ファイル上限 2GB
 const TOTAL_CAP = 10 * 1024 * 1024 * 1024;     // 保管庫の合計上限 10GB（15GBの手前で止める）
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
@@ -192,6 +202,8 @@ export default {
     }
 
     try {
+      if (path === '/admin/list' && request.method === 'POST') return await adminList(request, env, origin);
+      if (path === '/admin/del' && request.method === 'POST') return await adminDelete(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
@@ -713,13 +725,14 @@ function htmlPage(title, inner, status, wide) {
 
 /* ---------- 使用量集計 / 期限切れ掃除 ---------- */
 
-async function listOwnFiles(token, onFile) {
+async function listOwnFiles(token, onFile, extraFields) {
   let pageToken;
   const q = "appProperties has { key='app' and value='" + APP_TAG + "' } and trashed=false";
+  const fields = 'nextPageToken,files(id,size,appProperties' + (extraFields ? ',' + extraFields : '') + ')';
   do {
     const u = 'https://www.googleapis.com/drive/v3/files'
       + '?q=' + encodeURIComponent(q)
-      + '&fields=' + encodeURIComponent('nextPageToken,files(id,size,appProperties)')
+      + '&fields=' + encodeURIComponent(fields)
       + '&pageSize=1000'
       + (pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : '');
     const res = await fetch(u, { headers: { Authorization: 'Bearer ' + token } });
@@ -745,6 +758,102 @@ async function currentUsage(env, token) {
     total += Number(f.size) || 0;
   });
   return total;
+}
+
+/* ============================================================
+   管理用（/admin から呼ばれる）
+   ============================================================ */
+
+/* Google ログインの証明書（IDトークン）が本物か、Google 自身に問い合わせて確かめる。
+   自前で中身を読むのではなく Google に聞くので、偽造されたものは必ず弾かれる。
+   返り値は「本人ならnull／だめなら返すべきエラー応答」。 */
+async function requireOwner(request, env, origin) {
+  let body;
+  try { body = await request.json(); }
+  catch (e) { return { err: json({ message: 'リクエストが不正です' }, 400, origin) }; }
+
+  const idToken = body && body.idToken;
+  if (!idToken) return { err: json({ message: 'ログインが必要です' }, 401, origin) };
+
+  let email, verified;
+  try {
+    const r = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: idToken }) }
+    );
+    const j = await r.json();
+    if (!r.ok || !j.users || !j.users[0]) {
+      return { err: json({ message: 'ログインの確認に失敗しました。ログインし直してください。' }, 401, origin) };
+    }
+    email = j.users[0].email;
+    verified = j.users[0].emailVerified;
+  } catch (e) {
+    return { err: json({ message: 'ログイン確認でエラーが発生しました' }, 502, origin) };
+  }
+
+  if (email !== OWNER_EMAIL || !verified) {
+    return { err: json({ message: 'このアカウントには権限がありません。' }, 403, origin) };
+  }
+  return { body: body };
+}
+
+// 預かっている全ファイルを、渡すためのURL付きで返す
+async function adminList(request, env, origin) {
+  const gate = await requireOwner(request, env, origin);
+  if (gate.err) return gate.err;
+
+  const token = await getAccessToken(env);
+  const base = new URL(request.url).origin;
+  const now = Date.now();
+  const items = [];
+  let used = 0;
+
+  await listOwnFiles(token, function (f) {
+    const p = f.appProperties || {};
+    const exp = Number(p.expiresAt || 0);
+    const size = Number(f.size) || 0;
+    const isExpired = exp > 0 && now > exp;
+    if (!isExpired) used += size;
+    items.push({
+      id: f.id,
+      name: f.name || '(名前なし)',
+      size: size,
+      sizeText: humanSize(size),
+      createdTime: f.createdTime || '',
+      expiresAt: exp,
+      expiresText: exp ? fmtDate(exp) : '',
+      expired: isExpired,
+      locked: !!p.pw,                       // 合言葉つきか（合言葉そのものは返さない）
+      group: p.grp || '',
+      pageUrl: base + '/f/' + f.id,
+      downloadUrl: base + '/dl/' + f.id,
+      previewUrl: previewType(f.name) ? base + '/pv/' + f.id : '',
+      groupUrl: p.grp ? base + '/g/' + p.grp : ''
+    });
+  }, 'name,createdTime');
+
+  // 新しい順（作成日が取れないものは末尾）
+  items.sort(function (a, b) { return String(b.createdTime).localeCompare(String(a.createdTime)); });
+
+  return json({ files: items, used: used, usedText: humanSize(used), cap: TOTAL_CAP, capText: humanSize(TOTAL_CAP) }, 200, origin);
+}
+
+// ファイルを1つ消す
+async function adminDelete(request, env, origin) {
+  const gate = await requireOwner(request, env, origin);
+  if (gate.err) return gate.err;
+
+  const id = safeId(String((gate.body && gate.body.id) || ''));
+  if (!id) return json({ message: '消すファイルが指定されていません' }, 400, origin);
+
+  const token = await getAccessToken(env);
+  // このアプリが作ったファイルかを必ず確かめてから消す
+  const meta = await driveMeta(token, id);
+  if (!meta || !meta.appProperties || meta.appProperties.app !== APP_TAG) {
+    return json({ message: 'そのファイルは見つかりませんでした' }, 404, origin);
+  }
+  await driveDelete(token, id);
+  return json({ ok: true }, 200, origin);
 }
 
 async function cleanup(env) {

@@ -96,8 +96,25 @@
   .field.image .pathinput { font: 400 12px ui-monospace, Menlo, monospace; margin: 0 0 8px; }
   .field.image .imgbtns { flex-wrap: wrap; }
 
+  /* ---- 預かりファイルの一覧 ---- */
+  .usage { margin: 0 0 18px; }
+  .usage-text { margin: 0 0 8px; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); }
+  .usage .bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .usage .bar span { display: block; height: 100%; background: var(--accent); }
+  .urlrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+  .urllabel { flex: none; width: 108px; font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  input.urlbox { flex: 1 1 240px; min-width: 0; font: 400 12px ui-monospace, Menlo, monospace;
+    padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: #0c0c11; color: #f4f4f5; }
+  input.urlbox:focus { outline: none; border-color: var(--accent); }
+  a.urlopen { display: inline-block; padding: 5px 10px; font: 400 12px 'Noto Sans JP', sans-serif; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.2); color: rgba(244,244,245,.92); text-decoration: none; }
+  a.urlopen:hover { border-color: var(--accent); }
+  .urlhint { flex: 1 1 100%; font: 400 11.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.7); padding-left: 116px; }
+
   @media (max-width: 720px) {
     .layout { flex-direction: column; }
+    .urllabel { width: 100%; }
+    .urlhint { padding-left: 0; }
     nav.tabs { position: static; width: 100%; flex-direction: row; flex-wrap: wrap; min-height: 0; border-right: none; border-bottom: 1px solid var(--line); }
     nav.tabs .tab { flex: 1 1 auto; text-align: center; }
   }

@@ -37,6 +37,15 @@
   .files .rm:hover { background: rgba(255,255,255,.07); }
   .files .st { flex: none; font-size: 12px; color: var(--accent-text); }
   .total { margin: 12px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.72); }
+  /* 送る前に整える */
+  .tools { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(111,140,255,.28); border-left: 2px solid var(--accent); border-radius: 12px; background: linear-gradient(150deg, rgba(111,140,255,.09), rgba(111,140,255,.02)); }
+  .tools-t { margin: 0 0 10px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: rgba(244,244,245,.9); }
+  .tools-b { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tbtn { padding: 8px 16px; font: 400 12.5px 'Noto Sans JP', sans-serif; border-radius: 999px; border: 1px solid rgba(111,140,255,.5); background: none; color: var(--accent-text); cursor: pointer; }
+  .tbtn:hover { background: rgba(111,140,255,.14); opacity: 1; }
+  .tbtn:disabled { opacity: .4; cursor: default; }
+  .tools-m { margin: 10px 0 0; font: 400 12px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.8); }
+  .tools-m.err { color: #ffb3b3; } .tools-m.ok { color: #86efac; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 26px; }
   button { font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 12px 28px; border-radius: 999px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: #060608; transition: opacity .2s ease; }
   button:hover { opacity: .88; }
@@ -70,6 +79,17 @@
   <ul id="files" class="files"></ul>
   <p id="total" class="total"></p>
 
+  <!-- 選んだ中身に応じて出る整えボタン。PDFが2つ以上あればまとめる、
+       画像があれば webp にして軽くする。処理はこの端末の中だけで行う。 -->
+  <div id="tools" class="tools" hidden>
+    <p class="tools-t">送る前に整える <span class="hint">（この端末の中だけで処理します）</span></p>
+    <div class="tools-b">
+      <button id="t-merge" type="button" class="tbtn" hidden>PDFを1つにまとめる</button>
+      <button id="t-webp" type="button" class="tbtn" hidden>画像を軽くする（webp）</button>
+    </div>
+    <p id="t-msg" class="tools-m"></p>
+  </div>
+
   <label>有効期限</label>
   <select id="expiry">
     <option value="1">1日で消える</option>
@@ -98,8 +118,12 @@
   </div>
 
   <a href="/" class="back">← サイトトップへ戻る</a>
+  <a href="/tools/" class="back" style="margin-left:20px">ファイル変換ツール →</a>
 </div>
 
+<!-- PDFをまとめる／画像を webp にする処理（/tools/ と共通）。
+     重いPDFの部品は、実際にPDFの操作を押したときだけ読み込まれる。 -->
+<script src="/tools/tools.js"></script>
 <script>
 (function () {
   var WORKER_URL = 'https://funasun-files.takakouseitokai.workers.dev';
@@ -152,6 +176,27 @@
     $('total').textContent = chosen.length
       ? chosen.length + '個 ／ 合計 ' + humanSize(total)
       : '';
+    updateTools();
+  }
+
+  /* 選んだ中身を見て、役に立つ整えボタンだけを出す。
+     いつも全部並べると、関係ない人には邪魔なので出しっぱなしにしない。 */
+  function updateTools() {
+    var T = window.FileTools;
+    if (!T) { $('tools').hidden = true; return; }
+    var pdfs = chosen.filter(T.isPdf);
+    var imgs = chosen.filter(function (f) { return T.isImage(f) && !/\.webp$/i.test(f.name); });
+    $('t-merge').hidden = pdfs.length < 2;
+    $('t-webp').hidden = imgs.length < 1;
+    $('tools').hidden = $('t-merge').hidden && $('t-webp').hidden;
+    if ($('tools').hidden) setToolMsg('');
+  }
+  function setToolMsg(t, c) {
+    $('t-msg').textContent = t || '';
+    $('t-msg').className = 'tools-m' + (c ? ' ' + c : '');
+  }
+  function toolsBusy(on) {
+    $('t-merge').disabled = on; $('t-webp').disabled = on; btn.disabled = on;
   }
 
   // 同じファイルを二重に足さない（名前＋サイズ＋更新日時で見分ける）
@@ -186,6 +231,61 @@
   });
   drop.addEventListener('drop', function (e) {
     if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+
+  /* --- PDFを1つにまとめる --- */
+  $('t-merge').addEventListener('click', function () {
+    var T = window.FileTools;
+    var pdfs = chosen.filter(T.isPdf);
+    if (pdfs.length < 2) return;
+    toolsBusy(true);
+    setToolMsg('まとめています…（' + pdfs.length + '個）');
+    T.mergePdf(pdfs, function (done, total, name) {
+      setToolMsg('まとめています… ' + done + ' / ' + total + (name ? '（' + name + '）' : ''));
+    }).then(function (blob) {
+      var name = T.baseName(pdfs[0].name) + '_まとめ.pdf';
+      // まとめた元のPDFは一覧から外し、代わりに1つ入れる
+      chosen = chosen.filter(function (f) { return !T.isPdf(f); });
+      chosen.unshift(T.toFile(blob, name));
+      renderList();
+      setToolMsg(pdfs.length + '個のPDFを「' + name + '」にまとめました。', 'ok');
+      toolsBusy(false);
+    }).catch(function (e) {
+      setToolMsg(e.message, 'err');
+      toolsBusy(false);
+    });
+  });
+
+  /* --- 画像を webp にして軽くする --- */
+  $('t-webp').addEventListener('click', function () {
+    var T = window.FileTools;
+    var imgs = chosen.filter(function (f) { return T.isImage(f) && !/\.webp$/i.test(f.name); });
+    if (!imgs.length) return;
+    toolsBusy(true);
+
+    var before = 0, after = 0, failed = [];
+    imgs.reduce(function (chain, f, i) {
+      return chain.then(function () {
+        setToolMsg('変換中… ' + (i + 1) + ' / ' + imgs.length + '（' + f.name + '）');
+        return T.toWebp(f, { maxEdge: 1800, quality: 0.82 }).then(function (r) {
+          var at = chosen.indexOf(f);
+          if (at !== -1) chosen[at] = T.toFile(r.blob, r.name);
+          before += r.before; after += r.after;
+        }).catch(function (e) { failed.push(e.message); });
+      });
+    }, Promise.resolve()).then(function () {
+      renderList();
+      toolsBusy(false);
+      if (before) {
+        var pct = Math.round((1 - after / before) * 100);
+        setToolMsg('画像を webp にしました。' + humanSize(before) + ' → ' + humanSize(after)
+          + (pct > 0 ? '（' + pct + '%減）' : '')
+          + (failed.length ? ' ／ ' + failed.length + '個は変換できませんでした：' + failed[0] : ''),
+          failed.length ? '' : 'ok');
+      } else {
+        setToolMsg(failed[0] || '変換できませんでした。', 'err');
+      }
+    });
   });
 
   // 1つ分のアップロード。done は全体の進捗表示に使う。

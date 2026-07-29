@@ -129,7 +129,9 @@
     form.innerHTML = '';
     form.appendChild(el('h2', { class: 'sec-title', text: sec.label }));
 
-    if (sec.arrayPath) {
+    if (sec.custom === 'files') {
+      renderFilesPane(form);
+    } else if (sec.arrayPath) {
       // セクション全体が1つのリスト（Works / Archive）
       ensureArray(data, sec.arrayPath);
       form.appendChild(renderList(data, sec.arrayPath, {
@@ -447,6 +449,146 @@
   function reload() {
     if (dirty && !confirm('未保存の変更があります。破棄して最新を読み込みますか？')) return;
     loadData();
+  }
+
+  // ============================================================
+  //  預かりファイルの一覧（ファイル共有 Worker から取得）
+  //  ------------------------------------------------------------
+  //  ここは data.json とは無関係なので「保存する」には影響しない。
+  //  Worker 側は Google ログインで本人確認してから答えるので、
+  //  この画面を開けるのは持ち主だけ。
+  // ============================================================
+  var filesCache = null;   // タブを行き来しても取り直さないための控え
+
+  function filesApi(action, payload) {
+    var base = (window.ADMIN_CONFIG || {}).filesUrl;
+    if (!base) return Promise.reject(new Error('ファイル共有のURLが設定されていません（admin/config.js の filesUrl）'));
+    return window.AdminAuth.getIdToken(false).then(function (idToken) {
+      var body = Object.assign({ idToken: idToken }, payload || {});
+      return fetch(base + action, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      });
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (j) {
+        if (!res.ok) throw new Error(j.message || ('通信に失敗しました（' + res.status + '）'));
+        return j;
+      });
+    });
+  }
+
+  function renderFilesPane(form) {
+    var box = el('div', {});
+    form.appendChild(box);
+
+    function draw() {
+      box.innerHTML = '';
+      if (!filesCache) {
+        box.appendChild(el('p', { class: 'sub', text: '読み込み中…' }));
+        return;
+      }
+      var d = filesCache;
+
+      // 使用量
+      var pct = d.cap ? Math.min(100, Math.round((d.used / d.cap) * 100)) : 0;
+      var meter = el('div', { class: 'usage' }, [
+        el('p', { class: 'usage-text', text: '使用量 ' + d.usedText + ' ／ ' + d.capText + '（' + pct + '%）' }),
+        el('div', { class: 'bar' }, [el('span', { style: 'width:' + pct + '%' })])
+      ]);
+      box.appendChild(meter);
+
+      box.appendChild(el('p', { class: 'fh', text:
+        '/files/ から送られたファイルの全部です。期限が来たものは自動で消えます。' }));
+
+      var bar = el('p', { style: 'margin:14px 0 18px' }, [
+        el('button', { class: 'mini', type: 'button', text: '再読み込み', onclick: function () { filesCache = null; draw(); load(); } })
+      ]);
+      box.appendChild(bar);
+
+      if (!d.files.length) {
+        box.appendChild(el('p', { class: 'sub', text: '今あずかっているファイルはありません。' }));
+        return;
+      }
+
+      d.files.forEach(function (f) {
+        box.appendChild(fileCard(f));
+      });
+    }
+
+    function fileCard(f) {
+      var head = el('div', { class: 'card-head' }, [
+        el('span', { class: 'card-title', text: f.name }),
+        el('div', { class: 'itembtns' }, [
+          el('button', {
+            class: 'mini del', type: 'button', text: '削除',
+            onclick: function () {
+              if (!confirm('「' + f.name + '」を削除します。元に戻せません。よろしいですか？')) return;
+              setStatus('削除中…', 'info');
+              filesApi('/admin/del', { id: f.id }).then(function () {
+                setStatus('削除しました', 'ok');
+                filesCache = null; draw(); load();
+              }).catch(function (e) { setStatus(e.message, 'err'); });
+            }
+          })
+        ])
+      ]);
+
+      var meta = [f.sizeText];
+      if (f.expired) meta.push('期限切れ（まもなく自動削除）');
+      else if (f.expiresText) meta.push(f.expiresText + ' まで');
+      if (f.locked) meta.push('合言葉つき');
+      if (f.group) meta.push('まとめの一部');
+
+      var body = el('div', { class: 'card-body' }, [
+        el('p', { class: 'fh', style: 'margin:0 0 10px', text: meta.join('　/　') })
+      ]);
+
+      body.appendChild(urlRow('受け取りページ', f.pageUrl, '相手に渡すのはこれ'));
+      if (f.groupUrl) body.appendChild(urlRow('まとめページ', f.groupUrl, '同時に送ったものが全部入っています'));
+      if (f.previewUrl) body.appendChild(urlRow('中身を見る', f.previewUrl, ''));
+      body.appendChild(urlRow('直接ダウンロード', f.downloadUrl, ''));
+
+      return el('div', { class: 'card' }, [head, body]);
+    }
+
+    // URL1本ぶんの行。押すとコピーできる
+    function urlRow(label, url, hint) {
+      var input = el('input', { class: 'urlbox', type: 'text', readonly: 'readonly', value: url });
+      input.addEventListener('focus', function () { input.select(); });
+      return el('div', { class: 'urlrow' }, [
+        el('span', { class: 'urllabel', text: label }),
+        input,
+        el('button', {
+          class: 'mini', type: 'button', text: 'コピー',
+          onclick: function () {
+            var done = function () { setStatus(label + 'のURLをコピーしました', 'ok'); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url).then(done, function () { input.select(); document.execCommand('copy'); done(); });
+            } else { input.select(); document.execCommand('copy'); done(); }
+          }
+        }),
+        el('a', { class: 'mini urlopen', href: url, target: '_blank', rel: 'noopener', text: '開く' }),
+        hint ? el('span', { class: 'urlhint', text: hint }) : null
+      ]);
+    }
+
+    function load() {
+      filesApi('/admin/list').then(function (j) {
+        filesCache = j;
+        if (activeSection && activeSection.custom === 'files') draw();
+        setStatus('', '');
+      }).catch(function (e) {
+        filesCache = { files: [], used: 0, cap: 0, usedText: '—', capText: '—' };
+        if (activeSection && activeSection.custom === 'files') {
+          box.innerHTML = '';
+          box.appendChild(el('p', { class: 'sub', text: '一覧を取得できませんでした：' + e.message }));
+          box.appendChild(el('p', {}, [el('button', { class: 'mini', type: 'button', text: 'やり直す', onclick: function () { filesCache = null; draw(); load(); } })]));
+        }
+        setStatus(e.message, 'err');
+      });
+    }
+
+    draw();
+    if (!filesCache) load();
   }
 
   // ============================================================
