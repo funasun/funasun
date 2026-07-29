@@ -22,6 +22,8 @@
         画像として返したものは、中身がHTMLでも画像としてしか扱われない。
      3. Content-Security-Policy: sandbox — 万一動いても隔離された出所として
         扱われ、この Worker のドメインの何にも触れない。
+   なお PDF を表示する枠（iframe）にだけは sandbox 属性を付けていない。
+   付けると Chrome が PDF ビューアごと止めてしまうため。詳しくは PREVIEW_JS の中に。
 
    必要な Worker シークレット:
      UPLOAD_CODE           … アップロード用の合言葉
@@ -669,8 +671,18 @@ const PREVIEW_JS = `
           a.src = src; a.controls = true; a.preload = 'metadata';
           box.appendChild(a);
         } else if (kind === 'pdf') {
+          /* ここに sandbox 属性を付けてはいけない。
+             Chrome は sandbox の付いた枠の中では PDF ビューアを動かさず、
+             「このページは Chrome によってブロックされています」になってしまう。
+             どの値を入れてもだめで（"" も allow-scripts も allow-same-origin も）、
+             付けないこと以外に表示させる方法がない。
+             安全のほうは、これが無くても次の3つで守られている:
+               ・そもそも pdf 以外はこの枠に来ない（拡張子の表で決めている）
+               ・応答に nosniff と Content-Type: application/pdf を付けている
+               ・PDF の中のスクリプトは Chrome の PDF ビューアの中に閉じていて、
+                 このページの中身には触れられない */
           var f = document.createElement('iframe');
-          f.src = src; f.setAttribute('sandbox', ''); f.title = name;
+          f.src = src; f.title = name; f.referrerPolicy = 'no-referrer';
           box.appendChild(f);
         } else if (kind === 'text') {
           var pre = document.createElement('pre');
