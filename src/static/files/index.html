@@ -320,7 +320,27 @@
     });
   });
 
-  // 1つ分のアップロード。done は全体の進捗表示に使う。
+  /* ---- 途中で切れても続きから送る ----
+     大きいファイルは10MBずつに分けて送る。5GBなら512回。
+     このうち1回でも失敗したら最初からやり直し、では大きいファイルはまず送り終わらない
+     （回線が一瞬揺れただけで「Failed to fetch」になり、何時間分かが消える）。
+     そこで、失敗したら少し待ってやり直す。やり直す前に「どこまで届いたか」を
+     Google に聞き直し、その続きから送る。届いていた分は送り直さない。 */
+  var RETRY_WAITS = [1, 2, 4, 8, 15, 30];   // 何秒待ってからやり直すか。この回数だけ粘る
+  var ALIGN = 256 * 1024;                   // Google が受け取りを確定する単位
+
+  function sleep(sec) { return new Promise(function (r) { setTimeout(r, sec * 1000); }); }
+
+  // 「どこまで届いた？」を聞く。{ done:false, received:n } か { done:true, url:… } が返る
+  async function askWhere(sessionUri, total) {
+    var r = await fetch(WORKER_URL + '/where?session=' + encodeURIComponent(sessionUri) +
+      '&total=' + total, { method: 'POST' });
+    var j = await r.json();
+    if (!r.ok) throw new Error(j.message || '状態を確認できませんでした');
+    return j;
+  }
+
+  // 1つ分のアップロード。onProgress にはこのファイルの「送り終えた量」を渡す。
   async function uploadOne(file, opts) {
     var res = await fetch(WORKER_URL + '/create', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -336,16 +356,51 @@
 
     var partSize = cj.partSize;
     var shareUrl = '';
-    for (var offset = 0; offset < file.size; offset += partSize) {
+    var offset = 0;
+    var tries = 0;                          // 続けて失敗した回数。1つ通るたびに0に戻す
+
+    while (offset < file.size) {
       var end = Math.min(offset + partSize, file.size);
-      var pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(cj.sessionUri) +
-        '&start=' + offset + '&end=' + end + '&total=' + file.size, {
-        method: 'PUT', body: file.slice(offset, end)
-      });
-      var pj = await pr.json();
-      if (!pr.ok) throw new Error('「' + file.name + '」' + (pj.message || 'アップロード中にエラーが発生しました'));
-      if (pj.done) shareUrl = pj.url;
-      opts.onProgress(end - offset);
+      var pr = null, pj = null;
+      try {
+        pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(cj.sessionUri) +
+          '&start=' + offset + '&end=' + end + '&total=' + file.size, {
+          method: 'PUT', body: file.slice(offset, end)
+        });
+        pj = await pr.json();
+      } catch (e) {
+        pr = null;                          // 返事そのものが返ってこなかった（回線が切れた）
+      }
+
+      if (pr && pr.ok) {
+        if (pj.done) shareUrl = pj.url;
+        offset = end;
+        tries = 0;
+        opts.onProgress(offset);
+        continue;
+      }
+
+      /* やり直してよいのは「こちらの言い分が間違っていた」わけではないとき。
+         合言葉違い・大きすぎるなどの 4xx を何度やり直しても同じなので、そこで止める。 */
+      var canRetry = !pr || pr.status >= 500;
+      if (!canRetry || tries >= RETRY_WAITS.length) {
+        throw new Error('「' + file.name + '」'
+          + ((pj && pj.message) || '通信が切れました。電波のよいところで、もう一度お試しください'));
+      }
+
+      opts.onRetry(tries + 1, RETRY_WAITS.length);
+      await sleep(RETRY_WAITS[tries]);
+      tries++;
+
+      try {
+        var w = await askWhere(cj.sessionUri, file.size);
+        if (w.done) { shareUrl = w.url; offset = file.size; opts.onProgress(offset); break; }
+        // 確定は 256KB 単位。半端な数が返ることはないはずだが、手前に丸めておけば必ず送り直せる
+        offset = Math.floor(w.received / ALIGN) * ALIGN;
+        opts.onProgress(offset);
+      } catch (e) {
+        // 聞くことすら失敗した＝まだ回線が戻っていない。次の周でもう一度試す
+      }
     }
     if (!shareUrl) throw new Error('「' + file.name + '」の保存を確定できませんでした');
     return shareUrl;
@@ -374,16 +429,23 @@
       var lastUrl = '';
 
       for (var i = 0; i < files.length; i++) {
-        setMsg('アップロード中… ' + (i + 1) + '/' + files.length + '「' + files[i].name + '」', 'info');
-        lastUrl = await uploadOne(files[i], {
+        // 1つ前までに送り終えた量。今のファイルの進み具合はこれに足して数える
+        var done = sent;
+        var f = files[i];
+        var label = (i + 1) + '/' + files.length + '「' + f.name + '」';
+        setMsg('アップロード中… ' + label, 'info');
+        lastUrl = await uploadOne(f, {
           code: code, days: Number($('expiry').value), pwHash: pwHash,
           group: group, index: i,
           onProgress: function (n) {
-            sent += n;
-            var pct = Math.min(100, Math.round(sent / grandTotal * 100));
-            barI.style.width = pct + '%';
+            barI.style.width = Math.min(100, Math.round((done + n) / grandTotal * 100)) + '%';
+            setMsg('アップロード中… ' + label + ' ' + Math.round(n / f.size * 100) + '%', 'info');
+          },
+          onRetry: function (n, max) {
+            setMsg('通信が切れました。続きからやり直しています…（' + n + '/' + max + '）' + label, 'info');
           }
         });
+        sent = done + f.size;
       }
 
       var shareUrl = group ? WORKER_URL + '/g/' + group : lastUrl;

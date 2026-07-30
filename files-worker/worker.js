@@ -213,6 +213,7 @@ export default {
       if (path === '/admin/del' && request.method === 'POST') return await adminDelete(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
+      if (path === '/where' && request.method === 'POST') return await uploadWhere(request, env, url, origin);
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
       if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
       if (path.startsWith('/ok/') && request.method === 'GET') return await checkPw(env, path.slice(4), url, origin);
@@ -303,13 +304,47 @@ async function create(request, env, origin) {
   return json({ sessionUri: sessionUri, partSize: PART_SIZE, size: size }, 200, origin);
 }
 
+// セッションURIは必ず Google のアップロード先だけ許可（SSRF 防止）
+function okSession(s) {
+  return /^https:\/\/[a-z0-9.-]*\.googleapis\.com\//i.test(s);
+}
+
+/* 最後の分割が通ったときの返事。Google がファイルの情報を返してくる。 */
+async function finished(res, request, origin) {
+  const f = await res.json().catch(function () { return {}; });
+  const id = f && f.id ? f.id : '';
+  if (!id) return json({ message: '保存の確定に失敗しました' }, 502, origin);
+  return json({ done: true, id: id, url: new URL(request.url).origin + '/f/' + id }, 200, origin);
+}
+
+/* ---- 「どこまで届いた？」を Google に聞く ----
+   通信が切れたとき、送った側は「その分割が届いたのかどうか」が分からない。
+   届いていたのにもう一度 0 から送り直すと、大きいファイルでは何時間も無駄になる。
+   中身のない PUT を送って「範囲は未定、全体はこの大きさ」と伝えると、Google は
+   「ここまで受け取った」と答えてくれる。そこから続ければよい。 */
+async function uploadWhere(request, env, url, origin) {
+  const session = url.searchParams.get('session') || '';
+  const total = Number(url.searchParams.get('total') || '-1');
+  if (!okSession(session) || total <= 0) return json({ message: 'パラメータが不正です' }, 400, origin);
+
+  const res = await fetch(session, { method: 'PUT', headers: { 'Content-Range': 'bytes */' + total } });
+  if (res.status === 308) {
+    // Range: bytes=0-1234 …「1234 番目まで受け取った」＝次に送るのは 1235 から。
+    // まだ1バイトも届いていないときは Range そのものが付かない。
+    const r = res.headers.get('Range') || '';
+    const m = r.match(/bytes=0-(\d+)/);
+    return json({ done: false, received: m ? Number(m[1]) + 1 : 0 }, 200, origin);
+  }
+  if (res.ok) return await finished(res, request, origin);       // すでに全部届いて確定していた
+  return json({ message: 'アップロードの状態を確認できませんでした' }, 502, origin);
+}
+
 async function uploadPart(request, env, url, origin) {
   const session = url.searchParams.get('session') || '';
   const start = Number(url.searchParams.get('start') || '-1');
   const end = Number(url.searchParams.get('end') || '-1');    // この分割の「次のバイト」= 排他的終端
   const total = Number(url.searchParams.get('total') || '-1');
-  // セッションURIは必ず Google のアップロード先だけ許可（SSRF 防止）
-  if (!/^https:\/\/[a-z0-9.-]*\.googleapis\.com\//i.test(session)) {
+  if (!okSession(session)) {
     return json({ message: 'パラメータが不正です' }, 400, origin);
   }
   if (start < 0 || end <= start || total <= 0 || end > total) {
@@ -329,14 +364,10 @@ async function uploadPart(request, env, url, origin) {
     // まだ途中（正常）
     return json({ done: false }, 200, origin);
   }
-  if (res.ok) {
-    // 最後の分割：ファイルが確定した
-    const f = await res.json().catch(function () { return {}; });
-    const id = f && f.id ? f.id : '';
-    if (!id) return json({ message: '保存の確定に失敗しました' }, 502, origin);
-    return json({ done: true, id: id, url: new URL(request.url).origin + '/f/' + id }, 200, origin);
-  }
-  return json({ message: 'アップロード中にエラーが発生しました' }, 502, origin);
+  if (res.ok) return await finished(res, request, origin);   // 最後の分割：ファイルが確定した
+  /* ここに来たら送り直してよいのかどうかを、送る側が判断できるようにしておく。
+     Google が 5xx を返したときは待ってやり直せば通ることが多い。 */
+  return json({ message: 'アップロード中にエラーが発生しました', retry: res.status >= 500 }, 502, origin);
 }
 
 /* ---------- ファイル本体を返す（ダウンロード／プレビュー共通）---------- */
