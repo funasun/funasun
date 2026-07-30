@@ -496,6 +496,20 @@
       ]);
       box.appendChild(meter);
 
+      /* 保管先ごとの内訳。アカウントを増やしたときに、ちゃんと効いているか／
+         どれが埋まっているかがここだけで分かるようにしておく。
+         「Drive全体」はメールや写真も含んだ数字（枠を共用しているため）。 */
+      if (d.stores && d.stores.length) {
+        box.appendChild(el('ul', { class: 'stores' }, d.stores.map(function (s, i) {
+          return el('li', { class: s.ok ? '' : 'bad', text: '保管先' + (i + 1) + '：' + (s.ok
+            ? s.files + '個を預かり中　Drive全体 ' + s.usedText + ' / ' + s.limitText
+              + '　まだ預かれる ' + s.freeText
+            : '使えません（鍵が切れているか、登録が未完了）') });
+        })));
+        box.appendChild(el('p', { class: 'fh', text:
+          'メールや写真のために ' + d.reserveText + ' は必ず空けてあります。ここには預かりません。' }));
+      }
+
       box.appendChild(el('p', { class: 'fh', text:
         '/files/ から送られたファイルの全部です。期限が来たものは自動で消えます。' }));
 

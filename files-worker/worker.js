@@ -1,16 +1,17 @@
 /* ============================================================
    funasun-files — ファイル共有 Worker（ギガファイル便ふう）
    ------------------------------------------------------------
-   ・保管先は Google ドライブ（船越さんの15GB無料・カード不要）。
+   ・保管先は Google ドライブ（無料15GB・カード不要）。複数アカウント可。
    ・使う権限は drive.file（このアプリが作ったファイルだけ）。安全な最小権限。
    ・アップロードは「合言葉（env.UPLOAD_CODE）」を知っている人だけ。
    ・大きいファイルは分割（レジューム式）でアップロードするので GB 級もOK。
      分割データはブラウザ →(この Worker)→ Google と中継する。
+     途中で切れても /where で「どこまで届いたか」を聞き、続きから送り直せる。
    ・複数ファイルは「まとめID（grp）」で束ね、/g/:id の1つのURLで渡せる。
    ・各ファイルに任意の「ダウンロード合言葉」と「有効期限」を付けられる。
      期限切れは毎日の cron ＋ アクセス時チェックで自動削除。
-   ・保管庫の合計上限（TOTAL_CAP）を超えるアップロードは断る＝無駄に
-     Google の容量（＝Gmail 等と共有）を埋めない。
+   ・どれだけ預かってよいかは Google に実際の空きを聞いて決める。
+     RESERVE の分だけは必ず残す＝Gmail 等の枠を食い潰さない。
 
    【中身のプレビューについて】
    ダウンロードは今までどおり必ず添付（強制ダウンロード）で返す。
@@ -30,6 +31,7 @@
      GOOGLE_CLIENT_ID      … OAuth クライアントID
      GOOGLE_CLIENT_SECRET  … OAuth クライアントシークレット
      GOOGLE_REFRESH_TOKEN  … 一度だけ取得するリフレッシュトークン
+     GOOGLE_REFRESH_TOKEN_2 … 保管先を増やしたいとき（_5 まで。任意）
 
    エンドポイント（すべて JSON。ファイル本体だけ生バイト）:
      POST /create      … アップロード開始（合言葉チェック＋レジューム枠作成）
@@ -58,10 +60,21 @@ const FIREBASE_API_KEY = 'AIzaSyCbi7N4rV7L04rusvzVHQ2SjPoKdqaNg2k';
 // 1ファイルの上限。断るときの文にもこの数を使う（数字と文がずれないように）
 const MAX_GB = 5;
 const MAX_BYTES = MAX_GB * 1024 * 1024 * 1024;
-/* 保管庫の合計上限 10GB（15GBの手前で止める）。この 15GB は Gmail とも共用なので、
-   ここを上げると、メールが受け取れなくなったり有料の追加容量が要る所まで行ってしまう。
-   1ファイル上限より、こちらのほうが先に効く（5GBのファイルなら2つで満杯）。 */
-const TOTAL_CAP = 10 * 1024 * 1024 * 1024;
+/* ---- 保管先について ----
+   置き場所は Google ドライブ。無料の15GBは Gmail や写真と共用なので、
+   「あとどれだけ預かってよいか」は自分が預かった分を数えても分からない。
+   （メールが増えれば、こちらが何もしなくても空きは減る。）
+   そこで Google に本当の使用量を聞き、そこから RESERVE を必ず残す。
+
+   保管先は複数登録できる。env に GOOGLE_REFRESH_TOKEN, GOOGLE_REFRESH_TOKEN_2,
+   … と入れた順に使い、前のが埋まったら次へ送る。1本しか無ければ今までと同じ動き。 */
+const TOKEN_KEYS = [
+  'GOOGLE_REFRESH_TOKEN', 'GOOGLE_REFRESH_TOKEN_2', 'GOOGLE_REFRESH_TOKEN_3',
+  'GOOGLE_REFRESH_TOKEN_4', 'GOOGLE_REFRESH_TOKEN_5'
+];
+/* メールと写真のために必ず空けておく量。ここには絶対に手を付けない。
+   保管庫が満杯でメールが受け取れない、が一番困る壊れ方なので。 */
+const RESERVE = 3 * 1024 * 1024 * 1024;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
@@ -155,8 +168,9 @@ function fmtDate(ms) {
 
 /* ---------- Google OAuth / Drive API ---------- */
 
-async function getAccessToken(env) {
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REFRESH_TOKEN) {
+async function getAccessToken(env, key) {
+  key = key || TOKEN_KEYS[0];
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env[key]) {
     throw new Error('Googleの設定が未完了です（認証情報が未登録）');
   }
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -165,7 +179,7 @@ async function getAccessToken(env) {
     body: new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
+      refresh_token: env[key],
       grant_type: 'refresh_token'
     })
   });
@@ -174,6 +188,66 @@ async function getAccessToken(env) {
     throw new Error('Google認証に失敗しました' + (j.error_description ? '（' + j.error_description + '）' : ''));
   }
   return j.access_token;
+}
+
+/* 登録されている保管先すべての鍵。登録した順に返す。
+   1つのアカウントの鍵が切れていても、そこだけ飛ばして他は使えるようにしておく
+   （1本の失効で、他のアカウントに預けたファイルまで見えなくなると困るため）。
+   ぜんぶ駄目なときだけ、はっきり失敗させる。 */
+async function allTokens(env) {
+  const out = [];
+  const bad = [];
+  for (const key of TOKEN_KEYS) {
+    if (!env[key]) continue;
+    try { out.push({ key: key, token: await getAccessToken(env, key) }); }
+    catch (e) { bad.push(key); }
+  }
+  if (!out.length) {
+    throw new Error(bad.length ? 'Google認証に失敗しました' : 'Googleの設定が未完了です（認証情報が未登録）');
+  }
+  out.bad = bad;
+  return out;
+}
+
+/* ---- 空き容量を Google 自身に聞く ----
+   預かったファイルを数え上げるのではなく、アカウント全体の使用量を聞く。
+   15GB は Gmail や写真と共用なので、そちらの増減も込みで見ないと
+   「まだ空いている」と思って預かった結果メールが止まる、が起こる。 */
+async function freeSpace(token) {
+  const res = await fetch('https://www.googleapis.com/drive/v3/about?fields=storageQuota',
+    { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) return null;
+  const q = (await res.json().catch(function () { return {}; })).storageQuota || {};
+  const usage = Number(q.usage || 0);
+  const limit = Number(q.limit || 0);        // 上限なしのアカウントでは値が来ない
+  if (!limit) return { limit: 0, usage: usage, free: Number.MAX_SAFE_INTEGER, unlimited: true };
+  return { limit: limit, usage: usage, free: Math.max(0, limit - usage - RESERVE), unlimited: false };
+}
+
+/* ---- そのファイルがどのアカウントにあるかを探す ----
+   URLには置き場所が書いていない。権限が drive.file なので、各アカウントは
+   自分が預かった分しか見えない＝「知りません」＝そこには無い、と言い切れる。
+   順に聞けば必ず当たる。すでに配ったURLをそのまま使い続けられるのが利点。 */
+// size バイトを置ける保管先の鍵を返す。どこにも入らなければ null。
+async function pickAccount(accounts, size) {
+  for (const a of accounts) {
+    const sp = await freeSpace(a.token);
+    if (sp && sp.free >= size) return a.token;
+  }
+  return null;
+}
+
+async function findFile(env, fileId) {
+  let trouble = false;
+  for (const a of await allTokens(env)) {
+    try {
+      const file = await driveMeta(a.token, fileId);
+      if (file) return { token: a.token, file: file };
+    } catch (e) { trouble = true; }
+  }
+  // 「どこにも無い」と言い切ってよいのは、全部のアカウントがちゃんと答えたときだけ
+  if (trouble) throw new Error('ファイル情報の取得に失敗しました');
+  return null;
 }
 
 async function driveMeta(token, id) {
@@ -256,11 +330,16 @@ async function create(request, env, origin) {
   if (size <= 0) return json({ message: 'ファイルが空です。' }, 400, origin);
   if (size > MAX_BYTES) return json({ message: 'ファイルが大きすぎます（上限 ' + MAX_GB + 'GB）。' }, 413, origin);
 
-  const token = await getAccessToken(env);
-
-  // 保管庫の合計上限チェック（無料枠の手前で必ず止める）
-  const used = await currentUsage(env, token);
-  if (used + size > TOTAL_CAP) {
+  /* 空きのある保管先を、登録した順に探す。
+     どれも足りなければ、期限切れを片付けてから一度だけ探し直す。
+     （毎回片付けようとすると、全ファイルを見に行くので重い。詰まった時だけでよい。） */
+  const accounts = await allTokens(env);
+  let token = await pickAccount(accounts, size);
+  if (!token) {
+    await cleanup(env);
+    token = await pickAccount(accounts, size);
+  }
+  if (!token) {
     return json({ message: '保管庫の空き容量が不足しています。古いファイルが自動削除されるまで、しばらく待ってからお試しください。' }, 507, origin);
   }
 
@@ -389,9 +468,10 @@ function pwGate(meta, url, id, asJson) {
 
 async function serveFile(env, rawId, url, request, inline, origin) {
   const fileId = safeId(rawId);
-  const token = await getAccessToken(env);
-  const file = await driveMeta(token, fileId);
-  if (!file) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、削除されました。</p>', 404);
+  const found = await findFile(env, fileId);
+  if (!found) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、削除されました。</p>', 404);
+  const token = found.token;
+  const file = found.file;
   const meta = file.appProperties || {};
   if (meta.app !== APP_TAG) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しません。</p>', 404);
   if (expired(meta)) {
@@ -484,10 +564,9 @@ async function serveFile(env, rawId, url, request, inline, origin) {
 // 合言葉が合っているかだけを answer する（プレビュー前の確認用）
 async function checkPw(env, rawId, url, origin) {
   const fileId = safeId(rawId);
-  const token = await getAccessToken(env);
-  const file = await driveMeta(token, fileId);
-  if (!file) return json({ ok: false, gone: true }, 404, origin);
-  const meta = file.appProperties || {};
+  const found = await findFile(env, fileId);
+  if (!found) return json({ ok: false, gone: true }, 404, origin);
+  const meta = found.file.appProperties || {};
   if (meta.app !== APP_TAG) return json({ ok: false, gone: true }, 404, origin);
   if (expired(meta)) return json({ ok: false, gone: true }, 410, origin);
   if (!meta.pw) return json({ ok: true }, 200, origin);
@@ -499,9 +578,10 @@ async function checkPw(env, rawId, url, origin) {
 
 async function landing(env, id, url) {
   const fileId = safeId(id);
-  const token = await getAccessToken(env);
-  const file = await driveMeta(token, fileId);
-  if (!file) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、期限切れで削除されました。</p>', 404);
+  const found = await findFile(env, fileId);
+  if (!found) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しないか、期限切れで削除されました。</p>', 404);
+  const token = found.token;
+  const file = found.file;
   const meta = file.appProperties || {};
   if (meta.app !== APP_TAG) return htmlPage('ファイルが見つかりません', '<p class="muted">このファイルは存在しません。</p>', 404);
   if (expired(meta)) {
@@ -569,15 +649,14 @@ async function landing(env, id, url) {
 async function groupLanding(env, gid, url) {
   const groupId = safeId(gid);
   if (!groupId) return htmlPage('見つかりません', '<p class="muted">このURLは正しくありません。</p>', 404);
-  const token = await getAccessToken(env);
-  const files = await listByGroup(token, groupId);
+  const files = await listByGroup(env, groupId);
 
   const now = Date.now();
   const alive = [];
   for (const f of files) {
     const m = f.appProperties || {};
     const exp = Number(m.expiresAt || 0);
-    if (exp > 0 && now > exp) { await driveDelete(token, f.id); continue; }
+    if (exp > 0 && now > exp) { await driveDelete(f._tok, f.id); continue; }
     alive.push(f);
   }
   if (!alive.length) {
@@ -668,7 +747,20 @@ async function groupLanding(env, gid, url) {
   return htmlPage(alive.length + '個のファイル', body, 200, true);
 }
 
-async function listByGroup(token, groupId) {
+/* まとめの中身を集める。1回の送信の途中で保管先が満杯になると、
+   ひとまとまりが2つのアカウントに分かれて入ることがある。だから全部から集めて合わせる。
+   どのアカウントから来たかを _tok に添える（消すときにその鍵が要る）。 */
+async function listByGroup(env, groupId) {
+  const out = [];
+  for (const a of await allTokens(env)) {
+    let files = [];
+    try { files = await groupIn(a.token, groupId); } catch (e) { continue; }
+    for (const f of files) { f._tok = a.token; out.push(f); }
+  }
+  return out;
+}
+
+async function groupIn(token, groupId) {
   const q = "appProperties has { key='app' and value='" + APP_TAG + "' }"
     + " and appProperties has { key='grp' and value='" + groupId + "' }"
     + ' and trashed=false';
@@ -815,21 +907,6 @@ async function listOwnFiles(token, onFile, extraFields) {
   } while (pageToken);
 }
 
-// 現在の使用量（バイト）を合計。ついでに期限切れは掃除する。
-async function currentUsage(env, token) {
-  let total = 0;
-  const now = Date.now();
-  await listOwnFiles(token, async function (f) {
-    const meta = f.appProperties || {};
-    const exp = Number(meta.expiresAt || 0);
-    if (exp > 0 && now > exp) {
-      await driveDelete(token, f.id);
-      return; // 期限切れは数えない
-    }
-    total += Number(f.size) || 0;
-  });
-  return total;
-}
 
 /* ============================================================
    管理用（/admin から呼ばれる）
@@ -882,13 +959,13 @@ async function adminList(request, env, origin) {
   const gate = await requireOwner(request, env, origin);
   if (gate.err) return gate.err;
 
-  const token = await getAccessToken(env);
+  const accounts = await allTokens(env);
   const base = new URL(request.url).origin;
   const now = Date.now();
   const items = [];
   let used = 0;
 
-  await listOwnFiles(token, function (f) {
+  const onFile = function (f) {
     const p = f.appProperties || {};
     const exp = Number(p.expiresAt || 0);
     const size = Number(f.size) || 0;
@@ -910,12 +987,43 @@ async function adminList(request, env, origin) {
       previewUrl: previewType(f.name) ? base + '/pv/' + f.id : '',
       groupUrl: p.grp ? base + '/g/' + p.grp : ''
     });
-  }, 'name,createdTime');
+  };
+
+  /* 保管先ごとに、預かっているものと本当の空きを見る。
+     cap（あとどれだけ預かれるか）は決め打ちの数字ではなく、Google に聞いた
+     実際の空きから RESERVE を引いたもの。メールが増えれば自動で減る。 */
+  const stores = [];
+  let room = 0;
+  for (const a of accounts) {
+    let n = 0;
+    const before = items.length;
+    try { await listOwnFiles(a.token, function (f) { onFile(f); n++; }, 'name,createdTime'); }
+    catch (e) { items.length = before; }
+    const sp = await freeSpace(a.token);
+    if (sp) room += sp.unlimited ? 0 : sp.free;
+    stores.push({
+      key: a.key, files: n,
+      limitText: sp ? (sp.unlimited ? '上限なし' : humanSize(sp.limit)) : '不明',
+      usedText: sp ? humanSize(sp.usage) : '不明',        // メール・写真も含めた全体
+      freeText: sp ? (sp.unlimited ? '上限なし' : humanSize(sp.free)) : '不明',
+      ok: !!sp
+    });
+  }
+  // 鍵はあるのに使えなかった保管先も隠さず出す
+  for (const key of (accounts.bad || [])) {
+    stores.push({ key: key, files: 0, limitText: '—', usedText: '—', freeText: '—', ok: false });
+  }
 
   // 新しい順（作成日が取れないものは末尾）
   items.sort(function (a, b) { return String(b.createdTime).localeCompare(String(a.createdTime)); });
 
-  return json({ files: items, used: used, usedText: humanSize(used), cap: TOTAL_CAP, capText: humanSize(TOTAL_CAP) }, 200, origin);
+  return json({
+    files: items,
+    used: used, usedText: humanSize(used),               // この道具が預かっている分
+    cap: used + room, capText: humanSize(used + room),   // 預かれる見込みの合計
+    reserveText: humanSize(RESERVE),
+    stores: stores
+  }, 200, origin);
 }
 
 // ファイルを1つ消す
@@ -926,22 +1034,25 @@ async function adminDelete(request, env, origin) {
   const id = safeId(String((gate.body && gate.body.id) || ''));
   if (!id) return json({ message: '消すファイルが指定されていません' }, 400, origin);
 
-  const token = await getAccessToken(env);
   // このアプリが作ったファイルかを必ず確かめてから消す
-  const meta = await driveMeta(token, id);
-  if (!meta || !meta.appProperties || meta.appProperties.app !== APP_TAG) {
+  const found = await findFile(env, id);
+  if (!found || !found.file.appProperties || found.file.appProperties.app !== APP_TAG) {
     return json({ message: 'そのファイルは見つかりませんでした' }, 404, origin);
   }
-  await driveDelete(token, id);
+  await driveDelete(found.token, id);
   return json({ ok: true }, 200, origin);
 }
 
 async function cleanup(env) {
-  const token = await getAccessToken(env);
   const now = Date.now();
-  await listOwnFiles(token, async function (f) {
-    const meta = f.appProperties || {};
-    const exp = Number(meta.expiresAt || 0);
-    if (exp > 0 && now > exp) await driveDelete(token, f.id);
-  });
+  for (const a of await allTokens(env)) {
+    // 1つのアカウントで転んでも、残りの片付けは続ける
+    try {
+      await listOwnFiles(a.token, async function (f) {
+        const meta = f.appProperties || {};
+        const exp = Number(meta.expiresAt || 0);
+        if (exp > 0 && now > exp) await driveDelete(a.token, f.id);
+      });
+    } catch (e) { /* このアカウントは次の機会に */ }
+  }
 }
