@@ -55,8 +55,13 @@ const ALLOW_ORIGINS = [
 // 管理用エンドポイントを使えるのはこの人だけ（/admin と同じ持ち主）
 const OWNER_EMAIL = 'tsutsumufunakoshi@gmail.com';
 const FIREBASE_API_KEY = 'AIzaSyCbi7N4rV7L04rusvzVHQ2SjPoKdqaNg2k';
-const MAX_BYTES = 2 * 1024 * 1024 * 1024;      // 1ファイル上限 2GB
-const TOTAL_CAP = 10 * 1024 * 1024 * 1024;     // 保管庫の合計上限 10GB（15GBの手前で止める）
+// 1ファイルの上限。断るときの文にもこの数を使う（数字と文がずれないように）
+const MAX_GB = 5;
+const MAX_BYTES = MAX_GB * 1024 * 1024 * 1024;
+/* 保管庫の合計上限 10GB（15GBの手前で止める）。この 15GB は Gmail とも共用なので、
+   ここを上げると、メールが受け取れなくなったり有料の追加容量が要る所まで行ってしまう。
+   1ファイル上限より、こちらのほうが先に効く（5GBのファイルなら2つで満杯）。 */
+const TOTAL_CAP = 10 * 1024 * 1024 * 1024;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
@@ -248,7 +253,7 @@ async function create(request, env, origin) {
 
   const size = Number(b.size) || 0;
   if (size <= 0) return json({ message: 'ファイルが空です。' }, 400, origin);
-  if (size > MAX_BYTES) return json({ message: 'ファイルが大きすぎます（上限 2GB）。' }, 413, origin);
+  if (size > MAX_BYTES) return json({ message: 'ファイルが大きすぎます（上限 ' + MAX_GB + 'GB）。' }, 413, origin);
 
   const token = await getAccessToken(env);
 

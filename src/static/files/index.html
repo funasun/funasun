@@ -65,7 +65,7 @@
 <div class="wrap">
   <p class="eyebrow">File Share — ファイル共有</p>
   <h1>ファイルを送る</h1>
-  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。1ファイル最大2GB、まとめて30個まで。期限が来たら自動で消えます。</p>
+  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。1ファイル最大5GB、まとめて30個まで。期限が来たら自動で消えます。</p>
 
   <label>アップロード用の合言葉 <span class="hint">（船越から共有された合言葉）</span></label>
   <input id="code" type="password" autocomplete="off" placeholder="合言葉">
@@ -73,7 +73,7 @@
   <label>ファイル <span class="hint">（複数まとめて選べます）</span></label>
   <div id="drop" class="drop">
     <span class="pick">ここにドラッグ、またはクリックして選択</span>
-    <p>1ファイル最大 2GB ／ 30個まで</p>
+    <p>1ファイル最大 5GB ／ 30個まで</p>
   </div>
   <input id="file" type="file" multiple style="display:none">
   <ul id="files" class="files"></ul>
@@ -130,7 +130,9 @@
 (function () {
   var WORKER_URL = 'https://funasun-files.takakouseitokai.workers.dev';
   var MAX_FILES = 30;
-  var MAX_BYTES = 2 * 1024 * 1024 * 1024;
+  // 1ファイルの上限。Worker 側（files-worker/worker.js の MAX_GB）と同じ数にしておく
+  var MAX_GB = 5;
+  var MAX_BYTES = MAX_GB * 1024 * 1024 * 1024;
 
   var $ = function (id) { return document.getElementById(id); };
   var fileInput = $('file');
@@ -218,7 +220,7 @@
       chosen.push(f); added++;
     }
     renderList();
-    if (tooBig) setMsg(tooBig + '個のファイルは大きすぎるため外しました（1ファイル上限2GB）。', 'err');
+    if (tooBig) setMsg(tooBig + '個のファイルは大きすぎるため外しました（1ファイル上限' + MAX_GB + 'GB）。', 'err');
     else if (chosen.length >= MAX_FILES) setMsg('一度に送れるのは' + MAX_FILES + '個までです。', 'info');
     else if (added) setMsg('', '');
   }
