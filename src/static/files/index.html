@@ -37,6 +37,12 @@
   .files .rm:hover { background: rgba(255,255,255,.07); }
   .files .st { flex: none; font-size: 12px; color: var(--accent-text); }
   .total { margin: 12px 0 0; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.72); }
+  .resume { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04);
+    font: 400 12.5px/1.75 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.82); }
+  .resume[hidden] { display: none; }
+  .files .cont { flex: none; padding: 3px 9px; font-size: 11px; border-radius: 999px;
+    border: 1px solid var(--accent); color: var(--accent-text); }
   /* 送る前に整える */
   .tools { margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(111,140,255,.28); border-left: 2px solid var(--accent); border-radius: 12px; background: linear-gradient(150deg, rgba(111,140,255,.09), rgba(111,140,255,.02)); }
   .tools-t { margin: 0 0 10px; font: 500 12px 'Noto Sans JP', sans-serif; letter-spacing: .06em; color: rgba(244,244,245,.9); }
@@ -76,6 +82,8 @@
     <p>1ファイル最大 5GB ／ 30個まで</p>
   </div>
   <input id="file" type="file" multiple style="display:none">
+  <!-- 前回タブを閉じたなどで途中になっているものがあれば、ここで知らせる -->
+  <p id="resume" class="resume" hidden></p>
   <ul id="files" class="files"></ul>
   <p id="total" class="total"></p>
 
@@ -120,7 +128,7 @@
 
   <!-- ここへは Works の道具一覧から来る。ホームに飛ばすと戻り道を見失う -->
   <a href="/works.html" class="back">← 道具の一覧へ戻る</a>
-  <a href="/tools/" class="back" style="margin-left:20px">ファイル編集ツール →</a>
+  <a href="/tools/" class="back" style="margin-left:20px">ファイル編集 →</a>
 </div>
 
 <!-- PDFをまとめる／画像を webp にする処理（/tools/ と共通）。
@@ -160,6 +168,58 @@
     return Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
   }
 
+  /* ---- 送りかけを覚えておく ----
+     タブを閉じたり、パソコンが眠ったりすると、その場でアップロードは終わる。
+     5GBを2時間送った末に「また最初から」では、あんまりなので。
+
+     覚えるのは、Google からもらった送り先（sessionUri）だけ。ファイルの中身は
+     覚えない（勝手にため込むことになるため）。次に同じファイルを選んだときに、
+     その送り先の続きから送る。「同じファイル」は、名前・大きさ・更新日時が
+     すべて一致するかで見分ける。 */
+  var STORE_KEY = 'funasun-files-resume';
+  var STORE_LIFE = 3 * 24 * 60 * 60 * 1000;   // 3日。Google 側の送り先もそのうち消える
+
+  function fileKey(f) { return f.name + '|' + f.size + '|' + f.lastModified; }
+
+  function loadStore() {
+    var all = [];
+    try { all = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { all = []; }
+    if (!Array.isArray(all)) all = [];
+    var now = Date.now();
+    var live = all.filter(function (r) { return r && r.at && now - r.at < STORE_LIFE; });
+    if (live.length !== all.length) saveStore(live);
+    return live;
+  }
+  function saveStore(list) {
+    // 使えない設定のブラウザでも、それだけの話にする（送ること自体は妨げない）
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(-10))); } catch (e) { }
+  }
+  function rememberUpload(rec) {
+    var list = loadStore().filter(function (r) { return r.key !== rec.key; });
+    list.push(rec);
+    saveStore(list);
+  }
+  function forgetUpload(key) {
+    saveStore(loadStore().filter(function (r) { return r.key !== key; }));
+  }
+  function findUpload(f) {
+    var k = fileKey(f), hit = null;
+    loadStore().forEach(function (r) { if (r.key === k) hit = r; });
+    return hit;
+  }
+
+  // 送りかけがあることを、ファイルを選ぶ前に知らせる
+  function showResumeHint() {
+    var list = loadStore();
+    var box = $('resume');
+    box.hidden = !list.length;
+    if (!list.length) return;
+    box.textContent = '前回、途中で終わったものがあります（'
+      + list.map(function (r) { return r.name; }).join('、')
+      + '）。同じファイルをもう一度選ぶと、続きから送れます。'
+      + '（有効期限とダウンロード合言葉は、前回選んだものがそのまま使われます）';
+  }
+
   // 一覧を描き直す。名前は textContent で入れるので、変なファイル名でも安全。
   function renderList() {
     var ul = $('files');
@@ -173,7 +233,13 @@
       var rm = document.createElement('button');
       rm.className = 'rm'; rm.type = 'button'; rm.textContent = '外す';
       rm.addEventListener('click', function () { chosen.splice(i, 1); renderList(); });
-      li.appendChild(nm); li.appendChild(sz); li.appendChild(rm);
+      li.appendChild(nm); li.appendChild(sz);
+      if (findUpload(f)) {
+        var ct = document.createElement('span');
+        ct.className = 'cont'; ct.textContent = '続きから';
+        li.appendChild(ct);
+      }
+      li.appendChild(rm);
       ul.appendChild(li);
     });
     var total = chosen.reduce(function (s, f) { return s + f.size; }, 0);
@@ -342,28 +408,50 @@
 
   // 1つ分のアップロード。onProgress にはこのファイルの「送り終えた量」を渡す。
   async function uploadOne(file, opts) {
-    var res = await fetch(WORKER_URL + '/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: opts.code, filename: file.name, size: file.size,
-        contentType: file.type || 'application/octet-stream',
-        expiryDays: opts.days, pwHash: opts.pwHash,
-        group: opts.group, index: opts.index
-      })
-    });
-    var cj = await res.json();
-    if (!res.ok) throw new Error('「' + file.name + '」' + (cj.message || 'アップロードを開始できませんでした'));
+    var key = fileKey(file);
+    var sessionUri = '', partSize = 0, shareUrl = '', offset = 0;
 
-    var partSize = cj.partSize;
-    var shareUrl = '';
-    var offset = 0;
+    /* 前回の送り先が残っていれば、まずそこに「どこまで届いた？」と聞く。
+       聞けたら続きから。聞けなければ（送り先が古くて消えているなど）
+       黙って最初から取り直す。ここで止めても、利用者にできることが無いため。 */
+    if (opts.resume) {
+      try {
+        var pos = await askWhere(opts.resume.session, file.size);
+        // 前回のうちに送り終わっていた、ということもある
+        if (pos.done) { forgetUpload(key); opts.onProgress(file.size); return pos.url; }
+        sessionUri = opts.resume.session;
+        partSize = opts.resume.partSize;
+        offset = Math.floor(pos.received / ALIGN) * ALIGN;
+        opts.onProgress(offset);
+      } catch (e) { forgetUpload(key); }
+    }
+
+    if (!sessionUri) {
+      var res = await fetch(WORKER_URL + '/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: opts.code, filename: file.name, size: file.size,
+          contentType: file.type || 'application/octet-stream',
+          expiryDays: opts.days, pwHash: opts.pwHash,
+          group: opts.group, index: opts.index
+        })
+      });
+      var cj = await res.json();
+      if (!res.ok) throw new Error('「' + file.name + '」' + (cj.message || 'アップロードを開始できませんでした'));
+      sessionUri = cj.sessionUri;
+      partSize = cj.partSize;
+      // ここで控えておけば、タブを閉じても続きから送れる
+      rememberUpload({ key: key, session: sessionUri, partSize: partSize,
+        group: opts.group, name: file.name, at: Date.now() });
+    }
+
     var tries = 0;                          // 続けて失敗した回数。1つ通るたびに0に戻す
 
     while (offset < file.size) {
       var end = Math.min(offset + partSize, file.size);
       var pr = null, pj = null;
       try {
-        pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(cj.sessionUri) +
+        pr = await fetch(WORKER_URL + '/part?session=' + encodeURIComponent(sessionUri) +
           '&start=' + offset + '&end=' + end + '&total=' + file.size, {
           method: 'PUT', body: file.slice(offset, end)
         });
@@ -393,7 +481,7 @@
       tries++;
 
       try {
-        var w = await askWhere(cj.sessionUri, file.size);
+        var w = await askWhere(sessionUri, file.size);
         if (w.done) { shareUrl = w.url; offset = file.size; opts.onProgress(offset); break; }
         // 確定は 256KB 単位。半端な数が返ることはないはずだが、手前に丸めておけば必ず送り直せる
         offset = Math.floor(w.received / ALIGN) * ALIGN;
@@ -403,6 +491,7 @@
       }
     }
     if (!shareUrl) throw new Error('「' + file.name + '」の保存を確定できませんでした');
+    forgetUpload(key);        // 送り終えたので、控えは要らない
     return shareUrl;
   }
 
@@ -424,8 +513,12 @@
     try {
       var pwHash = '';
       if ($('dlpw').value) pwHash = await sha256hex($('dlpw').value);
-      // 2個以上なら「まとめID」を作り、1つのURLで渡せるようにする
-      var group = files.length > 1 ? randomId() : '';
+      /* 送りかけがあるファイルは、その続きから送る。
+         そのとき「まとめID」も前回のものを引き継ぐ。新しく振り直すと、
+         前回すでに送り終えていたファイルが別のまとめに取り残されてしまうため。 */
+      var resumes = files.map(findUpload);
+      var prior = resumes.filter(Boolean)[0];
+      var group = (prior && prior.group) || (files.length > 1 ? randomId() : '');
       var lastUrl = '';
 
       for (var i = 0; i < files.length; i++) {
@@ -436,7 +529,7 @@
         setMsg('アップロード中… ' + label, 'info');
         lastUrl = await uploadOne(f, {
           code: code, days: Number($('expiry').value), pwHash: pwHash,
-          group: group, index: i,
+          group: group, index: i, resume: resumes[i],
           onProgress: function (n) {
             barI.style.width = Math.min(100, Math.round((done + n) / grandTotal * 100)) + '%';
             setMsg('アップロード中… ' + label + ' ' + Math.round(n / f.size * 100) + '%', 'info');
@@ -464,6 +557,7 @@
       setMsg(e.message || '失敗しました。もう一度お試しください。', 'err');
     } finally {
       btn.disabled = false;
+      showResumeHint();          // 途中で終わったなら、次に開いたとき続きから送れることを出す
       setTimeout(function () { bar.style.display = 'none'; }, 800);
     }
   });
@@ -474,6 +568,8 @@
     $('copy').textContent = 'コピー済';
     setTimeout(function () { $('copy').textContent = 'コピー'; }, 1500);
   });
+
+  showResumeHint();
 })();
 </script>
 </body>
