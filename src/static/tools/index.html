@@ -569,6 +569,11 @@
   <a href="/files/" class="back">ファイルを送る →</a>
 </div>
 
+<!-- サイトの他のページを見たことがない人が、検索や共有からこの道具に直接
+     来ることがある。そこで行き止まりにせず、サイト全体への入口を置いておく。
+     中身は他のページと同じ src/partials/footer.html（ビルド時に差し込まれる）。 -->
+{{FOOTER}}
+
 <script src="/tools/tools.js"></script>
 <script>
 (function () {
