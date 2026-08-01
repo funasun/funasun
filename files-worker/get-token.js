@@ -51,14 +51,51 @@ if (SLOT === '1') {
   process.exit(1);
 }
 
-/* 打った文字を画面に出さずに聞く。
-   コマンドに書かせると、シェルの履歴と画面に残ってしまうため。 */
+/* 打った文字を中身が分からない形で聞く。
+   コマンドに書かせると、シェルの履歴と画面に残ってしまうため。
+
+   readline は使わない。行を消し直す動きがあって、聞いている文言まで
+   消えてしまい「何も出ずに固まった」ように見えるため。
+   1文字ずつ自分で受け取り、代わりに * を出す（受け取っていることが見える）。 */
 function askHidden(question) {
   return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    const stdin = process.stdin;
     process.stdout.write(question);
-    rl.question('', (answer) => { rl.close(); process.stdout.write('\n'); resolve(answer.trim()); });
-    rl._writeToOutput = function () {};              // 入力を表示しない
+
+    if (!stdin.isTTY) {                      // パイプで渡されたときは普通に読む
+      let data = '';
+      stdin.setEncoding('utf8');
+      stdin.on('data', (c) => { data += c; });
+      stdin.on('end', () => resolve(data.trim()));
+      return;
+    }
+
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+    let buf = '';
+    const CTRL_C = String.fromCharCode(3);      // 中止
+    const BACKSPACE = String.fromCharCode(127);  // 1文字消す
+    const done = () => {
+      stdin.setRawMode(false); stdin.pause(); stdin.removeListener('data', onData);
+      process.stdout.write('\n');
+      resolve(buf.trim());
+    };
+    const onData = (chunk) => {
+      // 貼り付けは、まとめて1回で届く。1文字ずつ見て改行を拾う
+      for (const ch of chunk) {
+        if (ch === '\r' || ch === '\n') { done(); return; }
+        if (ch === CTRL_C) {                              // Ctrl+C
+          stdin.setRawMode(false); process.stdout.write('\n'); process.exit(130);
+        }
+        if (ch === BACKSPACE || ch === '\b') {               // 打ち間違いを1つ消す
+          if (buf) { buf = buf.slice(0, -1); process.stdout.write('\b \b'); }
+        } else if (ch >= ' ') {
+          buf += ch; process.stdout.write('*');
+        }
+      }
+    };
+    stdin.on('data', onData);
   });
 }
 
@@ -159,6 +196,7 @@ function saveToCloudflare(refreshToken) {
     console.log('ブラウザを開きます。増やしたいアカウントで「続行」を押してください。');
     console.log('（開かないときは、次のURLを自分で開いてください）\n');
     console.log(authUrl + '\n');
-    spawn('open', [authUrl], { stdio: 'ignore' }).on('error', () => {});
+    // NO_OPEN=1 のときは開かない（動かして試すときに、勝手にブラウザが立ち上がらないように）
+    if (!process.env.NO_OPEN) spawn('open', [authUrl], { stdio: 'ignore' }).on('error', () => {});
   });
 })();
