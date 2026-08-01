@@ -503,11 +503,17 @@
         box.appendChild(el('ul', { class: 'stores' }, d.stores.map(function (s, i) {
           return el('li', { class: s.ok ? '' : 'bad', text: '保管先' + (i + 1) + '：' + (s.ok
             ? s.files + '個を預かり中　Drive全体 ' + s.usedText + ' / ' + s.limitText
+              + (s.capped ? '（' + s.safeText + ' までしか使いません）' : '')
               + '　まだ預かれる ' + s.freeText
             : '使えません（鍵が切れているか、登録が未完了）') });
         })));
         box.appendChild(el('p', { class: 'fh', text:
           'メールや写真のために ' + d.reserveText + ' は必ず空けてあります。ここには預かりません。' }));
+        if (d.stores.some(function (s) { return s.capped; })) {
+          box.appendChild(el('p', { class: 'fh', text:
+            '有料プランで増えている分は使いません。プランが終わったときに容量オーバーになり、'
+            + 'メールが受け取れなくなるのを防ぐためです。' }));
+        }
       }
 
       box.appendChild(el('p', { class: 'fh', text:

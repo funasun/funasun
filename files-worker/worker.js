@@ -75,6 +75,13 @@ const TOKEN_KEYS = [
 /* メールと写真のために必ず空けておく量。ここには絶対に手を付けない。
    保管庫が満杯でメールが受け取れない、が一番困る壊れ方なので。 */
 const RESERVE = 3 * 1024 * 1024 * 1024;
+
+/* 有料プランで増えた容量は当てにしない。
+   増量はいつか終わる。終わったときに預かったものが上限を超えていると、
+   新しい保存ができなくなるだけでなくメールも受け取れなくなる。
+   「お金を払わなくても残る分」までしか使わないでおけば、そうならない。
+   有料分も使いたくなったら、この数字を上げればよい（戻すときは要注意）。 */
+const PLAN_FLOOR = 15 * 1024 * 1024 * 1024;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
@@ -220,8 +227,9 @@ async function freeSpace(token) {
   const q = (await res.json().catch(function () { return {}; })).storageQuota || {};
   const usage = Number(q.usage || 0);
   const limit = Number(q.limit || 0);        // 上限なしのアカウントでは値が来ない
-  if (!limit) return { limit: 0, usage: usage, free: Number.MAX_SAFE_INTEGER, unlimited: true };
-  return { limit: limit, usage: usage, free: Math.max(0, limit - usage - RESERVE), unlimited: false };
+  // 実際の上限と PLAN_FLOOR の小さいほう＝安心して使える量
+  const safe = limit ? Math.min(limit, PLAN_FLOOR) : PLAN_FLOOR;
+  return { limit: limit, safe: safe, usage: usage, free: Math.max(0, safe - usage - RESERVE) };
 }
 
 /* ---- そのファイルがどのアカウントにあるかを探す ----
@@ -1000,12 +1008,15 @@ async function adminList(request, env, origin) {
     try { await listOwnFiles(a.token, function (f) { onFile(f); n++; }, 'name,createdTime'); }
     catch (e) { items.length = before; }
     const sp = await freeSpace(a.token);
-    if (sp) room += sp.unlimited ? 0 : sp.free;
+    if (sp) room += sp.free;
     stores.push({
       key: a.key, files: n,
-      limitText: sp ? (sp.unlimited ? '上限なし' : humanSize(sp.limit)) : '不明',
+      limitText: sp ? (sp.limit ? humanSize(sp.limit) : '上限なし') : '不明',
+      // 有料で増えている間は limit と食い違う。使ってよい量はこちら
+      safeText: sp ? humanSize(sp.safe) : '不明',
+      capped: !!(sp && sp.limit && sp.limit > sp.safe),
       usedText: sp ? humanSize(sp.usage) : '不明',        // メール・写真も含めた全体
-      freeText: sp ? (sp.unlimited ? '上限なし' : humanSize(sp.free)) : '不明',
+      freeText: sp ? humanSize(sp.free) : '不明',
       ok: !!sp
     });
   }
