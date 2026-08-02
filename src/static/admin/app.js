@@ -476,6 +476,82 @@
     });
   }
 
+  /* アップロード用の合言葉。/files/ を使う人みんなで共有するものなので、
+     漏れたときにすぐ変えられないと困る。ここから変えられるようにしておく。
+     いまの合言葉は表示しない（保存していないので、そもそも出せない）。 */
+  var codeCache = null;
+
+  function renderCodePane(box) {
+    var wrap = el('div', { class: 'codebox' });
+    box.appendChild(wrap);
+
+    function draw() {
+      wrap.innerHTML = '';
+      wrap.appendChild(el('p', { class: 'codetitle', text: 'アップロードの合言葉' }));
+      if (!codeCache) {
+        wrap.appendChild(el('p', { class: 'fh', text: '読み込み中…' }));
+        return;
+      }
+      var need = codeCache.requireCode;
+      var msg = el('p', { class: 'fh', text: '' });
+
+      var chk = el('input', { type: 'checkbox', id: 'code-need' });
+      chk.checked = need;
+      var pw = el('input', { type: 'password', id: 'code-new', autocomplete: 'new-password',
+        placeholder: need ? '新しい合言葉（変えないときは空のまま）' : '合言葉' });
+      pw.disabled = !need;
+
+      wrap.appendChild(el('label', { class: 'codechk' }, [chk,
+        el('span', { text: '合言葉を要る形にする' })]));
+      wrap.appendChild(el('p', { class: 'fh', text: codeCache.requireCode
+        ? (codeCache.usingSecret
+          ? 'いまは Cloudflare に登録した合言葉が使われています。'
+          : 'いまはここで決めた合言葉が使われています。')
+        : '合言葉なしです。' }));
+      wrap.appendChild(pw);
+
+      // 外すと、URLを知っている人は誰でも船越さんのドライブに置けるようになる
+      var warn = el('p', { class: 'codewarn', text:
+        '合言葉を外すと、/files/ を開いた人は誰でもファイルを置けるようになります。'
+        + 'URLが人づてに広まると、知らない人に保管庫を埋められたり、'
+        + 'このドメインのリンクで知らないファイルを配られたりします。' });
+      warn.hidden = chk.checked;
+      wrap.appendChild(warn);
+
+      chk.addEventListener('change', function () {
+        pw.disabled = !chk.checked;
+        warn.hidden = chk.checked;
+      });
+
+      var save = el('button', { class: 'mini', type: 'button', text: '合言葉を保存', onclick: function () {
+        if (!chk.checked && !window.confirm('合言葉なしにします。だれでもファイルを置けるようになります。よろしいですか？')) return;
+        if (chk.checked && !pw.value && !codeCache.hasCode && !codeCache.usingSecret) {
+          msg.textContent = '合言葉を入力してください。'; return;
+        }
+        save.disabled = true;
+        msg.textContent = '保存中…';
+        filesApi('/admin/config', { save: true, requireCode: chk.checked, code: pw.value })
+          .then(function (j) {
+            codeCache = j;
+            draw();
+            // 変えた直後は、前の合言葉がしばらく通ることがある（最大30秒）
+            setStatus(chk.checked
+              ? '合言葉を保存しました。行き渡るまで30秒ほどかかります。'
+              : '合言葉なしにしました。', 'ok');
+          })
+          .catch(function (e) { save.disabled = false; msg.textContent = e.message || '保存できませんでした。'; });
+      } });
+      wrap.appendChild(el('p', { style: 'margin:12px 0 0' }, [save]));
+      wrap.appendChild(msg);
+    }
+
+    draw();
+    if (!codeCache) {
+      filesApi('/admin/config').then(function (j) { codeCache = j; draw(); })
+        .catch(function (e) { wrap.innerHTML = ''; wrap.appendChild(el('p', { class: 'fh', text: '合言葉の設定を読めませんでした：' + e.message })); });
+    }
+  }
+
   function renderFilesPane(form) {
     var box = el('div', {});
     form.appendChild(box);
@@ -515,6 +591,8 @@
             + 'メールが受け取れなくなるのを防ぐためです。' }));
         }
       }
+
+      renderCodePane(box);
 
       box.appendChild(el('p', { class: 'fh', text:
         '/files/ から送られたファイルの全部です。期限が来たものは自動で消えます。' }));

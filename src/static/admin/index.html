@@ -104,6 +104,17 @@
 .stores { margin: 10px 0 0; padding: 0; list-style: none; }
 .stores li { font: 400 11.5px/1.9 ui-monospace, Menlo, monospace; color: rgba(244,244,245,.72); }
 .stores li.bad { color: #ff9a9a; }
+.codebox { margin: 18px 0 4px; padding: 16px 18px 18px; border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: 12px; background: rgba(255,255,255,.03); }
+.codetitle { margin: 0 0 10px; font: 500 13px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.92); }
+.codechk { display: flex; align-items: center; gap: 8px; margin: 0 0 4px;
+  font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.88); cursor: pointer; }
+.codechk input { width: auto; margin: 0; }
+.codebox input[type=password] { max-width: 340px; margin-top: 10px; }
+.codewarn { margin: 12px 0 0; padding: 9px 12px; border-radius: 9px;
+  border: 1px solid rgba(255,154,154,.4); background: rgba(255,154,154,.08);
+  font: 400 12px/1.75 'Noto Sans JP', sans-serif; color: #ffbcbc; }
+.codewarn[hidden] { display: none; }
   .urlrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
   .urllabel { flex: none; width: 108px; font: 400 12px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
   input.urlbox { flex: 1 1 240px; min-width: 0; font: 400 12px ui-monospace, Menlo, monospace;

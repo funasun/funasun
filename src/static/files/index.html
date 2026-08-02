@@ -73,7 +73,8 @@
   <h1>ファイルを送る</h1>
   <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。1ファイル最大5GB、まとめて30個まで。期限が来たら自動で消えます。</p>
 
-  <label>アップロード用の合言葉 <span class="hint">（船越から共有された合言葉）</span></label>
+  <!-- 合言葉が要らない設定のときは、この2つを丸ごと隠す（下のスクリプトで判断） -->
+  <label id="code-label">アップロード用の合言葉 <span class="hint">（船越から共有された合言葉）</span></label>
   <input id="code" type="password" autocomplete="off" placeholder="合言葉">
 
   <label>ファイル <span class="hint">（複数まとめて選べます）</span></label>
@@ -150,6 +151,7 @@
   var barI = $('bar-i');
   var btn = $('btn-up');
   var chosen = [];   // 選ばれたファイルたち
+  var needCode = true;   // 合言葉が要るか（管理画面で変えられる。下の方で聞きに行く）
 
   function setMsg(t, c) { msg.textContent = t; msg.className = 'msg' + (c ? ' ' + c : ''); }
   function humanSize(n) {
@@ -497,7 +499,7 @@
 
   btn.addEventListener('click', async function () {
     var code = $('code').value.trim();
-    if (!code) { setMsg('アップロード用の合言葉を入力してください。', 'err'); return; }
+    if (needCode && !code) { setMsg('アップロード用の合言葉を入力してください。', 'err'); return; }
     if (!chosen.length) { setMsg('ファイルを選んでください。', 'err'); return; }
 
     var files = chosen.slice();
@@ -570,6 +572,18 @@
   });
 
   showResumeHint();
+
+  /* 合言葉が要るかどうかは、管理画面から変えられる。
+     要らない設定なのに欄を出しておくと、入れないと送れないように見えるので聞きに行く。
+     聞けなかったときは「要る」ままにしておく（欄が出ているだけなら送れなくならない）。 */
+  fetch(WORKER_URL + '/config').then(function (r) { return r.json(); }).then(function (j) {
+    needCode = j.requireCode !== false;
+    if (!needCode) {
+      $('code-label').hidden = true;
+      $('code').hidden = true;
+      $('code').value = '';
+    }
+  }).catch(function () { });
 })();
 </script>
 </body>

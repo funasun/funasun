@@ -85,6 +85,7 @@ const PLAN_FLOOR = 15 * 1024 * 1024 * 1024;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
+const CONFIG_TAG = 'config';                   // 設定の入れ物を見分ける印（預かりものと区別する）
 const MAX_GROUP = 30;                          // 1回のまとめに入れられるファイル数
 
 /* プレビューを許す拡張子だけの表。ここに無いものは一切そのまま表示しない。
@@ -245,6 +246,72 @@ async function pickAccount(accounts, size) {
   return null;
 }
 
+/* ---- 設定（アップロード用の合言葉）----
+   Worker のシークレットは外から書き換えられない。書き換えられるようにするには
+   Cloudflare の管理用の鍵をこの中に持たせることになり、そちらのほうが危ない。
+   そこで、設定だけは保管先の Google ドライブに置く。
+
+   置き方は「中身の無いファイルの付箋（appProperties）」。読み書きが1往復で済み、
+   中身を取りに行く手間が要らないため。合言葉そのものは保存しない。
+   取り返しのつかない形（SHA-256）に潰してから比べる。 */
+let cfgCache = null, cfgAt = 0;
+const CFG_TTL = 30 * 1000;   // 30秒だけ覚えておく。毎回聞くと、送るたびに1往復増える
+
+async function sha256hex(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+// 設定の入れ物を探す。1つめのアカウントにだけ置く（どこにあるか迷わないように）
+async function configFile(token) {
+  const q = "appProperties has { key='app' and value='" + APP_TAG + "' }"
+    + " and appProperties has { key='kind' and value='" + CONFIG_TAG + "' } and trashed=false";
+  const res = await fetch('https://www.googleapis.com/drive/v3/files'
+    + '?q=' + encodeURIComponent(q)
+    + '&fields=' + encodeURIComponent('files(id,appProperties)') + '&pageSize=1',
+    { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('設定を読めませんでした');
+  const j = await res.json();
+  return (j.files && j.files[0]) || null;
+}
+
+async function loadConfig(env) {
+  if (cfgCache && Date.now() - cfgAt < CFG_TTL) return cfgCache;
+  /* 読めなかったときは「合言葉が要る」に倒す。
+     設定が読めないことを理由に誰でも上げられるようになる、は絶対に避ける。 */
+  let cfg = { requireCode: true, codeHash: '' };
+  try {
+    const token = await getAccessToken(env, TOKEN_KEYS[0]);
+    const p = ((await configFile(token)) || {}).appProperties || {};
+    cfg = { requireCode: p.requireCode !== '0', codeHash: p.codeHash || '' };
+  } catch (e) { /* 既定のまま＝合言葉が要る */ }
+  cfgCache = cfg; cfgAt = Date.now();
+  return cfg;
+}
+
+async function saveConfig(env, cfg) {
+  const token = await getAccessToken(env, TOKEN_KEYS[0]);
+  const props = {
+    app: APP_TAG, kind: CONFIG_TAG,
+    requireCode: cfg.requireCode ? '1' : '0',
+    codeHash: cfg.codeHash || ''
+  };
+  const found = await configFile(token);
+  const res = found
+    ? await fetch('https://www.googleapis.com/drive/v3/files/' + found.id + '?fields=id', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appProperties: props })
+    })
+    : await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'funasun-settings', appProperties: props })
+    });
+  if (!res.ok) throw new Error('設定を保存できませんでした');
+  cfgCache = null; cfgAt = 0;   // 次に聞かれたら取り直す
+}
+
 async function findFile(env, fileId) {
   let trouble = false;
   for (const a of await allTokens(env)) {
@@ -293,9 +360,15 @@ export default {
     try {
       if (path === '/admin/list' && request.method === 'POST') return await adminList(request, env, origin);
       if (path === '/admin/del' && request.method === 'POST') return await adminDelete(request, env, origin);
+      if (path === '/admin/config' && request.method === 'POST') return await adminConfig(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path === '/where' && request.method === 'POST') return await uploadWhere(request, env, url, origin);
+      /* 送る画面が「合言葉の欄を出すかどうか」を決めるために聞く。
+         合言葉そのものは返さない。要るか要らないかは、試せば分かることなので隠さない。 */
+      if (path === '/config' && request.method === 'GET') {
+        return json({ requireCode: (await loadConfig(env)).requireCode }, 200, origin);
+      }
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
       if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
       if (path.startsWith('/ok/') && request.method === 'GET') return await checkPw(env, path.slice(4), url, origin);
@@ -330,8 +403,18 @@ async function create(request, env, origin) {
     const bad = await verifyOwner(b.idToken, origin);
     if (bad) return bad;
   } else {
-    if (!env.UPLOAD_CODE) return json({ message: 'アップロードの設定が未完了です（合言葉が未登録）' }, 500, origin);
-    if (b.code !== env.UPLOAD_CODE) return json({ message: 'アップロード用の合言葉が違います。' }, 403, origin);
+    const cfg = await loadConfig(env);
+    if (cfg.requireCode) {
+      /* 管理画面で決めた合言葉があればそれを使う。まだ決めていなければ、
+         今までどおりシークレットの合言葉で照合する（切り替えの前後で止めないため）。 */
+      const ok = cfg.codeHash
+        ? (await sha256hex(b.code || '')) === cfg.codeHash
+        : (!!env.UPLOAD_CODE && b.code === env.UPLOAD_CODE);
+      if (!cfg.codeHash && !env.UPLOAD_CODE) {
+        return json({ message: 'アップロードの設定が未完了です（合言葉が未登録）' }, 500, origin);
+      }
+      if (!ok) return json({ message: 'アップロード用の合言葉が違います。' }, 403, origin);
+    }
   }
 
   const size = Number(b.size) || 0;
@@ -898,7 +981,9 @@ function htmlPage(title, inner, status, wide) {
 
 async function listOwnFiles(token, onFile, extraFields) {
   let pageToken;
-  const q = "appProperties has { key='app' and value='" + APP_TAG + "' } and trashed=false";
+  // 設定の入れ物は預かりものではないので、数にも一覧にも出さない
+  const q = "appProperties has { key='app' and value='" + APP_TAG + "' }"
+    + " and not appProperties has { key='kind' and value='" + CONFIG_TAG + "' } and trashed=false";
   const fields = 'nextPageToken,files(id,size,appProperties' + (extraFields ? ',' + extraFields : '') + ')';
   do {
     const u = 'https://www.googleapis.com/drive/v3/files'
@@ -1052,6 +1137,37 @@ async function adminDelete(request, env, origin) {
   }
   await driveDelete(found.token, id);
   return json({ ok: true }, 200, origin);
+}
+
+/* アップロード用の合言葉の設定。読むのも変えるのも持ち主だけ。
+   save が無ければ「今どうなっているか」を答えるだけ。
+   合言葉そのものは、保存もせず、返しもしない（潰した形だけを持つ）。 */
+async function adminConfig(request, env, origin) {
+  const gate = await requireOwner(request, env, origin);
+  if (gate.err) return gate.err;
+  const b = gate.body || {};
+
+  if (b.save) {
+    const cur = await loadConfig(env);
+    const code = typeof b.code === 'string' ? b.code : '';
+    const next = {
+      requireCode: !!b.requireCode,
+      // 空のまま送られたら、今の合言葉をそのまま残す（うっかり消させない）
+      codeHash: code ? await sha256hex(code) : cur.codeHash
+    };
+    if (next.requireCode && !next.codeHash && !env.UPLOAD_CODE) {
+      return json({ message: '合言葉が空です。合言葉を決めるか、「合言葉なし」を選んでください。' }, 400, origin);
+    }
+    await saveConfig(env, next);
+  }
+
+  const cfg = await loadConfig(env);
+  return json({
+    requireCode: cfg.requireCode,
+    hasCode: !!cfg.codeHash,
+    // まだ管理画面で決めていない＝Cloudflare に登録した合言葉が使われている
+    usingSecret: !cfg.codeHash && !!env.UPLOAD_CODE
+  }, 200, origin);
 }
 
 async function cleanup(env) {
