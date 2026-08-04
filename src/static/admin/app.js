@@ -861,7 +861,8 @@
       else if (f.expiresText) meta.push(f.expiresText + ' まで');
       else meta.push('無期限');
       if (f.locked) meta.push('合言葉つき');
-      if (f.nas) meta.push('NAS済み');
+      if (f.nasServed) meta.push('NAS配信中（Drive側は空）');
+      else if (f.nas) meta.push('NAS済み');
       if (f.group) meta.push('まとめの一部');
 
       var body = el('div', { class: 'card-body' }, [

@@ -593,6 +593,14 @@ async function serveFile(env, rawId, url, request, inline, origin) {
   const gate = pwGate(meta, url, rawId, false);
   if (gate) return gate;
 
+  /* 本体が自宅の保管庫(NAS)へ引っ越し済みなら、そちらの受け取りリンクへ転送する。
+     合言葉の確認(pwGate)を通ったあとでしか転送しないので、守りは今までと同じ。
+     Drive 側は付箋だけの空ファイルになっている。 */
+  if (meta.nasUrl) {
+    return new Response(null, { status: 302,
+      headers: Object.assign({ Location: meta.nasUrl }, corsHeaders(origin)) });
+  }
+
   const filename = file.name || 'file';
 
   // プレビューは「安全だと分かっている拡張子」だけ。種類も拡張子だけから決める。
@@ -703,13 +711,19 @@ async function landing(env, id, url) {
 
   const filename = file.name || 'file';
   const needsPw = !!meta.pw;
-  const kind = previewKind(previewType(filename));
+  /* 本体がNASへ引っ越し済みなら、その場のプレビューはやめる
+     （中継の仕組み上、絵や動画の枠の中では開けない）。ダウンロードは
+     /dl/ 経由で NAS へ転送されるので今までどおり。大きさは引っ越し前の値を出す
+     （Drive上は空になっていて 0 B と出てしまうため）。 */
+  const onNas = !!meta.nasUrl;
+  const kind = onNas ? null : previewKind(previewType(filename));
+  const shownSize = Number(meta.origSize || 0) || Number(file.size) || 0;
 
   const body = `
     <div class="card">
       <p class="eyebrow">Download — ダウンロード</p>
       <h1 class="fname">${esc(filename)}</h1>
-      <p class="meta">${esc(humanSize(file.size))}　·　${esc(expiryText(meta.expiresAt))}</p>
+      <p class="meta">${esc(humanSize(shownSize))}　·　${esc(expiryText(meta.expiresAt))}</p>
       ${needsPw
         ? `<label class="lb">合言葉</label>
            <input id="pw" type="password" autocomplete="off" placeholder="合言葉を入力">
@@ -717,7 +731,10 @@ async function landing(env, id, url) {
            <p id="msg" class="msg"></p>`
         : ''}
       <div id="area" ${needsPw ? 'hidden' : ''}>
-        ${kind ? '<div id="pv" class="pv"></div>' : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>'}
+        ${kind ? '<div id="pv" class="pv"></div>'
+          : (onNas
+            ? '<p class="muted nopv">保管庫からのお渡しになります。ダウンロードを押してから始まるまで、少し待つことがあります。</p>'
+            : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>')}
         <a id="dlbtn" class="btn" href="#">ダウンロード</a>
       </div>
     </div>
@@ -780,16 +797,22 @@ async function groupLanding(env, gid, url) {
 
   const needsPw = !!(alive[0].appProperties || {}).pw;
   const exp = expiryText((alive[0].appProperties || {}).expiresAt);
-  const totalSize = alive.reduce(function (s, f) { return s + (Number(f.size) || 0); }, 0);
+  // 引っ越し済みのものは Drive 上では空なので、元の大きさで数える
+  const sizeOf = function (f) {
+    const m = f.appProperties || {};
+    return Number(m.origSize || 0) || Number(f.size) || 0;
+  };
+  const totalSize = alive.reduce(function (s, f) { return s + sizeOf(f); }, 0);
 
   const rows = alive.map(function (f) {
     const name = f.name || 'file';
-    const kind = previewKind(previewType(name));
+    // NASへ引っ越し済みは「見る」を出さない（中継の枠の中では開けない）
+    const kind = (f.appProperties || {}).nasUrl ? null : previewKind(previewType(name));
     return `<li class="row" data-id="${esc(encodeURIComponent(f.id))}" data-kind="${esc(kind || '')}" data-name="${esc(name)}">
         <div class="rtop">
           <div class="rinfo">
             <span class="rname">${esc(name)}</span>
-            <span class="rsize">${esc(humanSize(f.size))}</span>
+            <span class="rsize">${esc(humanSize(sizeOf(f)))}</span>
           </div>
           <div class="racts">
             ${kind ? '<button class="mini pvbtn" type="button">見る</button>' : ''}
@@ -1101,9 +1124,13 @@ async function adminList(request, env, origin) {
   const onFile = function (f) {
     const p = f.appProperties || {};
     const exp = Number(p.expiresAt || 0);
-    const size = Number(f.size) || 0;
+    /* 大きさは2つの意味を持つようになった。
+       表示する大きさ＝元のファイルの大きさ（引っ越し後も相手が受け取る量）。
+       使用量メーター＝Drive を実際に占めている量（引っ越し済みはほぼ0）。 */
+    const size = Number(p.origSize || 0) || Number(f.size) || 0;
+    const driveSize = Number(f.size) || 0;
     const isExpired = exp > 0 && now > exp;
-    if (!isExpired) used += size;
+    if (!isExpired) used += driveSize;
     items.push({
       id: f.id,
       name: f.name || '(名前なし)',
@@ -1115,6 +1142,7 @@ async function adminList(request, env, origin) {
       expired: isExpired,
       locked: !!p.pw,                       // 合言葉つきか（合言葉そのものは返さない）
       nas: p.nas === '1',                   // NASに控えが取れているか
+      nasServed: !!p.nasUrl,                // 本体がNASへ引っ越し済み（Driveは付箋だけ）
       group: p.grp || '',
       pageUrl: base + '/f/' + f.id,
       downloadUrl: base + '/dl/' + f.id,
@@ -1297,7 +1325,13 @@ function nasGate(env, request, origin) {
 
 /* まだ控えの無いファイルの一覧。JSONではなくタブ区切りの行で返す。
    NAS のシェル(BusyBox)には jq が無く、JSONを安全に読めないため。
-   形: <ID>タブ<バイト数>タブ<名前>。名前の中のタブ・改行は空白に潰す。 */
+   形: <ID>タブ<バイト数>タブ<期限日>タブ<名前>。
+   期限日は「NASの受け取りリンクに付ける有効期限」(YYYY-MM-DD)。ページの期限の
+   翌日にしてある（リンクは日単位でしか切れないので、早すぎて先に死ぬより
+   1日長生きするほうに倒す。ページ自体の期限は今までどおり分単位で効く）。
+   無期限のファイルは空欄。NAS側で日付計算をさせないための列。
+   名前の中のタブ・改行は空白に潰す。名前は最後の列（名前に何が入っていても
+   前の列がずれないように）。 */
 async function archiveList(request, env, origin) {
   const gate = nasGate(env, request, origin);
   if (gate) return gate;
@@ -1308,7 +1342,9 @@ async function archiveList(request, env, origin) {
       await listOwnFiles(a.token, (f) => {
         const p = f.appProperties || {};
         if (p.nas === '1') return;   // 控え済みはもう出さない
-        lines.push([f.id, Number(f.size) || 0,
+        const exp = Number(p.expiresAt || 0);
+        const linkExp = exp ? fmtDate(exp + 24 * 60 * 60 * 1000).replace(/\//g, '-') : '';
+        lines.push([f.id, Number(f.size) || 0, linkExp,
           String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
       }, 'name');
     } catch (e) { /* この保管先は次の回に */ }
@@ -1337,9 +1373,16 @@ async function archiveTake(request, env, url, origin) {
 }
 
 /* 「NASに控えました」の印を付ける。付くと一覧に出なくなり、
-   管理画面に「NAS済み」と表示される。印を付けるだけで、消しはしない。
+   管理画面に「NAS済み」と表示される。
    undo:true なら印を外す＝次の回にもう一度取りに来る
-   （NAS側の控えを捨てて取り直したいときに使う）。 */
+   （NAS側の控えを捨てて取り直したいときに使う）。
+
+   link 付き＝引っ越しの完了届。NASが作った受け取りリンクを記録し、
+   Drive の中身を空にして容量を返す（付箋とID＝URLは残るので、
+   配ったリンクはそのまま生きて、以後は NAS へ転送される）。
+   順番が大事: 先にリンクと元の大きさを付箋に書き、それが成功してから
+   中身を空にする。逆だと、空にしたのに行き先が書けなかったとき
+   相手が何も受け取れなくなる。 */
 async function archiveMark(request, env, origin) {
   const gate = nasGate(env, request, origin);
   if (gate) return gate;
@@ -1347,19 +1390,44 @@ async function archiveMark(request, env, origin) {
   try { body = await request.json(); } catch (e) { }
   const id = safeId(String(body.id || ''));
   if (!id) return json({ message: '対象が指定されていません' }, 400, origin);
+
+  const link = String(body.link || '').trim();
+  // 転送先にできるのは Synology の受け取りリンクだけ（他所へ飛ばす窓口にしない）
+  if (link && !/^https:\/\/(gofile\.me\/|[a-z0-9-]+\.quickconnect\.to\/)/i.test(link)) {
+    return json({ message: 'リンクの形が想定と違います' }, 400, origin);
+  }
+  if (link && link.length > 120) return json({ message: 'リンクが長すぎます' }, 400, origin);
+
   const found = await findFile(env, id);
   const p = (found && found.file.appProperties) || {};
   if (!found || p.app !== APP_TAG || p.kind === CONFIG_TAG) {
     return json({ message: '見つかりません' }, 404, origin);
   }
+
+  const props = body.undo
+    ? { nas: null, nasUrl: null, origSize: null }
+    : (link
+      ? { nas: '1', nasUrl: link, origSize: String(found.file.size || 0) }
+      : { nas: '1' });
   const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id', {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },
-    // 付箋は null で消える（'0' を書くより、無い状態に戻すほうが素直）
-    body: JSON.stringify({ appProperties: { nas: body.undo ? null : '1' } })
+    body: JSON.stringify({ appProperties: props })
   });
   if (!res.ok) return json({ message: '印を付けられませんでした' }, 502, origin);
-  return json({ ok: true, undone: !!body.undo }, 200, origin);
+
+  // 行き先が書けたので、中身を空にして容量を返す
+  let emptied = false;
+  if (link && !body.undo) {
+    const up = await fetch('https://www.googleapis.com/upload/drive/v3/files/'
+      + encodeURIComponent(found.file.id) + '?uploadType=media&fields=id,size', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/octet-stream' },
+      body: ''
+    });
+    emptied = up.ok;   // 失敗しても配布は生きている（NASへ転送される）。容量だけ返り損ね
+  }
+  return json({ ok: true, undone: !!body.undo, emptied: emptied }, 200, origin);
 }
 
 async function cleanup(env) {
