@@ -89,6 +89,8 @@
   <input id="file" type="file" multiple style="display:none">
   <!-- 前回タブを閉じたなどで途中になっているものがあれば、ここで知らせる -->
   <p id="resume" class="resume" hidden></p>
+  <!-- iPhoneの「高効率」動画(HEVC)を選んだとき、相手が見られないかもしれない旨をここに出す -->
+  <p id="codec-note" class="resume" hidden></p>
   <ul id="files" class="files"></ul>
   <p id="total" class="total"></p>
 
@@ -226,6 +228,62 @@
       + '（有効期限とダウンロード合言葉は、前回選んだものがそのまま使われます）';
   }
 
+  /* ---- iPhone の「高効率」動画(HEVC)への気づき ----
+     iPhone は初期設定のまま撮ると HEVC(H.265) で保存する。Android や Windows には
+     これを再生できない端末がかなりあり、「送ったのに相手が見られない」が起こる。
+     送る前に分かれば、撮り直すなり、そのまま送ると割り切るなり選べる。
+
+     見分け方: 動画ファイルの中には映像形式の名札(hvc1/hev1 など)が書いてある。
+     名札は先頭か末尾のどちらかにあるので、両端だけ読む（数GBを全部は読まない）。 */
+  var HEVC_TAGS = ['hvc1', 'hev1', 'dvh1', 'dvhe'];   // 最後の2つは iPhone の Dolby Vision
+  var hevcNames = [];
+
+  function bytesHaveTag(bytes, tags) {
+    for (var t = 0; t < tags.length; t++) {
+      var tag = tags[t];
+      outer: for (var i = 0; i + tag.length <= bytes.length; i++) {
+        for (var j = 0; j < tag.length; j++) {
+          if (bytes[i + j] !== tag.charCodeAt(j)) continue outer;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function sniffHevc(f) {
+    if (!/\.(mov|mp4|m4v)$/i.test(f.name)) return Promise.resolve(false);
+    var head = f.slice(0, 2 * 1024 * 1024);
+    var tail = f.size > 6 * 1024 * 1024 ? f.slice(f.size - 4 * 1024 * 1024) : f.slice(0, 0);
+    return Promise.all([head.arrayBuffer(), tail.arrayBuffer()]).then(function (bufs) {
+      return bytesHaveTag(new Uint8Array(bufs[0]), HEVC_TAGS)
+        || bytesHaveTag(new Uint8Array(bufs[1]), HEVC_TAGS);
+    }).catch(function () { return false; });   // 読めなくても送るのは止めない
+  }
+
+  function renderHevcNote() {
+    // 外されたファイルの分は消す
+    hevcNames = hevcNames.filter(function (n) {
+      return chosen.some(function (c) { return c.name === n; });
+    });
+    var box = $('codec-note');
+    box.hidden = !hevcNames.length;
+    if (!hevcNames.length) return;
+    box.textContent = '「' + hevcNames.join('」「') + '」は iPhone の高効率形式（HEVC）のようです。'
+      + 'Android や Windows では再生できない相手がいるかもしれません。'
+      + 'そのまま送っても、相手は保存すれば対応アプリで見られます。'
+      + '全員がそのまま見られるようにするには、iPhoneの 設定 → カメラ → フォーマット を'
+      + '「互換性優先」にして撮ったものを送ってください。';
+  }
+
+  function noteHevc(f) {
+    sniffHevc(f).then(function (isHevc) {
+      if (!isHevc || hevcNames.indexOf(f.name) >= 0) return;
+      hevcNames.push(f.name);
+      renderHevcNote();
+    });
+  }
+
   // 一覧を描き直す。名前は textContent で入れるので、変なファイル名でも安全。
   function renderList() {
     var ul = $('files');
@@ -252,6 +310,7 @@
     $('total').textContent = chosen.length
       ? chosen.length + '個 ／ 合計 ' + humanSize(total)
       : '';
+    renderHevcNote();
     updateTools();
   }
 
@@ -290,6 +349,7 @@
       });
       if (dup) continue;
       chosen.push(f); added++;
+      noteHevc(f);           // 動画なら、相手が見られない形式でないかを裏で確かめる
     }
     renderList();
     if (tooBig) setMsg(tooBig + '個のファイルは大きすぎるため外しました（1ファイル上限' + MAX_GB + 'GB）。', 'err');

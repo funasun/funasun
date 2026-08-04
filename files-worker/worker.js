@@ -884,10 +884,29 @@ const PREVIEW_JS = `
         } else if (kind === 'video') {
           var v = document.createElement('video');
           v.src = src; v.controls = true; v.preload = 'metadata'; v.playsInline = true;
+          /* iPhone の「高効率」形式(HEVC)などは、Android や Windows に
+             再生できない端末がある。黙って黒い枠を見せるのが一番不親切なので、
+             だめだった理由と、それでも受け取れる道を言葉で出す。 */
+          v.onerror = function () {
+            box.innerHTML = '';
+            var p = document.createElement('p');
+            p.className = 'muted';
+            p.textContent = 'この端末では再生できない形式の動画です'
+              + '（iPhoneで撮ったままの「高効率(HEVC)」などがこれにあたります）。'
+              + '「保存」なら中身はそのまま受け取れて、対応アプリで見られます。';
+            box.appendChild(p);
+          };
           box.appendChild(v);
         } else if (kind === 'audio') {
           var a = document.createElement('audio');
           a.src = src; a.controls = true; a.preload = 'metadata';
+          a.onerror = function () {
+            box.innerHTML = '';
+            var p = document.createElement('p');
+            p.className = 'muted';
+            p.textContent = 'この端末では再生できない形式の音声です。「保存」なら中身はそのまま受け取れます。';
+            box.appendChild(p);
+          };
           box.appendChild(a);
         } else if (kind === 'pdf') {
           /* ここに sandbox 属性を付けてはいけない。
