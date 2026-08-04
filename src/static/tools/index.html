@@ -17,6 +17,8 @@
 <meta name="theme-color" content="#060608">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&family=Noto+Serif+JP:wght@600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- ナビとフッターの見た目はサイト本体と共通（畳み方・ハンバーガーもここ） -->
+<link rel="stylesheet" href="/css/site.css">
 <style>
   :root { --accent: #6f8cff; --accent-text: #adbcff; --line: rgba(255,255,255,.12); --panel: #0a0a0e; }
   * { box-sizing: border-box; }
@@ -173,6 +175,8 @@
 </style>
 </head>
 <body>
+<!-- サイト共通のナビ。検索や共有から直接来た人への、サイト全体の入口 -->
+{{NAV}}
 <div class="wrap">
   <p class="eyebrow">Tools — ファイル編集</p>
   <h1>ファイルのちょっとした加工</h1>

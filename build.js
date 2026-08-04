@@ -941,23 +941,49 @@ fs.mkdirSync(DIST, { recursive: true });
 fs.cpSync(path.join(SRC, 'static'), DIST, { recursive: true });
 fs.cpSync(path.join(SRC, 'images'), path.join(DIST, 'images'), { recursive: true });
 
-/* static の中の HTML にも {{FOOTER}} を差し込む。
+/* static の中の HTML にも {{NAV}} と {{FOOTER}} を差し込む。
    /tools/ のような道具のページには、検索や共有からいきなり来る人がいる。
    そこで行き止まりだと、道具だけがぽつんと存在してサイトへ戻れない。
+   上のナビと下のフッターがあれば、道具からサイト全体を知ってもらえる。
 
-   差し込むのはフッターだけ（ナビや data.json の文言までは入れない）。
-   静的ページは自分で完結しているほうが読みやすく、共通にしたいのは
-   「サイトへの入口」だけだから。使わないページはそのまま素通りする。 */
+   中身は他のページと同じ partials なので、片方だけ古くなることがない。
+   使わないページはそのまま素通りする。
+   注意: {{NAV}} を使うページは <head> で /css/site.css も読むこと
+   （ナビの畳み方・ハンバーガーの見た目がそこにあるため）。 */
+
+/* ナビは上に貼り付く(52px)ので、その分だけ本文を下げる。
+   ハンバーガーの開け閉めは site.js の仕事だが、道具のページに site.js を
+   丸ごと入れると演出まで付いてくるので、開け閉めだけをここに置く。 */
+const NAV_SUPPORT = `
+<style>body { padding-top: 52px; }</style>
+<script>
+(function () {
+  var b = document.querySelector('.nav-burger');
+  if (!b) return;
+  b.addEventListener('click', function () { document.body.classList.toggle('menu-open'); });
+  document.querySelectorAll('.menu-overlay a').forEach(function (a) {
+    a.addEventListener('click', function () { document.body.classList.remove('menu-open'); });
+  });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth >= 820) document.body.classList.remove('menu-open');
+  });
+})();
+</script>`;
+
 function fillStaticPartials(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) { fillStaticPartials(p); continue; }
     if (!e.name.endsWith('.html')) continue;
     let html = fs.readFileSync(p, 'utf8');
-    if (!html.includes('{{FOOTER}}')) continue;
+    if (!html.includes('{{FOOTER}}') && !html.includes('{{NAV}}')) continue;
     // dist から何階層下か＝サイト直下へ戻るのに要る '../' の数
     const depth = path.relative(DIST, p).split(path.sep).length - 1;
-    html = resolveTexts(html.replaceAll('{{FOOTER}}', footerHtml(false, '../'.repeat(depth))));
+    const prefix = '../'.repeat(depth);
+    // active は無し＝どのページ名も光らせない（サイト本体のページではないので）
+    html = html.replaceAll('{{NAV}}', navHtml('', false, prefix) + NAV_SUPPORT);
+    html = html.replaceAll('{{FOOTER}}', footerHtml(false, prefix));
+    html = resolveTexts(html);
     // テンプレート側と同じく、埋め忘れは黙って公開せず必ず止める
     const leftover = html.match(/\{\{[A-Z_]+\}\}/);
     if (leftover) throw new Error(`${path.relative(DIST, p)}: unresolved token ${leftover[0]}`);

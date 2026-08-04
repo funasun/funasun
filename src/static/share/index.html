@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500&family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- ナビとフッターの見た目はサイト本体と共通（畳み方・ハンバーガーもここ） -->
+<link rel="stylesheet" href="/css/site.css">
 <style>
   :root { --accent: #6f8cff; --accent-text: #adbcff; }
   * { box-sizing: border-box; }
@@ -44,11 +46,43 @@
   .foot a { color: rgba(244,244,245,.84); text-decoration: none; }
   .foot a + a { margin-left: 18px; }
   .foot a:hover { color: #f4f4f5; }
+  /* 入口の「閲覧／登録」の2枚 */
+  .choices { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 460px; }
+  .choice { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 20px 22px;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: #0a0a0e; color: #f4f4f5;
+    text-decoration: none; cursor: pointer; font: inherit; letter-spacing: normal;
+    transition: border-color .2s ease, background .2s ease; }
+  .choice:hover { border-color: var(--accent); background: #0c0c15; opacity: 1; }
+  .choice .c-t { font: 500 15.5px 'Noto Sans JP', sans-serif; }
+  .choice .c-t::after { content: ' →'; color: var(--accent-text); }
+  .choice .c-d { font: 400 12.5px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.78); }
+  #gate[hidden] { display: none; }
 </style>
 </head>
 <body>
+<!-- サイト共通のナビ。検索や共有から直接来た人への、サイト全体の入口 -->
+{{NAV}}
 <div class="wrap">
-  <div id="gate">
+  <!-- 最初に「見る側」か「登録する側」かを選んでもらう。
+       Works やフッターの「URL共有」からは両方の人が来るため、
+       いきなり合言葉を聞くと、登録したい持ち主が行き先を見失う。 -->
+  <div id="choose">
+    <p class="eyebrow">Share — URL共有</p>
+    <h1>URL共有<span style="color: var(--accent-text, #adbcff)">。</span></h1>
+    <p class="sub">リンク集をひとつのページにまとめて、合言葉を知っている人に渡せます。</p>
+    <div class="choices">
+      <button id="go-view" type="button" class="choice">
+        <span class="c-t">閲覧する</span>
+        <span class="c-d">合言葉を入れて、共有されたリンク集を開きます。</span>
+      </button>
+      <a href="/share/edit.html" class="choice">
+        <span class="c-t">登録・編集する</span>
+        <span class="c-d">リンク集を作り直します。持ち主のみ（Googleログイン）。</span>
+      </a>
+    </div>
+  </div>
+
+  <div id="gate" hidden>
     <p class="eyebrow">Private — 共有ページ</p>
     <h1>合言葉を入力してください<span style="color: var(--accent-text, #adbcff)">。</span></h1>
     <p class="sub">このページは、合言葉を知っている人だけが見られます。心当たりのない方は閉じてください。</p>
@@ -71,6 +105,17 @@
   </div>
 </div>
 
+<script>
+// 「閲覧する」を選んだら、入口をしまって合言葉の欄を出す
+(function () {
+  document.getElementById('go-view').addEventListener('click', function () {
+    document.getElementById('choose').hidden = true;
+    var gate = document.getElementById('gate');
+    gate.hidden = false;
+    document.getElementById('pw').focus();
+  });
+})();
+</script>
 <script src="/share/crypto.js"></script>
 <script src="/share/firebase-config.js"></script>
 <script type="module">
@@ -150,5 +195,7 @@
     });
   });
 </script>
+
+{{FOOTER}}
 </body>
 </html>
