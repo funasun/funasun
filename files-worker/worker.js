@@ -62,9 +62,9 @@ const ALLOW_ORIGINS = [
 // 管理用エンドポイントを使えるのはこの人だけ（/admin と同じ持ち主）
 const OWNER_EMAIL = 'tsutsumufunakoshi@gmail.com';
 const FIREBASE_API_KEY = 'AIzaSyCbi7N4rV7L04rusvzVHQ2SjPoKdqaNg2k';
-// 1ファイルの上限。断るときの文にもこの数を使う（数字と文がずれないように）
-const MAX_GB = 5;
-const MAX_BYTES = MAX_GB * 1024 * 1024 * 1024;
+/* 1ファイルの決め打ち上限は廃止した。本置き場が NAS(3.4TB) になったため。
+   ただし届く道は今も Drive の仮置き場を通るので、
+   「そのとき仮置き場に入るか」だけが実際の上限になる（create で判定）。 */
 /* ---- 保管先について ----
    置き場所は Google ドライブ。無料の15GBは Gmail や写真と共用なので、
    「あとどれだけ預かってよいか」は自分が預かった分を数えても分からない。
@@ -437,7 +437,6 @@ async function create(request, env, origin) {
 
   const size = Number(b.size) || 0;
   if (size <= 0) return json({ message: 'ファイルが空です。' }, 400, origin);
-  if (size > MAX_BYTES) return json({ message: 'ファイルが大きすぎます（上限 ' + MAX_GB + 'GB）。' }, 413, origin);
 
   /* 空きのある保管先を、登録した順に探す。
      どれも足りなければ、期限切れを片付けてから一度だけ探し直す。
@@ -449,7 +448,15 @@ async function create(request, env, origin) {
     token = await pickAccount(accounts, size);
   }
   if (!token) {
-    return json({ message: '保管庫の空き容量が不足しています。古いファイルが自動削除されるまで、しばらく待ってからお試しください。' }, 507, origin);
+    /* 入らなかったときは「いまなら何GBまでなら入るか」を添える。
+       仮置き場はNASへの引っ越しで毎時空くので、待てば直ることが多い。 */
+    let best = 0;
+    for (const a of accounts) {
+      const sp = await freeSpace(a.token);
+      if (sp && sp.free > best) best = sp.free;
+    }
+    return json({ message: '仮置き場の空きが足りません（いま入るのは 約' + humanSize(best)
+      + ' まで）。1時間ほどでNASへの引っ越しが進んで空くので、待ってからお試しください。' }, 507, origin);
   }
 
   /* 無期限(0)を選べるのは持ち主だけ（この分岐に来た時点で idToken は検証済み）。

@@ -75,7 +75,7 @@
 <div class="wrap">
   <p class="eyebrow">File Share — ファイル共有</p>
   <h1>ファイルを送る</h1>
-  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。1ファイル最大5GB、まとめて30個まで。期限が来たら自動で消えます。</p>
+  <p class="sub">合言葉を入れてファイルを選ぶと、共有用のダウンロードURLが作られます。大きなファイルもそのまま。まとめて30個まで。期限が来たら自動で消えます。</p>
 
   <!-- 合言葉が要らない設定のときは、この2つを丸ごと隠す（下のスクリプトで判断） -->
   <label id="code-label">アップロード用の合言葉 <span class="hint">（船越から共有された合言葉）</span></label>
@@ -84,7 +84,7 @@
   <label>ファイル <span class="hint">（複数まとめて選べます）</span></label>
   <div id="drop" class="drop">
     <span class="pick">ここにドラッグ、またはクリックして選択</span>
-    <p>1ファイル最大 5GB ／ 30個まで</p>
+    <p>数GB級もOK ／ まとめて30個まで</p>
   </div>
   <input id="file" type="file" multiple style="display:none">
   <!-- 前回タブを閉じたなどで途中になっているものがあれば、ここで知らせる -->
@@ -145,9 +145,9 @@
 (function () {
   var WORKER_URL = 'https://funasun-files.takakouseitokai.workers.dev';
   var MAX_FILES = 30;
-  // 1ファイルの上限。Worker 側（files-worker/worker.js の MAX_GB）と同じ数にしておく
-  var MAX_GB = 5;
-  var MAX_BYTES = MAX_GB * 1024 * 1024 * 1024;
+  /* 1ファイルの決め打ち上限は廃止（本置き場がNASになったため）。
+     実際の上限は「そのとき仮置き場に入るか」で、Worker が判定して
+     入らないときは「いま何GBまでなら入るか」を添えて断ってくる。 */
 
   var $ = function (id) { return document.getElementById(id); };
   var fileInput = $('file');
@@ -355,10 +355,9 @@
 
   // 同じファイルを二重に足さない（名前＋サイズ＋更新日時で見分ける）
   function addFiles(list) {
-    var added = 0, tooBig = 0;
+    var added = 0;
     for (var i = 0; i < list.length; i++) {
       var f = list[i];
-      if (f.size > MAX_BYTES) { tooBig++; continue; }
       if (chosen.length >= MAX_FILES) break;
       var dup = chosen.some(function (c) {
         return c.name === f.name && c.size === f.size && c.lastModified === f.lastModified;
@@ -368,8 +367,7 @@
       noteHevc(f);           // 動画なら、相手が見られない形式でないかを裏で確かめる
     }
     renderList();
-    if (tooBig) setMsg(tooBig + '個のファイルは大きすぎるため外しました（1ファイル上限' + MAX_GB + 'GB）。', 'err');
-    else if (chosen.length >= MAX_FILES) setMsg('一度に送れるのは' + MAX_FILES + '個までです。', 'info');
+    if (chosen.length >= MAX_FILES) setMsg('一度に送れるのは' + MAX_FILES + '個までです。', 'info');
     else if (added) setMsg('', '');
   }
 

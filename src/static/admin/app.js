@@ -839,7 +839,8 @@
         });
         headKids.push(cb);
       }
-      headKids.push(el('span', { class: 'card-title', text: f.name }));
+      var titleEl = el('span', { class: 'card-title', text: f.name });
+      headKids.push(titleEl);
       var head = el('div', { class: 'card-head' }, headKids.concat([
         el('div', { class: 'itembtns' }, [
           el('button', {
@@ -875,8 +876,14 @@
       body.appendChild(urlRow('直接ダウンロード', f.downloadUrl, ''));
 
       /* ファイル名の変更。受け取りページの表示も保存名もこれで変わる。
-         URLは変わらない（IDでできているので、渡したリンクはそのまま生きる）。 */
+         URLは変わらない（IDでできているので、渡したリンクはそのまま生きる）。
+         注意: この欄は form の中にあるので、Enter をそのままにすると
+         form 全体の送信（＝サイト文章の保存）が走って、名前の変更が
+         押されないまま画面が動く。Enter は「名前を変える」に割り当てる。 */
       var nameIn = el('input', { class: 'urlbox', type: 'text', value: f.name });
+      nameIn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); nameBtn.click(); }
+      });
       var nameBtn = el('button', {
         class: 'mini', type: 'button', text: '名前を変える',
         onclick: function () {
@@ -884,8 +891,13 @@
           nameBtn.disabled = true;
           setStatus('名前を変えています…', 'info');
           filesApi('/admin/rename', { id: f.id, name: nameIn.value }).then(function (j) {
+            /* その場でカードの見出しと入力欄も新しい名前にする。
+               一覧の取り直しを待つ間「変わっていないように見える」のを防ぐ。 */
+            titleEl.textContent = j.name;
+            nameIn.value = j.name;
+            nameBtn.disabled = false;
             setStatus('「' + j.name + '」にしました', 'ok');
-            filesCache = null; draw(); load();
+            filesCache = null; load();
           }).catch(function (e) { nameBtn.disabled = false; setStatus(e.message, 'err'); });
         }
       });
