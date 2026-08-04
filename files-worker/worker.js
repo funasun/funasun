@@ -372,6 +372,7 @@ export default {
       if (path === '/admin/rename' && request.method === 'POST') return await adminRename(request, env, origin);
       if (path === '/archive/list' && request.method === 'GET') return await archiveList(request, env, origin);
       if (path === '/archive/take' && request.method === 'GET') return await archiveTake(request, env, url, origin);
+      if (path === '/archive/linkless' && request.method === 'GET') return await archiveLinkless(request, env, origin);
       if (path === '/archive/mark' && request.method === 'POST') return await archiveMark(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
@@ -1345,6 +1346,29 @@ async function archiveList(request, env, origin) {
         const exp = Number(p.expiresAt || 0);
         const linkExp = exp ? fmtDate(exp + 24 * 60 * 60 * 1000).replace(/\//g, '-') : '';
         lines.push([f.id, Number(f.size) || 0, linkExp,
+          String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
+      }, 'name');
+    } catch (e) { /* この保管先は次の回に */ }
+  }
+  return new Response(lines.length ? lines.join('\n') + '\n' : '',
+    { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
+/* 控えは取れているが、まだ受け取りリンクが無いもの（＝引っ越しが済んでいないもの）。
+   形: <ID>タブ<期限日>タブ<名前>。NAS 側はこの一覧を見て、手元の控えに
+   リンクを作って mark(link付き) で完了届を出す。中身の取り直しは要らない。 */
+async function archiveLinkless(request, env, origin) {
+  const gate = nasGate(env, request, origin);
+  if (gate) return gate;
+  const lines = [];
+  for (const a of await allTokens(env)) {
+    try {
+      await listOwnFiles(a.token, (f) => {
+        const p = f.appProperties || {};
+        if (p.nas !== '1' || p.nasUrl) return;
+        const exp = Number(p.expiresAt || 0);
+        const linkExp = exp ? fmtDate(exp + 24 * 60 * 60 * 1000).replace(/\//g, '-') : '';
+        lines.push([f.id, linkExp,
           String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
       }, 'name');
     } catch (e) { /* この保管先は次の回に */ }
