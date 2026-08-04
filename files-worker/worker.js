@@ -370,6 +370,9 @@ export default {
       if (path === '/admin/config' && request.method === 'POST') return await adminConfig(request, env, origin);
       if (path === '/admin/expiry' && request.method === 'POST') return await adminExpiry(request, env, origin);
       if (path === '/admin/rename' && request.method === 'POST') return await adminRename(request, env, origin);
+      if (path === '/archive/list' && request.method === 'GET') return await archiveList(request, env, origin);
+      if (path === '/archive/take' && request.method === 'GET') return await archiveTake(request, env, url, origin);
+      if (path === '/archive/mark' && request.method === 'POST') return await archiveMark(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path === '/where' && request.method === 'POST') return await uploadWhere(request, env, url, origin);
@@ -1111,6 +1114,7 @@ async function adminList(request, env, origin) {
       expiresText: exp ? fmtDate(exp) : '',
       expired: isExpired,
       locked: !!p.pw,                       // 合言葉つきか（合言葉そのものは返さない）
+      nas: p.nas === '1',                   // NASに控えが取れているか
       group: p.grp || '',
       pageUrl: base + '/f/' + f.id,
       downloadUrl: base + '/dl/' + f.id,
@@ -1267,6 +1271,91 @@ async function adminRename(request, env, origin) {
   });
   if (!res.ok) return json({ message: '名前を変えられませんでした' }, 502, origin);
   return json({ ok: true, name: name }, 200, origin);
+}
+
+/* ============================================================
+   NAS 用の窓口（/archive/*）
+   ------------------------------------------------------------
+   自宅の NAS が定期的に取りに来て、預かりものの控えを作るための窓口。
+   NAS はインターネットに出ていないので、こちらから押し付けることはできず、
+   向こうから取りに来る（ポーリング）しかない。
+
+   認証は NAS 専用の合言葉 NAS_KEY 1本（X-Nas-Key ヘッダ）。
+   Google の鍵を NAS に置かずに済ませるための間仕切りで、
+   この鍵で出来るのは「一覧を見る・中身を読む・控え済み印を付ける」だけ。
+   消す・書き換える類いは一切できない。
+   ============================================================ */
+
+function nasGate(env, request, origin) {
+  // 鍵が未登録のうちは、窓口ごと閉じておく（誰も通れない）
+  if (!env.NAS_KEY) return json({ message: 'NASの窓口は準備中です' }, 503, origin);
+  if ((request.headers.get('X-Nas-Key') || '') !== env.NAS_KEY) {
+    return json({ message: '鍵が違います' }, 403, origin);
+  }
+  return null;
+}
+
+/* まだ控えの無いファイルの一覧。JSONではなくタブ区切りの行で返す。
+   NAS のシェル(BusyBox)には jq が無く、JSONを安全に読めないため。
+   形: <ID>タブ<バイト数>タブ<名前>。名前の中のタブ・改行は空白に潰す。 */
+async function archiveList(request, env, origin) {
+  const gate = nasGate(env, request, origin);
+  if (gate) return gate;
+  const lines = [];
+  for (const a of await allTokens(env)) {
+    try {
+      await listOwnFiles(a.token, (f) => {
+        const p = f.appProperties || {};
+        if (p.nas === '1') return;   // 控え済みはもう出さない
+        lines.push([f.id, Number(f.size) || 0,
+          String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
+      });
+    } catch (e) { /* この保管先は次の回に */ }
+  }
+  return new Response(lines.length ? lines.join('\n') + '\n' : '',
+    { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
+// 1ファイルの中身。合言葉(pw)の確認はしない＝NAS_KEY そのものが持ち主の証。
+async function archiveTake(request, env, url, origin) {
+  const gate = nasGate(env, request, origin);
+  if (gate) return gate;
+  const id = safeId(url.searchParams.get('id') || '');
+  const found = await findFile(env, id);
+  if (!found || (found.file.appProperties || {}).app !== APP_TAG) {
+    return json({ message: '見つかりません' }, 404, origin);
+  }
+  const r = await fetch('https://www.googleapis.com/drive/v3/files/'
+    + encodeURIComponent(found.file.id) + '?alt=media',
+    { headers: { Authorization: 'Bearer ' + found.token } });
+  if (!r.ok) return json({ message: '取り出せませんでした' }, 502, origin);
+  const headers = { 'Content-Type': 'application/octet-stream' };
+  const len = r.headers.get('Content-Length');
+  if (len) headers['Content-Length'] = len;
+  return new Response(r.body, { status: 200, headers: headers });
+}
+
+/* 「NASに控えました」の印を付ける。付くと一覧に出なくなり、
+   管理画面に「NAS済み」と表示される。印を付けるだけで、消しはしない。 */
+async function archiveMark(request, env, origin) {
+  const gate = nasGate(env, request, origin);
+  if (gate) return gate;
+  let body = {};
+  try { body = await request.json(); } catch (e) { }
+  const id = safeId(String(body.id || ''));
+  if (!id) return json({ message: '対象が指定されていません' }, 400, origin);
+  const found = await findFile(env, id);
+  const p = (found && found.file.appProperties) || {};
+  if (!found || p.app !== APP_TAG || p.kind === CONFIG_TAG) {
+    return json({ message: '見つかりません' }, 404, origin);
+  }
+  const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id', {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appProperties: { nas: '1' } })
+  });
+  if (!res.ok) return json({ message: '印を付けられませんでした' }, 502, origin);
+  return json({ ok: true }, 200, origin);
 }
 
 async function cleanup(env) {
