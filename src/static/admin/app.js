@@ -715,7 +715,9 @@
         el('option', { value: '1', text: '1日' }),
         el('option', { value: '3', text: '3日' }),
         el('option', { value: '7', text: '7日', selected: 'selected' }),
-        el('option', { value: '30', text: '30日' })
+        el('option', { value: '30', text: '30日' }),
+        // 無期限は管理画面だけの選択肢（Worker 側も持ち主にしか許さない）
+        el('option', { value: '0', text: '無期限' })
       ]);
       var result = el('div', {});
 
@@ -857,6 +859,7 @@
       var meta = [f.sizeText];
       if (f.expired) meta.push('期限切れ（まもなく自動削除）');
       else if (f.expiresText) meta.push(f.expiresText + ' まで');
+      else meta.push('無期限');
       if (f.locked) meta.push('合言葉つき');
       if (f.group) meta.push('まとめの一部');
 
@@ -868,6 +871,33 @@
       if (f.groupUrl) body.appendChild(urlRow('まとめページ', f.groupUrl, '同時に送ったものが全部入っています'));
       if (f.previewUrl) body.appendChild(urlRow('中身を見る', f.previewUrl, ''));
       body.appendChild(urlRow('直接ダウンロード', f.downloadUrl, ''));
+
+      /* 保存期間の変更。日数は「今から数えて」。無期限はこの画面だけの選択肢
+         （/files/ の公開画面には出さない。誰でも無期限にできると保管庫が
+         埋まったまま永久に空かないため）。 */
+      var expSel = el('select', { style: 'width:auto;padding:6px 10px' }, [
+        el('option', { value: '1', text: '今から1日' }),
+        el('option', { value: '3', text: '今から3日' }),
+        el('option', { value: '7', text: '今から7日' }),
+        el('option', { value: '30', text: '今から30日' }),
+        el('option', { value: '0', text: '無期限' })
+      ]);
+      var expBtn = el('button', {
+        class: 'mini', type: 'button', text: '期限を変える',
+        onclick: function () {
+          var days = Number(expSel.value);
+          if (days === 0 && !confirm('「' + f.name + '」を無期限にします。自動では消えなくなり、その分の容量を使い続けます。よろしいですか？')) return;
+          expBtn.disabled = true;
+          setStatus('期限を変えています…', 'info');
+          filesApi('/admin/expiry', { id: f.id, days: days }).then(function () {
+            setStatus('期限を変えました', 'ok');
+            filesCache = null; draw(); load();
+          }).catch(function (e) { expBtn.disabled = false; setStatus(e.message, 'err'); });
+        }
+      });
+      body.appendChild(el('div', { class: 'urlrow' }, [
+        el('span', { class: 'urllabel', text: '保存期間' }), expSel, expBtn
+      ]));
 
       return el('div', { class: 'card' }, [head, body]);
     }

@@ -174,6 +174,13 @@ function fmtDate(ms) {
   return d.getFullYear() + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2);
 }
 
+/* 期限の見せ方。0 は「無期限」（expired() が exp>0 のときだけ切れると
+   判定するので、0 のファイルは切れない＝掃除でも消えない）。 */
+function expiryText(exp) {
+  const n = Number(exp) || 0;
+  return n ? '有効期限 ' + fmtDate(n) + ' まで' : '無期限';
+}
+
 /* ---------- Google OAuth / Drive API ---------- */
 
 async function getAccessToken(env, key) {
@@ -361,6 +368,7 @@ export default {
       if (path === '/admin/list' && request.method === 'POST') return await adminList(request, env, origin);
       if (path === '/admin/del' && request.method === 'POST') return await adminDelete(request, env, origin);
       if (path === '/admin/config' && request.method === 'POST') return await adminConfig(request, env, origin);
+      if (path === '/admin/expiry' && request.method === 'POST') return await adminExpiry(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path === '/where' && request.method === 'POST') return await uploadWhere(request, env, url, origin);
@@ -434,8 +442,17 @@ async function create(request, env, origin) {
     return json({ message: '保管庫の空き容量が不足しています。古いファイルが自動削除されるまで、しばらく待ってからお試しください。' }, 507, origin);
   }
 
-  const days = ALLOWED_DAYS.indexOf(Number(b.expiryDays)) !== -1 ? Number(b.expiryDays) : 7;
-  const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
+  /* 無期限(0)を選べるのは持ち主だけ（この分岐に来た時点で idToken は検証済み）。
+     公開画面から無期限を作れると、合言葉を知る誰かが保管庫を埋めきったまま
+     永久に空かない、が起こるため。それ以外は決められた日数だけ。 */
+  const wantDays = Number(b.expiryDays);
+  let expiresAt;
+  if (b.idToken && wantDays === 0) {
+    expiresAt = 0;
+  } else {
+    const days = ALLOWED_DAYS.indexOf(wantDays) !== -1 ? wantDays : 7;
+    expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
+  }
 
   const filename = (String(b.filename || 'file')).slice(0, 200);
   const pw = typeof b.pwHash === 'string' ? b.pwHash.slice(0, 128) : '';
@@ -688,7 +705,7 @@ async function landing(env, id, url) {
     <div class="card">
       <p class="eyebrow">Download — ダウンロード</p>
       <h1 class="fname">${esc(filename)}</h1>
-      <p class="meta">${esc(humanSize(file.size))}　·　有効期限 ${esc(fmtDate(meta.expiresAt))} まで</p>
+      <p class="meta">${esc(humanSize(file.size))}　·　${esc(expiryText(meta.expiresAt))}</p>
       ${needsPw
         ? `<label class="lb">合言葉</label>
            <input id="pw" type="password" autocomplete="off" placeholder="合言葉を入力">
@@ -758,7 +775,7 @@ async function groupLanding(env, gid, url) {
   });
 
   const needsPw = !!(alive[0].appProperties || {}).pw;
-  const exp = fmtDate((alive[0].appProperties || {}).expiresAt);
+  const exp = expiryText((alive[0].appProperties || {}).expiresAt);
   const totalSize = alive.reduce(function (s, f) { return s + (Number(f.size) || 0); }, 0);
 
   const rows = alive.map(function (f) {
@@ -783,7 +800,7 @@ async function groupLanding(env, gid, url) {
     <div class="card wide">
       <p class="eyebrow">Download — ダウンロード</p>
       <h1 class="fname">${alive.length}個のファイル</h1>
-      <p class="meta">合計 ${esc(humanSize(totalSize))}　·　有効期限 ${esc(exp)} まで</p>
+      <p class="meta">合計 ${esc(humanSize(totalSize))}　·　${esc(exp)}</p>
       ${needsPw
         ? `<label class="lb">合言葉</label>
            <input id="pw" type="password" autocomplete="off" placeholder="合言葉を入力">
@@ -1187,6 +1204,37 @@ async function adminConfig(request, env, origin) {
     // まだ管理画面で決めていない＝Cloudflare に登録した合言葉が使われている
     usingSecret: !cfg.codeHash && !!env.UPLOAD_CODE
   }, 200, origin);
+}
+
+/* 預かり中のファイルの期限を変える。持ち主だけ。
+   days は「今からの日数」。0 は無期限（作れるのも持ち主だけ、と揃えてある）。
+   Drive の appProperties は書いた鍵だけが差し替わるので、
+   合言葉や まとめID など他の付箋はそのまま残る。 */
+async function adminExpiry(request, env, origin) {
+  const gate = await requireOwner(request, env, origin);
+  if (gate.err) return gate.err;
+
+  const id = safeId(String((gate.body && gate.body.id) || ''));
+  if (!id) return json({ message: '対象のファイルが指定されていません' }, 400, origin);
+  const days = Number((gate.body || {}).days);
+  if (days !== 0 && ALLOWED_DAYS.indexOf(days) === -1) {
+    return json({ message: '期限は 1・3・7・30日 か 無期限 だけです' }, 400, origin);
+  }
+
+  const found = await findFile(env, id);
+  if (!found || !found.file.appProperties || found.file.appProperties.app !== APP_TAG) {
+    return json({ message: 'そのファイルは見つかりませんでした' }, 404, origin);
+  }
+
+  const expiresAt = days === 0 ? 0 : Date.now() + days * 24 * 60 * 60 * 1000;
+  const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id', {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appProperties: { expiresAt: String(expiresAt) } })
+  });
+  if (!res.ok) return json({ message: '期限を変えられませんでした' }, 502, origin);
+  return json({ ok: true, expiresAt: expiresAt,
+    expiresText: expiresAt ? fmtDate(expiresAt) : '' }, 200, origin);
 }
 
 async function cleanup(env) {
