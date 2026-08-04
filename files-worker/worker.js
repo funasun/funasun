@@ -1304,12 +1304,13 @@ async function archiveList(request, env, origin) {
   const lines = [];
   for (const a of await allTokens(env)) {
     try {
+      // 'name' を頼まないと Google は名前を返さない（頼んだ項目しか来ない）
       await listOwnFiles(a.token, (f) => {
         const p = f.appProperties || {};
         if (p.nas === '1') return;   // 控え済みはもう出さない
         lines.push([f.id, Number(f.size) || 0,
           String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
-      });
+      }, 'name');
     } catch (e) { /* この保管先は次の回に */ }
   }
   return new Response(lines.length ? lines.join('\n') + '\n' : '',
@@ -1336,7 +1337,9 @@ async function archiveTake(request, env, url, origin) {
 }
 
 /* 「NASに控えました」の印を付ける。付くと一覧に出なくなり、
-   管理画面に「NAS済み」と表示される。印を付けるだけで、消しはしない。 */
+   管理画面に「NAS済み」と表示される。印を付けるだけで、消しはしない。
+   undo:true なら印を外す＝次の回にもう一度取りに来る
+   （NAS側の控えを捨てて取り直したいときに使う）。 */
 async function archiveMark(request, env, origin) {
   const gate = nasGate(env, request, origin);
   if (gate) return gate;
@@ -1352,10 +1355,11 @@ async function archiveMark(request, env, origin) {
   const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id', {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ appProperties: { nas: '1' } })
+    // 付箋は null で消える（'0' を書くより、無い状態に戻すほうが素直）
+    body: JSON.stringify({ appProperties: { nas: body.undo ? null : '1' } })
   });
   if (!res.ok) return json({ message: '印を付けられませんでした' }, 502, origin);
-  return json({ ok: true }, 200, origin);
+  return json({ ok: true, undone: !!body.undo }, 200, origin);
 }
 
 async function cleanup(env) {
