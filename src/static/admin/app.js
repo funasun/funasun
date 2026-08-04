@@ -872,6 +872,25 @@
       if (f.previewUrl) body.appendChild(urlRow('中身を見る', f.previewUrl, ''));
       body.appendChild(urlRow('直接ダウンロード', f.downloadUrl, ''));
 
+      /* ファイル名の変更。受け取りページの表示も保存名もこれで変わる。
+         URLは変わらない（IDでできているので、渡したリンクはそのまま生きる）。 */
+      var nameIn = el('input', { class: 'urlbox', type: 'text', value: f.name });
+      var nameBtn = el('button', {
+        class: 'mini', type: 'button', text: '名前を変える',
+        onclick: function () {
+          if (!nameIn.value.trim()) { setStatus('新しい名前を入力してください', 'err'); return; }
+          nameBtn.disabled = true;
+          setStatus('名前を変えています…', 'info');
+          filesApi('/admin/rename', { id: f.id, name: nameIn.value }).then(function (j) {
+            setStatus('「' + j.name + '」にしました', 'ok');
+            filesCache = null; draw(); load();
+          }).catch(function (e) { nameBtn.disabled = false; setStatus(e.message, 'err'); });
+        }
+      });
+      body.appendChild(el('div', { class: 'urlrow' }, [
+        el('span', { class: 'urllabel', text: 'ファイル名' }), nameIn, nameBtn
+      ]));
+
       /* 保存期間の変更。日数は「今から数えて」。無期限はこの画面だけの選択肢
          （/files/ の公開画面には出さない。誰でも無期限にできると保管庫が
          埋まったまま永久に空かないため）。 */

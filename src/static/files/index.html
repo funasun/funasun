@@ -291,13 +291,29 @@
     chosen.forEach(function (f, i) {
       var li = document.createElement('li');
       var nm = document.createElement('span');
-      nm.className = 'nm'; nm.textContent = f.name;
+      // 名前を変えてあれば、その名前で相手に届く（表示もそれに合わせる）
+      nm.className = 'nm'; nm.textContent = f.upName || f.name;
       var sz = document.createElement('span');
       sz.className = 'sz'; sz.textContent = humanSize(f.size);
+      var rn = document.createElement('button');
+      rn.className = 'rm'; rn.type = 'button'; rn.textContent = '名前';
+      rn.title = '相手に届く名前を変える';
+      rn.addEventListener('click', function () {
+        var v = window.prompt('この名前で相手に届きます', f.upName || f.name);
+        if (v === null) return;
+        v = v.trim().replace(/[\/\\]/g, '');
+        if (!v) return;
+        /* 拡張子が消えると、受け取りページの「見る」が働かず、保存しても
+           開きにくくなる。書かなければ元の拡張子をそのまま残す。 */
+        var m = f.name.match(/\.[A-Za-z0-9]+$/);
+        if (m && v.indexOf('.') === -1) v += m[0];
+        f.upName = v;
+        renderList();
+      });
       var rm = document.createElement('button');
       rm.className = 'rm'; rm.type = 'button'; rm.textContent = '外す';
       rm.addEventListener('click', function () { chosen.splice(i, 1); renderList(); });
-      li.appendChild(nm); li.appendChild(sz);
+      li.appendChild(nm); li.appendChild(sz); li.appendChild(rn);
       if (findUpload(f)) {
         var ct = document.createElement('span');
         ct.className = 'cont'; ct.textContent = '続きから';
@@ -496,7 +512,7 @@
       var res = await fetch(WORKER_URL + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: opts.code, filename: file.name, size: file.size,
+          code: opts.code, filename: file.upName || file.name, size: file.size,
           contentType: file.type || 'application/octet-stream',
           expiryDays: opts.days, pwHash: opts.pwHash,
           group: opts.group, index: opts.index
@@ -508,7 +524,7 @@
       partSize = cj.partSize;
       // ここで控えておけば、タブを閉じても続きから送れる
       rememberUpload({ key: key, session: sessionUri, partSize: partSize,
-        group: opts.group, name: file.name, at: Date.now() });
+        group: opts.group, name: file.upName || file.name, at: Date.now() });
     }
 
     var tries = 0;                          // 続けて失敗した回数。1つ通るたびに0に戻す
@@ -591,7 +607,7 @@
         // 1つ前までに送り終えた量。今のファイルの進み具合はこれに足して数える
         var done = sent;
         var f = files[i];
-        var label = (i + 1) + '/' + files.length + '「' + f.name + '」';
+        var label = (i + 1) + '/' + files.length + '「' + (f.upName || f.name) + '」';
         setMsg('アップロード中… ' + label, 'info');
         lastUrl = await uploadOne(f, {
           code: code, days: Number($('expiry').value), pwHash: pwHash,

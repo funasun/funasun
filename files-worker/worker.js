@@ -369,6 +369,7 @@ export default {
       if (path === '/admin/del' && request.method === 'POST') return await adminDelete(request, env, origin);
       if (path === '/admin/config' && request.method === 'POST') return await adminConfig(request, env, origin);
       if (path === '/admin/expiry' && request.method === 'POST') return await adminExpiry(request, env, origin);
+      if (path === '/admin/rename' && request.method === 'POST') return await adminRename(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
       if (path === '/where' && request.method === 'POST') return await uploadWhere(request, env, url, origin);
@@ -1235,6 +1236,37 @@ async function adminExpiry(request, env, origin) {
   if (!res.ok) return json({ message: '期限を変えられませんでした' }, 502, origin);
   return json({ ok: true, expiresAt: expiresAt,
     expiresText: expiresAt ? fmtDate(expiresAt) : '' }, 200, origin);
+}
+
+/* 預かり中のファイルの名前を変える。持ち主だけ。
+   受け取りページの表示も、保存されるときの名前も、これで変わる。
+   「見る」が働くかどうかは拡張子で決めているので、新しい名前に拡張子が
+   無ければ元の拡張子を付け足す（うっかり消して開けなくなるのを防ぐ）。 */
+async function adminRename(request, env, origin) {
+  const gate = await requireOwner(request, env, origin);
+  if (gate.err) return gate.err;
+
+  const id = safeId(String((gate.body && gate.body.id) || ''));
+  if (!id) return json({ message: '対象のファイルが指定されていません' }, 400, origin);
+  let name = String((gate.body || {}).name || '').trim()
+    .replace(/[\/\\]/g, '').slice(0, 200);
+  if (!name) return json({ message: '新しい名前を入力してください' }, 400, origin);
+
+  const found = await findFile(env, id);
+  if (!found || !found.file.appProperties || found.file.appProperties.app !== APP_TAG) {
+    return json({ message: 'そのファイルは見つかりませんでした' }, 404, origin);
+  }
+
+  const oldExt = extOf(found.file.name);
+  if (!extOf(name) && oldExt) name += '.' + oldExt;
+
+  const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id,name', {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name })
+  });
+  if (!res.ok) return json({ message: '名前を変えられませんでした' }, 502, origin);
+  return json({ ok: true, name: name }, 200, origin);
 }
 
 async function cleanup(env) {
