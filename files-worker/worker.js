@@ -50,6 +50,11 @@
    ものなので、「全ファイルの一覧」や「削除」を任せるには弱すぎるため。
    ============================================================ */
 
+/* サイト共通のナビとフッター。src/partials/ から build-chrome.js が生成する
+   （wrangler deploy のたびに自動で作り直される。手で編集しない）。
+   受け取りページも tsutsumufunakoshi.com の一部として見えるように。 */
+import { CHROME_HEAD, NAV_HTML, FOOTER_HTML } from './chrome.gen.js';
+
 const ALLOW_ORIGINS = [
   'https://tsutsumufunakoshi.com',
   'https://www.tsutsumufunakoshi.com'
@@ -994,11 +999,15 @@ function htmlPage(title, inner, status, wide) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${esc(title)} — ファイル共有</title>
+${CHROME_HEAD}
 <style>
   :root { --accent:#6f8cff; }
   * { box-sizing:border-box; }
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
-    background:#060608; color:#f4f4f5; font-family:'Noto Sans JP',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  body { margin:0; background:#060608; color:#f4f4f5;
+    font-family:'Noto Sans JP',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  /* 上に貼り付くナビ(52px)の分をよけつつ、カードは画面の真ん中に */
+  .stagearea { min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:96px 24px 64px; }
   .card { width:100%; max-width:${wide ? '720px' : '460px'}; padding:38px 34px; border:1px solid rgba(255,255,255,.12);
     border-radius:18px; background:linear-gradient(160deg,#0c0c11,#08080b); text-align:center; }
   .eyebrow { margin:0 0 14px; font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:rgba(244,244,245,.45); }
@@ -1037,7 +1046,11 @@ function htmlPage(title, inner, status, wide) {
   .mini.dl { border-color:var(--accent); color:var(--accent); }
   .mini:hover { background:rgba(255,255,255,.06); }
   .row .pv { margin:16px 0 0; }
-</style></head><body>${inner.indexOf('class="card') === -1 ? '<div class="card">' + inner + '</div>' : inner}</body></html>`;
+</style></head><body>
+${NAV_HTML}
+<main class="stagearea">${inner.indexOf('class="card') === -1 ? '<div class="card">' + inner + '</div>' : inner}</main>
+${FOOTER_HTML}
+</body></html>`;
   return new Response(html, { status: status || 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
 

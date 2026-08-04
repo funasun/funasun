@@ -11,3 +11,8 @@ compatibility_date = "2024-11-01"
 # 毎日 03:00(UTC) に期限切れファイルを自動削除
 [triggers]
 crons = ["0 3 * * *"]
+
+# deploy のたびに、サイト共通のナビ・フッター(chrome.gen.js)を
+# src/partials/ から作り直す。受け取りページが本体とずれないように。
+[build]
+command = "node build-chrome.js"
