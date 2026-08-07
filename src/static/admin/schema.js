@@ -37,7 +37,35 @@
     {
       id: 'home', label: 'ホーム', base: 'home',
       fields: [
+        {
+          key: 'style', label: 'ホームの見せ方', type: 'select',
+          hint: '「保存する」を押してから、サイトに出るまで1〜2分かかります。ホーム以外のページは変わりません。',
+          options: [
+            { value: 'brand', label: '紹介重視（スクロールで読ませる・今までの形）' },
+            { value: 'classic', label: '情報重視（一覧で探しやすい・普通のホームページ）' }
+          ]
+        },
         { key: 'tagline', label: 'キャッチ文', type: 'textarea' },
+        {
+          key: 'portrait', label: 'ホームの顔写真', type: 'group',
+          fields: [
+            { key: 'src', label: '写真', type: 'image', hint: '紹介重視・情報重視のどちらの見せ方でも、この写真が使われます。' },
+            { key: 'alt', label: '説明（alt）', type: 'text' }
+          ]
+        },
+        {
+          key: 'campfire', label: 'クラウドファンディング', type: 'group',
+          fields: [
+            {
+              key: 'url', label: 'CAMPFIRE の widget URL', type: 'text',
+              placeholder: 'https://camp-fire.jp/projects/000000/widget',
+              hint: '空にすると、ホームからこの枠が丸ごと消えます（募集が終わったら空に）。camp-fire.jp のURLだけ受け付けます。'
+            },
+            { key: 'heading', label: '見出し', type: 'text' },
+            { key: 'note', label: '説明文', type: 'textarea' },
+            { key: 'linkText', label: 'リンクの文字', type: 'text' }
+          ]
+        },
         {
           key: 'newsItems', label: '新着ニュース', type: 'list',
           itemLabel: function (o) { return o.title || '（見出し未入力）'; },

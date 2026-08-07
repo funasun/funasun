@@ -165,6 +165,16 @@ function extOf(filename) {
 function previewType(filename) {
   return PREVIEW_TYPES[extOf(filename)] || null;
 }
+function isVideoName(filename) {
+  const t = previewType(filename);
+  return !!t && t.indexOf('video/') === 0;
+}
+/* 動画を mp4 に変換した控えを渡すときの見せ名。中身が mp4 なのに
+   名前が .mov のままだと、受け取った人が「開けない形式だ」と誤解する。 */
+function mp4Name(filename) {
+  const n = String(filename || 'file');
+  return n.replace(/\.[A-Za-z0-9]+$/, '') + '.mp4';
+}
 function previewKind(mime) {
   if (!mime) return null;
   if (mime.startsWith('image/')) return 'image';
@@ -378,6 +388,7 @@ export default {
       if (path === '/archive/list' && request.method === 'GET') return await archiveList(request, env, origin);
       if (path === '/archive/take' && request.method === 'GET') return await archiveTake(request, env, url, origin);
       if (path === '/archive/linkless' && request.method === 'GET') return await archiveLinkless(request, env, origin);
+      if (path === '/archive/convertless' && request.method === 'GET') return await archiveConvertless(request, env, origin);
       if (path === '/archive/mark' && request.method === 'POST') return await archiveMark(request, env, origin);
       if (path === '/create' && request.method === 'POST') return await create(request, env, origin);
       if (path === '/part' && request.method === 'PUT') return await uploadPart(request, env, url, origin);
@@ -591,6 +602,90 @@ function pwGate(meta, url, id, asJson) {
     '<p class="muted">合言葉が正しくありません。<a href="/f/' + esc(id) + '">戻る</a></p>', 403);
 }
 
+/* ---------- 保管庫(NAS)からの中継 ----------
+   本体がNASへ引っ越したファイルも、受け取りはこのWorkerの窓口のままにする。
+   共有リンク gofile.me/<別名>/<トークン> の裏には、ページの部品なしで中身だけを
+   返す入り口 /fsdownload/<トークン>/<名前> がある（sharing_sid クッキーが必要。
+   クッキーは /sharing/<トークン> を1回開くともらえる。名前の部分は何でもよい）。
+   中継サーバーの名前は「gofile-<別名を文字コード16進にした列>.<地域>.quickconnect.to」
+   と決まっているので、地域を世界側の窓口(Serv.php)に聞けば自分で組み立てられる。 */
+const NAS_QC_REGION_FALLBACK = 'tw2';   // 地域を聞けなかったときの控え（現在の実測値）
+const nasRegionCache = new Map();       // 別名 → 中継地域
+const nasSidCache = new Map();          // トークン → sharing_sid
+
+function nasParseLink(link) {
+  const m = /^https:\/\/gofile\.me\/([A-Za-z0-9]+)\/([A-Za-z0-9]+)/.exec(String(link || ''));
+  return m ? { alias: m[1], token: m[2] } : null;
+}
+// 中継が寝ていたときに待ちすぎない（プレビューは何回も取りに来るので特に）
+function nasAbort() {
+  try { return AbortSignal.timeout(15000); } catch (e) { return undefined; }
+}
+async function nasServ(command, alias) {
+  const body = JSON.stringify([{
+    version: 1, command: command, stop_when_error: false,
+    stop_when_success: command === 'request_tunnel',
+    id: 'file_sharing_https', serverID: alias, is_gofile: true
+  }]);
+  for (const host of ['global.quickconnect.to', 'usc.quickconnect.to']) {
+    try {
+      const r = await fetch('https://' + host + '/Serv.php', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: body, signal: nasAbort()
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const one = Array.isArray(j) ? j[0] : j;
+      if (one && one.env && one.env.relay_region) return one;
+    } catch (e) { /* 次の窓口へ */ }
+  }
+  return null;
+}
+async function nasRelayHost(alias, renew) {
+  let region = renew ? '' : (nasRegionCache.get(alias) || '');
+  if (!region) {
+    const info = await nasServ('get_server_info', alias);
+    region = (info && info.env && info.env.relay_region) || NAS_QC_REGION_FALLBACK;
+    nasRegionCache.set(alias, region);
+  }
+  const hex = Array.from(alias).map(function (c) { return c.charCodeAt(0).toString(16); }).join('');
+  return 'gofile-' + hex + '.' + region + '.quickconnect.to';
+}
+async function nasSid(host, token, renew) {
+  if (!renew && nasSidCache.has(token)) return nasSidCache.get(token);
+  const r = await fetch('https://' + host + '/sharing/' + encodeURIComponent(token),
+    { redirect: 'manual', signal: nasAbort() });
+  const sc = (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie') || '']).join('; ');
+  const m = /sharing_sid=([^;,\s]+)/.exec(sc);
+  if (!m) return '';
+  nasSidCache.set(token, m[1]);
+  return m[1];
+}
+/* 成功なら 200/206 の応答をそのまま返す（呼び出し側が headers を付け直す）。
+   だめなら null。1回目は覚えているもので、2回目はクッキーを作り直して、
+   3回目は中継の起こし直し(request_tunnel)と地域の聞き直しをしてから試す。 */
+async function nasFetch(link, range) {
+  const g = nasParseLink(link);
+  if (!g) return null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt === 2) await nasServ('request_tunnel', g.alias);
+      const host = await nasRelayHost(g.alias, attempt === 2);
+      const sid = await nasSid(host, g.token, attempt >= 1);
+      if (!sid) continue;
+      const h = { Cookie: 'sharing_sid=' + sid };
+      if (range) h.Range = range;
+      const r = await fetch('https://' + host + '/fsdownload/' + encodeURIComponent(g.token) + '/file',
+        { headers: h, signal: nasAbort() });
+      if ((r.status === 200 || r.status === 206) && r.body) return r;
+      nasSidCache.delete(g.token);
+    } catch (e) {
+      nasSidCache.delete(g.token);
+    }
+  }
+  return null;
+}
+
 async function serveFile(env, rawId, url, request, inline, origin) {
   const fileId = safeId(rawId);
   const found = await findFile(env, fileId);
@@ -606,14 +701,6 @@ async function serveFile(env, rawId, url, request, inline, origin) {
   const gate = pwGate(meta, url, rawId, false);
   if (gate) return gate;
 
-  /* 本体が自宅の保管庫(NAS)へ引っ越し済みなら、そちらの受け取りリンクへ転送する。
-     合言葉の確認(pwGate)を通ったあとでしか転送しないので、守りは今までと同じ。
-     Drive 側は付箋だけの空ファイルになっている。 */
-  if (meta.nasUrl) {
-    return new Response(null, { status: 302,
-      headers: Object.assign({ Location: meta.nasUrl }, corsHeaders(origin)) });
-  }
-
   const filename = file.name || 'file';
 
   // プレビューは「安全だと分かっている拡張子」だけ。種類も拡張子だけから決める。
@@ -624,59 +711,95 @@ async function serveFile(env, rawId, url, request, inline, origin) {
     type = t;
   }
 
-  // 途中から再開できるように Range をそのまま Google に渡す。
+  // 途中から再開できるように Range をそのまま取り寄せ先に渡す。
   // Cloudflare は流しっぱなしの応答から Content-Length を外してしまうため、
   // これが無いと途中で切れたダウンロードを再開できない（＝やり直しになる）。
   const range = request.headers.get('Range') || '';
-  const gh = { Authorization: 'Bearer ' + token };
-  if (range) gh.Range = range;
 
-  const base = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media';
-  let res = await fetch(base, { headers: gh });
-
-  // Google が「あやしい」と判定したファイル（zip や実行ファイルで起きやすい）は
-  // 403 で落ちる。これが「ダウンロードできないことがある」の主因。
-  // acknowledgeAbuse を付ければ持ち主は取り出せる。ただし普通のファイルにまで
-  // 付けて回るのは避けたいので、断られたときだけ付け直して1回やり直す。
-  if (res.status === 403) {
-    res = await fetch(base + '&acknowledgeAbuse=true', { headers: gh });
+  let res = null;
+  let servedPv = false;
+  /* 動画に「どこでも再生できる控え(H.264のmp4)」ができていれば、見るのも保存も
+     そちらを渡す。渡す物が mp4 なら、名前も .mp4 にしないと嘘になるので揃える。
+     原本は保管庫に残っている。控えが取り出せなければ原本に進む。 */
+  if (isVideoName(filename) && meta.pvUrl) {
+    res = await nasFetch(meta.pvUrl, range);
+    if (res) { servedPv = true; type = 'video/mp4'; }
   }
+  if (!res && meta.nasUrl) {
+    /* 本体は自宅の保管庫(NAS)にある（Drive側は付箋だけの空ファイル）。
+       以前はNASの受け取りページへ転送していたが、それだとプレビューが使えず、
+       保存されるファイル名も整理番号つきになってしまう。いまはこのWorkerが
+       保管庫から中身だけを取り寄せて、名前も種類もここで付けて流す。
+       合言葉の確認(pwGate)を通ったあとなので、守りは今までと同じ。 */
+    res = await nasFetch(meta.nasUrl, range);
+    if (!res) {
+      // 中継がどうしても通らないときの最後の手段：NASの受け取りページへ
+      return new Response(null, { status: 302,
+        headers: Object.assign({ Location: meta.nasUrl }, corsHeaders(origin)) });
+    }
+  } else if (!res) {
+    const gh = { Authorization: 'Bearer ' + token };
+    if (range) gh.Range = range;
 
-  if (!res.ok && res.status !== 206) {
-    // 何が起きたのか分かる形で返す（今までは全部「見つかりません」だった）
-    let detail = '';
-    try {
-      const j = await res.json();
-      detail = (j && j.error && j.error.message) ? j.error.message : '';
-    } catch (e) { /* 本文がJSONでないこともある */ }
+    const base = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media';
+    res = await fetch(base, { headers: gh });
+
+    // Google が「あやしい」と判定したファイル（zip や実行ファイルで起きやすい）は
+    // 403 で落ちる。これが「ダウンロードできないことがある」の主因。
+    // acknowledgeAbuse を付ければ持ち主は取り出せる。ただし普通のファイルにまで
+    // 付けて回るのは避けたいので、断られたときだけ付け直して1回やり直す。
     if (res.status === 403) {
+      res = await fetch(base + '&acknowledgeAbuse=true', { headers: gh });
+    }
+
+    if (!res.ok && res.status !== 206) {
+      // 何が起きたのか分かる形で返す（今までは全部「見つかりません」だった）
+      let detail = '';
+      try {
+        const j = await res.json();
+        detail = (j && j.error && j.error.message) ? j.error.message : '';
+      } catch (e) { /* 本文がJSONでないこともある */ }
+      if (res.status === 403) {
+        return htmlPage('ダウンロードできません',
+          '<p class="muted">Google 側でこのファイルの取得が拒否されました。<br>時間をおいて、もう一度お試しください。</p>'
+          + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 403);
+      }
+      if (res.status === 404) {
+        return htmlPage('ファイルが見つかりません', '<p class="muted">削除された可能性があります。</p>', 404);
+      }
       return htmlPage('ダウンロードできません',
-        '<p class="muted">Google 側でこのファイルの取得が拒否されました。<br>時間をおいて、もう一度お試しください。</p>'
-        + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 403);
+        '<p class="muted">一時的にファイルを取り出せませんでした（' + esc(String(res.status)) + '）。<br>少し待ってから、もう一度お試しください。</p>'
+        + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 502);
     }
-    if (res.status === 404) {
-      return htmlPage('ファイルが見つかりません', '<p class="muted">削除された可能性があります。</p>', 404);
-    }
-    return htmlPage('ダウンロードできません',
-      '<p class="muted">一時的にファイルを取り出せませんでした（' + esc(String(res.status)) + '）。<br>少し待ってから、もう一度お試しください。</p>'
-      + (detail ? '<p class="muted" style="font-size:12px;opacity:.7">' + esc(detail) + '</p>' : ''), 502);
   }
   if (!res.body) return htmlPage('ダウンロードできません', '<p class="muted">ファイルの中身を取り出せませんでした。</p>', 502);
 
   const headers = new Headers();
   headers.set('Content-Type', type);
+  // 実際に渡した物が mp4 の控えなら、名前も .mp4 にして渡す
+  const outName = servedPv ? mp4Name(filename) : filename;
   headers.set('Content-Disposition',
-    (inline ? 'inline' : 'attachment') + "; filename*=UTF-8''" + encodeURIComponent(filename));
+    (inline ? 'inline' : 'attachment') + "; filename*=UTF-8''" + encodeURIComponent(outName));
   // 中身を見て種類を勝手に判断させない。画像として返したものは画像としてしか扱われない。
   headers.set('X-Content-Type-Options', 'nosniff');
   // 万一なにかが動いても、隔離された出所として扱わせる（このドメインに触れない）
-  headers.set('Content-Security-Policy', "default-src 'none'; media-src 'self'; img-src 'self'; object-src 'none'; sandbox");
+  /* PDF をその場で表示するときだけ、CSP の sandbox を外す。iframe の
+     sandbox 属性と同じ理屈で、これが付いていると Chrome は PDF ビューアを
+     動かさず、灰色のまま「読み込めませんでした」になる（実際になった）。
+     PDF の守りは「拡張子の表で pdf と決めた物だけ来る」「nosniff」
+     「ビューア自体が隔離されている」の3つで維持する。 */
+  const cspSandbox = (inline && type === 'application/pdf') ? '' : '; sandbox';
+  headers.set('Content-Security-Policy', "default-src 'none'; media-src 'self'; img-src 'self'; object-src 'none'" + cspSandbox);
   headers.set('Cache-Control', 'private, no-store');
   headers.set('Accept-Ranges', 'bytes');
   // 部分取得のときは、どこからどこまでかを必ずそのまま伝える
   const cr = res.headers.get('Content-Range');
   if (cr) headers.set('Content-Range', cr);
-  const cl = res.headers.get('Content-Length') || (range ? '' : file.size);
+  // NAS引っ越し済みは Drive 上の size が 0 なので、覚えている大きさで補う
+  const knownSize = servedPv
+    ? (Number(meta.pvSize || 0) || 0)
+    : (Number(meta.origSize || 0) || Number(file.size) || 0);
+  const cl = res.headers.get('Content-Length') || (range ? '' : String(knownSize || ''));
   if (cl) headers.set('Content-Length', String(cl));
 
   /* 自分のサイト（/tools/ や /admin/）からは、このファイルを JavaScript で
@@ -722,15 +845,20 @@ async function landing(env, id, url) {
     return htmlPage('期限切れ', '<p class="muted">このファイルは有効期限が切れて削除されました。</p>', 410);
   }
 
-  const filename = file.name || 'file';
+  const origName = file.name || 'file';
   const needsPw = !!meta.pw;
-  /* 本体がNASへ引っ越し済みなら、その場のプレビューはやめる
-     （中継の仕組み上、絵や動画の枠の中では開けない）。ダウンロードは
-     /dl/ 経由で NAS へ転送されるので今までどおり。大きさは引っ越し前の値を出す
-     （Drive上は空になっていて 0 B と出てしまうため）。 */
+  /* 本体がNASへ引っ越し済みでも、/pv/ /dl/ がWorker中継で中身を流すので
+     プレビューも保存も今までどおり。大きさだけは引っ越し前の値を出す
+     （Drive上は空になっていて 0 B と出てしまうため）。
+     動画に mp4 の控えができていれば、渡すのはそちらなので、
+     見せる名前も大きさもその控えのものにする。 */
   const onNas = !!meta.nasUrl;
-  const kind = onNas ? null : previewKind(previewType(filename));
-  const shownSize = Number(meta.origSize || 0) || Number(file.size) || 0;
+  const asMp4 = isVideoName(origName) && !!meta.pvUrl;
+  const filename = asMp4 ? mp4Name(origName) : origName;
+  const kind = previewKind(previewType(filename));
+  const shownSize = asMp4
+    ? (Number(meta.pvSize || 0) || Number(meta.origSize || 0) || 0)
+    : (Number(meta.origSize || 0) || Number(file.size) || 0);
 
   const body = `
     <div class="card">
@@ -745,9 +873,8 @@ async function landing(env, id, url) {
         : ''}
       <div id="area" ${needsPw ? 'hidden' : ''}>
         ${kind ? '<div id="pv" class="pv"></div>'
-          : (onNas
-            ? '<p class="muted nopv">保管庫からのお渡しになります。ダウンロードを押してから始まるまで、少し待つことがあります。</p>'
-            : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>')}
+          : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>'}
+        ${onNas ? '<p class="muted nopv" style="font-size:12px">保管庫からのお渡しのため、始まりに少し時間がかかることがあります。</p>' : ''}
         <a id="dlbtn" class="btn" href="#">ダウンロード</a>
       </div>
     </div>
@@ -756,6 +883,7 @@ async function landing(env, id, url) {
       var ID = ${jsStr(encodeURIComponent(id))};
       var KIND = ${jsStr(kind || '')};
       var NAME = ${jsStr(filename)};
+      var CONV = ${(kind === 'video' && !meta.pvUrl && !meta.pvSame) ? 'true' : 'false'};
       var NEEDS = ${needsPw ? 'true' : 'false'};
       ${PREVIEW_JS}
       function show(h) {
@@ -763,7 +891,7 @@ async function landing(env, id, url) {
         document.getElementById('dlbtn').setAttribute('href', '/dl/' + ID + q);
         document.getElementById('area').hidden = false;
         var box = document.getElementById('pv');
-        if (box) renderPreview(box, '/pv/' + ID + q, KIND, NAME);
+        if (box) renderPreview(box, '/pv/' + ID + q, KIND, NAME, CONV);
       }
       if (!NEEDS) { show(''); return; }
       var btn = document.getElementById('unlock');
@@ -810,18 +938,25 @@ async function groupLanding(env, gid, url) {
 
   const needsPw = !!(alive[0].appProperties || {}).pw;
   const exp = expiryText((alive[0].appProperties || {}).expiresAt);
-  // 引っ越し済みのものは Drive 上では空なので、元の大きさで数える
+  // 引っ越し済みのものは Drive 上では空なので、覚えている大きさで数える
+  // （mp4 の控えを渡す動画は、その控えの大きさ）
   const sizeOf = function (f) {
     const m = f.appProperties || {};
+    if (isVideoName(f.name) && m.pvUrl) return Number(m.pvSize || 0) || Number(m.origSize || 0) || 0;
     return Number(m.origSize || 0) || Number(f.size) || 0;
   };
   const totalSize = alive.reduce(function (s, f) { return s + sizeOf(f); }, 0);
 
   const rows = alive.map(function (f) {
-    const name = f.name || 'file';
-    // NASへ引っ越し済みは「見る」を出さない（中継の枠の中では開けない）
-    const kind = (f.appProperties || {}).nasUrl ? null : previewKind(previewType(name));
-    return `<li class="row" data-id="${esc(encodeURIComponent(f.id))}" data-kind="${esc(kind || '')}" data-name="${esc(name)}">
+    const fp = f.appProperties || {};
+    const orig = f.name || 'file';
+    // mp4 の控えができている動画は、名前も .mp4 で見せる（渡すのが控えだから）
+    const name = (isVideoName(orig) && fp.pvUrl) ? mp4Name(orig) : orig;
+    // NASへ引っ越し済みでもWorker中継で流すので「見る」はそのまま出す
+    const kind = previewKind(previewType(name));
+    // 動画で「どこでも再生できる控え」がまだ無いものは、支度中の目印を付ける
+    const conv = (kind === 'video' && !fp.pvUrl && !fp.pvSame) ? '1' : '';
+    return `<li class="row" data-id="${esc(encodeURIComponent(f.id))}" data-kind="${esc(kind || '')}" data-name="${esc(name)}" data-conv="${conv}">
         <div class="rtop">
           <div class="rinfo">
             <span class="rname">${esc(name)}</span>
@@ -861,6 +996,7 @@ async function groupLanding(env, gid, url) {
           var id = row.getAttribute('data-id');
           var kind = row.getAttribute('data-kind');
           var name = row.getAttribute('data-name');
+          var conv = row.getAttribute('data-conv') === '1';
           row.querySelector('.dl').setAttribute('href', '/dl/' + id + q);
           var btn = row.querySelector('.pvbtn');
           if (!btn) return;
@@ -870,7 +1006,7 @@ async function groupLanding(env, gid, url) {
             open = !open;
             btn.textContent = open ? '閉じる' : '見る';
             if (!open) { box.innerHTML = ''; return; }
-            renderPreview(box, '/pv/' + id + q, kind, name);
+            renderPreview(box, '/pv/' + id + q, kind, name, conv);
           });
         });
       }
@@ -931,7 +1067,7 @@ const PREVIEW_JS = `
         var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
         return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
       }
-      function renderPreview(box, src, kind, name) {
+      function renderPreview(box, src, kind, name, conv) {
         box.innerHTML = '';
         if (kind === 'image') {
           var img = document.createElement('img');
@@ -941,16 +1077,19 @@ const PREVIEW_JS = `
         } else if (kind === 'video') {
           var v = document.createElement('video');
           v.src = src; v.controls = true; v.preload = 'metadata'; v.playsInline = true;
-          /* iPhone の「高効率」形式(HEVC)などは、Android や Windows に
-             再生できない端末がある。黙って黒い枠を見せるのが一番不親切なので、
-             だめだった理由と、それでも受け取れる道を言葉で出す。 */
+          /* iPhone の「高効率」形式(HEVC)などは、そのままでは再生できない端末がある。
+             保管庫が裏で「どこでも再生できる控え(mp4)」を作り、できあがり次第
+             そちらが流れる。まだのあいだ(conv=true)にだめだった端末には
+             「支度中」だと伝える。黙って黒い枠を見せるのが一番不親切。 */
           v.onerror = function () {
             box.innerHTML = '';
             var p = document.createElement('p');
             p.className = 'muted';
-            p.textContent = 'この端末では再生できない形式の動画です'
-              + '（iPhoneで撮ったままの「高効率(HEVC)」などがこれにあたります）。'
-              + '「保存」なら中身はそのまま受け取れて、対応アプリで見られます。';
+            p.textContent = conv
+              ? 'この動画はいま、どの端末でも見られる形へ変換しているところです。'
+                + 'しばらくしてからもう一度開くと、この場で見られるようになります。'
+                + '「保存」はいまでもそのままできます。'
+              : 'この端末では再生できない形式の動画です。「保存」なら中身はそのまま受け取れます。';
             box.appendChild(p);
           };
           box.appendChild(v);
@@ -1146,15 +1285,22 @@ async function adminList(request, env, origin) {
     const p = f.appProperties || {};
     const exp = Number(p.expiresAt || 0);
     /* 大きさは2つの意味を持つようになった。
-       表示する大きさ＝元のファイルの大きさ（引っ越し後も相手が受け取る量）。
-       使用量メーター＝Drive を実際に占めている量（引っ越し済みはほぼ0）。 */
-    const size = Number(p.origSize || 0) || Number(f.size) || 0;
+       表示する大きさ＝相手が受け取る量。使用量メーター＝Drive を実際に
+       占めている量（引っ越し済みはほぼ0）。動画に mp4 の控えができていれば、
+       相手が受け取るのはその控えなので、名前も大きさもそちらで見せる。 */
+    const orig = f.name || '(名前なし)';
+    const asMp4 = isVideoName(orig) && !!p.pvUrl;
+    const size = asMp4
+      ? (Number(p.pvSize || 0) || Number(p.origSize || 0) || 0)
+      : (Number(p.origSize || 0) || Number(f.size) || 0);
     const driveSize = Number(f.size) || 0;
     const isExpired = exp > 0 && now > exp;
     if (!isExpired) used += driveSize;
     items.push({
       id: f.id,
-      name: f.name || '(名前なし)',
+      name: asMp4 ? mp4Name(orig) : orig,
+      origName: orig,                       // 名前の変更はこちら（原本の名前）に対して行う
+      convertedToMp4: asMp4,
       size: size,
       sizeText: humanSize(size),
       createdTime: f.createdTime || '',
@@ -1374,6 +1520,33 @@ async function archiveList(request, env, origin) {
     { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
+/* 動画のうち「どこでも再生できる控え(H.264のmp4)」がまだ用意できていないもの。
+   形: <ID>タブ<期限日>タブ<名前>。NAS 側はこれを見て手元の控えを ffmpeg で変換し、
+   出来た mp4 に受け取りリンクを作って mark {id, pvLink} で届け出る。どうしても
+   変換できないものは mark {id, pvSame:true}（原本のまま見せる）。
+   保存(/dl/)は常に原本のままで、この控えは「見る」専用。 */
+async function archiveConvertless(request, env, origin) {
+  const gate = nasGate(env, request, origin);
+  if (gate) return gate;
+  const lines = [];
+  for (const a of await allTokens(env)) {
+    try {
+      await listOwnFiles(a.token, (f) => {
+        const p = f.appProperties || {};
+        if (p.nas !== '1' || !p.nasUrl || p.pvUrl || p.pvSame) return;
+        const t = previewType(f.name);
+        if (!t || t.indexOf('video/') !== 0) return;
+        const exp = Number(p.expiresAt || 0);
+        const linkExp = exp ? fmtDate(exp + 24 * 60 * 60 * 1000).replace(/\//g, '-') : '';
+        lines.push([f.id, linkExp,
+          String(f.name || 'file').replace(/[\t\r\n]/g, ' ')].join('\t'));
+      }, 'name');
+    } catch (e) { /* この保管先は次の回に */ }
+  }
+  return new Response(lines.length ? lines.join('\n') + '\n' : '',
+    { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
 /* 控えは取れているが、まだ受け取りリンクが無いもの（＝引っ越しが済んでいないもの）。
    形: <ID>タブ<期限日>タブ<名前>。NAS 側はこの一覧を見て、手元の控えに
    リンクを作って mark(link付き) で完了届を出す。中身の取り直しは要らない。 */
@@ -1436,11 +1609,14 @@ async function archiveMark(request, env, origin) {
   if (!id) return json({ message: '対象が指定されていません' }, 400, origin);
 
   const link = String(body.link || '').trim();
+  const pvLink = String(body.pvLink || '').trim();   // 再生用の控え(mp4)の受け取りリンク
   // 転送先にできるのは Synology の受け取りリンクだけ（他所へ飛ばす窓口にしない）
-  if (link && !/^https:\/\/(gofile\.me\/|[a-z0-9-]+\.quickconnect\.to\/)/i.test(link)) {
-    return json({ message: 'リンクの形が想定と違います' }, 400, origin);
+  for (const l of [link, pvLink]) {
+    if (l && !/^https:\/\/(gofile\.me\/|[a-z0-9-]+\.quickconnect\.to\/)/i.test(l)) {
+      return json({ message: 'リンクの形が想定と違います' }, 400, origin);
+    }
+    if (l && l.length > 120) return json({ message: 'リンクが長すぎます' }, 400, origin);
   }
-  if (link && link.length > 120) return json({ message: 'リンクが長すぎます' }, 400, origin);
 
   const found = await findFile(env, id);
   const p = (found && found.file.appProperties) || {};
@@ -1448,11 +1624,16 @@ async function archiveMark(request, env, origin) {
     return json({ message: '見つかりません' }, 404, origin);
   }
 
-  const props = body.undo
-    ? { nas: null, nasUrl: null, origSize: null }
-    : (link
-      ? { nas: '1', nasUrl: link, origSize: String(found.file.size || 0) }
-      : { nas: '1' });
+  /* origSize は「引っ越し前の大きさ」。リンクの張り替えなどで二度目の印付けが
+     来たとき、Drive側はもう空(0)なので、覚えている値を 0 で上書きしない。
+     pvLink / pvSame は「見る」用の届（変換した控えのリンク／原本のままでOKの印）。
+     こちらは中身を空にしない（空にするのは link の届だけ）。 */
+  let props;
+  if (body.undo) props = { nas: null, nasUrl: null, origSize: null, pvUrl: null, pvSame: null, pvSize: null };
+  else if (link) props = { nas: '1', nasUrl: link, origSize: p.origSize || String(found.file.size || 0) };
+  else if (pvLink) props = { pvUrl: pvLink, pvSize: String(Math.max(0, Number(body.pvSize) || 0)) };
+  else if (body.pvSame) props = { pvSame: '1' };
+  else props = { nas: '1' };
   const res = await fetch('https://www.googleapis.com/drive/v3/files/' + found.file.id + '?fields=id', {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + found.token, 'Content-Type': 'application/json' },

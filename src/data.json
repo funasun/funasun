@@ -7,8 +7,21 @@
     "footerYear": "© 2026"
   },
   "home": {
+    "style": "classic",
     "name": "船越 温 / Tsutsumu Funakoshi",
     "tagline": "うどん県在住の高校3年生。「さぬきうどんを、次の100年へ。」をコンセプトに、年間3000トン廃棄される廃棄うどんからエネルギーを生成する研究に取り組む。",
+    "portrait": {
+      "_note": "ホームの顔写真。紹介重視版・情報重視版の両方でこれを使う",
+      "src": "images/jigazo2.webp",
+      "alt": "船越温のポートレート"
+    },
+    "campfire": {
+      "_note": "クラウドファンディングの札。URLを空にすると、ホームから丸ごと消える",
+      "url": "https://camp-fire.jp/projects/972993/widget",
+      "heading": "クラウドファンディング挑戦中",
+      "note": "四国地区代表として全国大会に挑みます。主権者教育アプリ『まなvote』を、もっと多くの人へ。",
+      "linkText": "プロジェクトを見る　→"
+    },
     "pillarPhotos": {
       "_note": "各柱の背景写真。src に images/ からのパスを入れると表示、空文字なら黒プレースホルダーのまま",
       "research": {

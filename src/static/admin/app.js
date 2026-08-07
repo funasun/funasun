@@ -880,7 +880,10 @@
          注意: この欄は form の中にあるので、Enter をそのままにすると
          form 全体の送信（＝サイト文章の保存）が走って、名前の変更が
          押されないまま画面が動く。Enter は「名前を変える」に割り当てる。 */
-      var nameIn = el('input', { class: 'urlbox', type: 'text', value: f.name });
+      /* 名前を変えるのは「原本の名前」に対して。動画に mp4 の控えができていると
+         一覧の name は .mp4 に置き換わっているので、そのまま入れると拡張子が
+         原本とずれてしまう。 */
+      var nameIn = el('input', { class: 'urlbox', type: 'text', value: f.origName || f.name });
       nameIn.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); nameBtn.click(); }
       });
@@ -892,8 +895,10 @@
           setStatus('名前を変えています…', 'info');
           filesApi('/admin/rename', { id: f.id, name: nameIn.value }).then(function (j) {
             /* その場でカードの見出しと入力欄も新しい名前にする。
-               一覧の取り直しを待つ間「変わっていないように見える」のを防ぐ。 */
-            titleEl.textContent = j.name;
+               一覧の取り直しを待つ間「変わっていないように見える」のを防ぐ。
+               見出しは相手に見える名前（mp4の控えがあれば .mp4）で出す。 */
+            var shown = f.convertedToMp4 ? j.name.replace(/\.[A-Za-z0-9]+$/, '') + '.mp4' : j.name;
+            titleEl.textContent = shown;
             nameIn.value = j.name;
             nameBtn.disabled = false;
             setStatus('「' + j.name + '」にしました', 'ok');

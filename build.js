@@ -51,7 +51,10 @@ function reportUnusedTextKeys() {
     else all.push(prefix + k);
   });
   walk(data.texts, '');
-  const unused = all.filter((k) => !usedTextKeys.has(k));
+  /* ホームは2つの見せ方があり、いま作っていない方の文言は当然「使われていない」。
+     それを毎回並べると本当の消し忘れが埋もれるので、ホームの文言だけ除く。 */
+  const otherHome = homeStyle === 'classic';
+  const unused = all.filter((k) => !usedTextKeys.has(k) && !(otherHome && k.startsWith('index.')));
   if (unused.length) console.warn(`注意: どこにも使われていない文言 ${unused.length}件: ${unused.join(', ')}`);
 }
 
@@ -810,6 +813,127 @@ function pillarPhoto(key) {
   return `      <div data-slot="photo-${key}" style="position: absolute; inset: 0"></div>`;
 }
 
+/* ---------------- ホーム（情報重視版 classic） ----------------
+   brand 版は「読ませる」作りなので、探し物には向かない。こちらは
+   最初の画面で全体が見え、どこに何があるかが分かることを優先する。
+   演出（data-reveal 等）は使わず、開いた瞬間に文字が出ている状態にする。 */
+
+const homeStyle = data.home.style === 'classic' ? 'classic' : 'brand';
+
+function classicNews() {
+  const items = data.home.newsItems || [];
+  if (!items.length) return '      <p class="c-row-note">（まだありません）</p>';
+  return items.map((n) => `      <a href="archive.html" class="c-row">
+        <span class="c-row-date">${esc(n.date)}</span>
+        <span><span class="c-row-title">${esc(n.title)}</span><span class="c-row-sub">${esc(n.cat)}</span></span>
+      </a>`).join('\n');
+}
+
+/* 各ページへの入口。ラベル＋1行の説明＋矢印だけ、という元のホームの形。
+   説明文は data.json の texts から取るので /admin から書き換えられる。 */
+const CLASSIC_PREVIEWS = [
+  { label: 'About', href: 'about.html', t: null, fallback: '研究・政治・芸術を守備範囲とする高校生' },
+  { label: 'Research', href: 'research.html', t: 'index.research.lead', photo: 'research' },
+  { label: 'Politics', href: 'archive.html', t: 'index.politics.lead', photo: 'politics' },
+  { label: 'Governance', href: 'archive.html', t: 'index.governance.lead', photo: 'governance' },
+  { label: 'Music', href: 'archive.html', t: 'index.music.lead', photo: 'music' },
+  { label: 'Works', href: 'works.html', t: 'index.works.lead' },
+  { label: 'Udon', href: 'henro.html', t: null, fallback: '讃岐うどんの食べ歩き記録「うどん遍路」。' }
+];
+
+function classicPreviews() {
+  return CLASSIC_PREVIEWS.map((p) => {
+    /* 写真は brand 版の「柱の背景写真」と同じ場所から取る。
+       どちらの見せ方でも同じ写真が出るし、差し替えも1回で済む。 */
+    const photo = p.photo ? ((data.home.pillarPhotos || {})[p.photo] || {}) : {};
+    const thumb = photo.src
+      ? `<span class="c-preview-thumb"><img src="${esc(photo.src)}" alt="${esc(photo.alt || '')}" loading="lazy"></span>`
+      : '';
+    return `      <a href="${p.href}" class="c-preview">
+        ${thumb}<span class="c-preview-body">
+          <span class="c-preview-label">${esc(p.label)}</span>
+          <span class="c-preview-text">${p.t ? textOf(p.t) : esc(p.fallback)}</span>
+        </span>
+        <span class="c-preview-arrow">→</span>
+      </a>`;
+  }).join('\n');
+}
+
+// 作品は「公開中のもの」を先に4本まで。残りは Works ページへ
+function classicWorks() {
+  const items = (data.worksItems || []).slice()
+    .sort((a, b) => (b.status === 'live' ? 1 : 0) - (a.status === 'live' ? 1 : 0))
+    .slice(0, 4);
+  return items.map((w) => {
+    const url = w.liveUrl || '';
+    const tag = url ? 'a' : 'div';
+    const attrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
+    return `      <${tag}${attrs} class="c-row">
+        <span class="c-row-date">${esc(w.type)}</span>
+        <span><span class="c-row-title">${esc(w.title)}</span><span class="c-row-note">${esc(w.description)}</span></span>
+      </${tag}>`;
+  }).join('\n');
+}
+
+function classicMedia() {
+  const items = (data.media || []).length ? mediaSorted().slice(0, 3) : [];
+  if (!items.length) return '      <p class="c-row-note">（まだありません）</p>';
+  return items.map((m) => {
+    const url = m.url || (m.ytid ? 'https://youtu.be/' + m.ytid : '');
+    const tag = url ? 'a' : 'div';
+    const attrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
+    return `      <${tag}${attrs} class="c-row">
+        <span class="c-row-date">${esc(m.date)}</span>
+        <span><span class="c-row-title">${esc(m.title)}</span><span class="c-row-sub">${esc(m.kind || '')} ${esc(mediaOutlet(m))}</span></span>
+      </${tag}>`;
+  }).join('\n');
+}
+
+/* ホームの顔写真。紹介重視版・情報重視版のどちらもこの1か所を見る。
+   /admin で差し替えれば両方に反映される（片方だけ古い、が起きない）。 */
+function homePortrait(style) {
+  const p = data.home.portrait || {};
+  const src = p.src || 'images/jigazo2.webp';
+  const alt = p.alt || '船越温のポートレート';
+  return `<img src="${esc(src)}" alt="${esc(alt)}" style="${style}" loading="lazy">`;
+}
+
+/* ---------------- クラウドファンディングの札 ----------------
+   CAMPFIRE が配っている widget を、そのまま iframe で載せる。
+   ・URL を空にすると、ホームから丸ごと消える（募集が終わったら空にすればいい）
+   ・載せるのは camp-fire.jp のページだけ。他所のURLは無視する（うっかり
+     知らないサイトを自分のページの中で開かせない）
+   ・widget は 245x365 の決め打ちなので、狭い画面でもこの幅のまま置く */
+function campfireBlock(style) {
+  const c = data.home.campfire || {};
+  const url = String(c.url || '').trim();
+  if (!/^https:\/\/camp-fire\.jp\//.test(url)) return '';
+  // widget の中の「プロジェクトを見る」用に、/widget を外した見せ用URLも作る
+  const pageUrl = url.replace(/\/widget\/?$/, '');
+  const frame = `<iframe title="クラウドファンディングの状況" src="${esc(url)}" width="245" height="365" frameborder="0" scrolling="no" loading="lazy" style="border: 0; max-width: 100%"></iframe>`;
+
+  if (style === 'classic') {
+    return `  <section class="c-cf">
+    <div class="c-cf-body">
+      <p class="c-label">Crowdfunding</p>
+      <p class="c-cf-h">${esc(c.heading || '')}</p>
+      <p class="c-cf-note">${esc(c.note || '')}</p>
+      <p class="c-more"><a href="${esc(pageUrl)}" target="_blank" rel="noopener">${esc(c.linkText || 'プロジェクトを見る　→')}</a></p>
+    </div>
+    <div class="c-cf-frame">${frame}</div>
+  </section>`;
+  }
+  return `<section id="support" data-m="stack" style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw; display: grid; grid-template-columns: 1fr 245px; gap: 56px; align-items: center; max-width: 1280px; margin: 0 auto; box-sizing: border-box">
+  <div data-reveal style="opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1s ease, transform 1s ease">
+    <p style="margin: 0 0 14px; font: 500 12px 'EB Garamond', serif; letter-spacing: .38em; text-transform: uppercase; color: #cfcfd1">Crowdfunding</p>
+    <h2 style="margin: 0 0 18px; font: 600 clamp(26px, 2.6vw, 36px)/1.5 'Noto Serif JP', serif">${esc(c.heading || '')}</h2>
+    <p style="margin: 0 0 28px; font: 400 17px/1.8 'Noto Sans JP', sans-serif; color: #d8d8da; max-width: 520px; text-wrap: pretty">${esc(c.note || '')}</p>
+    <a href="${esc(pageUrl)}" target="_blank" rel="noopener" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none">${esc(c.linkText || 'プロジェクトを見る　→')}</a>
+  </div>
+  <div data-reveal style="justify-self: center; opacity: calc(var(--r, 0)); transition: opacity 1.1s ease .15s">${frame}</div>
+</section>`;
+}
+
 /* ---------------- pages ---------------- */
 
 const pages = [
@@ -818,6 +942,11 @@ const pages = [
     active: 'Home',
     isHome: true,
     canonicalPath: '/',
+    /* ホームだけ2つの見せ方を用意してある（/admin の「ホーム」タブで切り替え）。
+         brand   … 今までの、スクロールで読ませる紹介（読み物として強い）
+         classic … 情報を先に出す普通のホームページ（探しやすさ優先）
+       中身はどちらも同じ data.json から作るので、切り替えても内容はずれない。 */
+    template: homeStyle === 'classic' ? 'index-classic.html' : 'index.html',
     title: '船越温 / Tsutsumu Funakoshi — 社会のためのイノベーション。',
     desc: data.home.tagline,
     tokens: {
@@ -827,7 +956,17 @@ const pages = [
       '{{PHOTO_RESEARCH}}': pillarPhoto('research'),
       '{{PHOTO_POLITICS}}': pillarPhoto('politics'),
       '{{PHOTO_GOVERNANCE}}': pillarPhoto('governance'),
-      '{{PHOTO_MUSIC}}': pillarPhoto('music')
+      '{{PHOTO_MUSIC}}': pillarPhoto('music'),
+      // ここから下は classic だけが使う（brand 側には無いので素通りする）
+      '{{CAMPFIRE}}': campfireBlock(homeStyle),
+      '{{C_NEWS}}': classicNews(),
+      '{{C_PREVIEWS}}': classicPreviews(),
+      '{{C_WORKS}}': classicWorks(),
+      '{{C_MEDIA}}': classicMedia(),
+      '{{C_PROSE}}': esc(data.about.prose),
+      '{{C_TAGLINE}}': esc(data.home.tagline),
+      '{{C_PORTRAIT}}': homePortrait('object-position: top'),
+      '{{HOME_PORTRAIT}}': homePortrait('width: 100%; height: 100%; object-fit: cover; object-position: top')
     }
   },
   {
