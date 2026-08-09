@@ -834,11 +834,7 @@ function classicNews() {
 const CLASSIC_PREVIEWS = [
   { label: 'About', href: 'about.html', t: null, fallback: '研究・政治・芸術を守備範囲とする高校生' },
   { label: 'Research', href: 'research.html', t: 'index.research.lead', photo: 'research' },
-  { label: 'Politics', href: 'archive.html', t: 'index.politics.lead', photo: 'politics' },
-  { label: 'Governance', href: 'archive.html', t: 'index.governance.lead', photo: 'governance' },
-  { label: 'Music', href: 'archive.html', t: 'index.music.lead', photo: 'music' },
-  { label: 'Works', href: 'works.html', t: 'index.works.lead' },
-  { label: 'Udon', href: 'henro.html', t: null, fallback: '讃岐うどんの食べ歩き記録「うどん遍路」。' }
+  { label: 'Archive', href: 'archive.html', t: null, fallback: '政治・生徒会・音楽。活動の記録はこちら。', photo: 'politics' }
 ];
 
 function classicPreviews() {
@@ -863,7 +859,7 @@ function classicPreviews() {
 function classicWorks() {
   const items = (data.worksItems || []).slice()
     .sort((a, b) => (b.status === 'live' ? 1 : 0) - (a.status === 'live' ? 1 : 0))
-    .slice(0, 4);
+    .slice(0, 3);
   return items.map((w) => {
     const url = w.liveUrl || '';
     const tag = url ? 'a' : 'div';
@@ -876,17 +872,13 @@ function classicWorks() {
 }
 
 function classicMedia() {
-  const items = (data.media || []).length ? mediaSorted().slice(0, 3) : [];
-  if (!items.length) return '      <p class="c-row-note">（まだありません）</p>';
-  return items.map((m) => {
-    const url = m.url || (m.ytid ? 'https://youtu.be/' + m.ytid : '');
-    const tag = url ? 'a' : 'div';
-    const attrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
-    return `      <${tag}${attrs} class="c-row">
-        <span class="c-row-date">${esc(m.date)}</span>
-        <span><span class="c-row-title">${esc(m.title)}</span><span class="c-row-sub">${esc(m.kind || '')} ${esc(mediaOutlet(m))}</span></span>
-      </${tag}>`;
-  }).join('\n');
+  const n = (data.media || []).length;
+  if (!n) return '';
+  return `  <section class="c-block c-media-line">
+    <p class="c-label">Media</p>
+    <p class="c-media-text">テレビ・記事で${n}件、取り上げていただきました。</p>
+    <p class="c-more"><a href="press.html">${textOf('index.media.link')}</a></p>
+  </section>`;
 }
 
 /* ホームの顔写真。紹介重視版・情報重視版のどちらもこの1か所を見る。
@@ -963,7 +955,6 @@ const pages = [
       '{{C_PREVIEWS}}': classicPreviews(),
       '{{C_WORKS}}': classicWorks(),
       '{{C_MEDIA}}': classicMedia(),
-      '{{C_PROSE}}': esc(data.about.prose),
       '{{C_TAGLINE}}': esc(data.home.tagline),
       '{{C_PORTRAIT}}': homePortrait('object-position: top'),
       '{{HOME_PORTRAIT}}': homePortrait('width: 100%; height: 100%; object-fit: cover; object-position: top')

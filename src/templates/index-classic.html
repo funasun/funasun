@@ -48,25 +48,14 @@
     <p class="c-more"><a href="works.html">すべての作品を見る　→</a></p>
   </section>
 
-  <!-- Media -->
-  <section class="c-block">
-    <p class="c-label">Media</p>
-    <div class="c-rows">
+  <!-- メディア掲載は件数だけ伝えて、詳しくはプレスキットへ送る
+       （ここに一覧を置くと News と同じ形の list が並んで読みにくくなる） -->
 {{C_MEDIA}}
-    </div>
-    <p class="c-more"><a href="press.html">{{T:index.media.link}}</a></p>
-  </section>
-
-  <!-- About と連絡先 -->
-  <section id="about" class="c-block">
-    <p class="c-label">About</p>
-    <p class="c-prose">{{C_PROSE}}</p>
-    <p class="c-more"><a href="about.html">経歴とタイムライン　→</a>　<a href="contact.html">お問い合わせ　→</a></p>
-  </section>
 
 </main>
 
 {{FOOTER}}
+<script src="js/site.js"></script>
 
 <style>
 /* 作り直す前のホームページの寸法づかいをそのまま持ってきている
@@ -117,7 +106,8 @@
 .c-preview-text { display: block; margin: 0; font: 400 .88rem/1.7 'Noto Serif JP', serif; color: #cfcfd1; }
 .c-preview-arrow { flex: none; font: 400 1.2rem 'EB Garamond', serif; color: #8a8a8f; }
 
-.c-prose { margin: 0; font: 400 .92rem/2.1 'Noto Sans JP', sans-serif; color: #d8d8da; text-wrap: pretty; }
+.c-media-line { margin-bottom: 2rem; }
+.c-media-text { margin: 0; font: 400 .88rem/1.9 'Noto Sans JP', sans-serif; color: #cfcfd1; }
 
 @media (max-width: 700px) {
   .c-wrap { padding: 3.5rem 1.5rem 4.5rem; }
