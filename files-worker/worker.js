@@ -1064,7 +1064,8 @@ async function serveFile(env, rawId, url, request, inline, origin) {
      元のファイル名を JavaScript 側から使えるように、その見出しも公開する。 */
   if (ALLOW_ORIGINS.indexOf(origin) !== -1) {
     headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length');
+    // 動画編集は「どこまで届いたか」も読めると、範囲取得を正しく組み立てられる
+    headers.set('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Range, Accept-Ranges');
     headers.set('Vary', 'Origin');
   }
 

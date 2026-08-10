@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画編集（切る・つなぐ） — 船越温</title>
+<meta name="description" content="動画を切って、つないで、1本のMP4に。すべて端末の中だけで処理し、画質はそのまま。アップロード不要。">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../css/site.css">
+<style>
+  body { background: #060608; color: #f4f4f5; font-family: 'Noto Sans JP', sans-serif; margin: 0; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 90px 20px 80px; box-sizing: border-box; }
+  h1 { margin: 0 0 8px; font: 600 clamp(24px, 4vw, 34px)/1.4 'Noto Serif JP', serif; letter-spacing: .04em; }
+  .sub { margin: 0 0 26px; font-size: 14px; line-height: 1.9; color: #cfcfd1; }
+  .card { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0b0b0f; padding: 18px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 12px; font: 500 15px 'Noto Sans JP', sans-serif; letter-spacing: .06em; }
+  .btn { font: 500 14px 'Noto Sans JP', sans-serif; padding: 12px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,.24);
+    background: none; color: #f4f4f5; cursor: pointer; }
+  .btn:hover { background: rgba(255,255,255,.06); }
+  .btn.primary { background: #6f8cff; border-color: #6f8cff; color: #060608; }
+  .btn.primary:disabled { opacity: .5; cursor: default; }
+  .mini { font: 400 12.5px 'Noto Sans JP', sans-serif; padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.22);
+    background: none; color: #f4f4f5; cursor: pointer; }
+  .mini:hover { background: rgba(255,255,255,.06); }
+  .mini:disabled { opacity: .4; cursor: default; }
+  .field { width: 100%; box-sizing: border-box; font: 400 14px 'Noto Sans JP', sans-serif; padding: 11px 12px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.2); background: #0e0e13; color: #f4f4f5; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .hint { font-size: 12px; color: #9a9aa0; }
+  .msg { min-height: 20px; margin: 10px 0 0; font-size: 13px; }
+  .msg.err { color: #ff9d9d; }
+  .msg.ok { color: #9dffc8; }
+  .msg.info { color: #cfcfd1; }
+
+  /* クリップ一覧 */
+  .clips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .clip { display: flex; gap: 12px; align-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 12px;
+    padding: 10px; background: #0e0e13; }
+  .clip.on { border-color: #6f8cff; }
+  .clip canvas { width: 96px; height: 54px; border-radius: 8px; background: #17171d; flex: none; }
+  .clip .inf { flex: 1; min-width: 0; }
+  .clip .nm { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clip .rg { font-size: 12px; color: #9a9aa0; margin-top: 3px; }
+  .clip .ops { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+  /* 編集エリア */
+  video { width: 100%; border-radius: 10px; background: #000; max-height: 46vh; }
+  .trim { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .trim label { font-size: 12px; color: #9a9aa0; display: block; margin-bottom: 4px; }
+  .bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; margin-top: 12px; display: none; }
+  .bar i { display: block; height: 100%; width: 0; background: #6f8cff; transition: width .2s; }
+  .result a { color: #adbcff; }
+  @media (max-width: 620px) {
+    .clip .ops { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div id="top"></div>
+{{NAV}}
+
+<main class="wrap">
+  <h1>動画編集<span style="font-size:.6em; color:#cfcfd1; margin-left:12px">切る・つなぐ</span></h1>
+  <p class="sub">動画を読み込んで、要る部分だけ切り出し、順番に並べて1本のMP4にします。
+    処理は<strong>この端末の中だけ</strong>で行い、どこにも送りません。
+    作り直さずに並べ直すだけなので、<strong>画質はそのまま・書き出しは一瞬</strong>です。</p>
+
+  <div class="card">
+    <h2>1. 動画を入れる</h2>
+    <div class="row">
+      <button id="pick" class="btn" type="button">この端末から選ぶ</button>
+      <input id="file" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v" multiple hidden>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input id="url" class="field" style="flex:1; min-width:200px" type="url" placeholder="ファイル共有の受け取りURL（https://…/f/…）">
+      <button id="load-url" class="mini" type="button">読み込む</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">対応: MP4 / MOV（iPhone撮影・画面収録・このサイトで共有した動画）。</p>
+    <p id="in-msg" class="msg" role="status"></p>
+  </div>
+
+  <div class="card" id="clips-card" hidden>
+    <h2>2. 並べる <span class="hint">（↑↓で順番、クリップを押すと下で切れます）</span></h2>
+    <ol id="clips" class="clips"></ol>
+    <p class="hint" style="margin:10px 0 0">全体の長さ: <span id="total">0.0秒</span></p>
+  </div>
+
+  <div class="card" id="edit-card" hidden>
+    <h2>3. 切る <span id="edit-name" class="hint"></span></h2>
+    <video id="player" controls playsinline preload="metadata"></video>
+    <div class="row" style="margin-top:10px">
+      <button id="set-in" class="mini" type="button">▶ ここから使う</button>
+      <button id="set-out" class="mini" type="button">ここまで使う ◀</button>
+      <span class="hint" id="now">0.00秒</span>
+    </div>
+    <div class="trim">
+      <div>
+        <label>開始（秒）</label>
+        <input id="in" class="field" type="number" min="0" step="0.1" value="0">
+      </div>
+      <div>
+        <label>終了（秒）</label>
+        <input id="out" class="field" type="number" min="0" step="0.1" value="0">
+      </div>
+    </div>
+    <p class="hint" id="snap" style="margin:8px 0 0"></p>
+    <div class="row" style="margin-top:10px">
+      <button id="preview-clip" class="mini" type="button">この範囲を再生</button>
+      <button id="preview-all" class="mini" type="button">通しで再生</button>
+    </div>
+  </div>
+
+  <div class="card" id="export-card" hidden>
+    <h2>4. 書き出す</h2>
+    <div class="row">
+      <input id="outname" class="field" style="flex:1; min-width:180px" type="text" value="編集した動画.mp4">
+      <button id="export" class="btn primary" type="button">MP4に書き出す</button>
+    </div>
+    <div class="bar" id="bar"><i id="bar-i"></i></div>
+    <p id="ex-msg" class="msg" role="status" aria-live="polite"></p>
+    <p class="result" id="result"></p>
+    <p class="hint" style="margin:12px 0 0">
+      開始位置は動画の「区切りの良い場所（キーフレーム）」に合わせて数秒単位で丸まります。
+      作り直しをしないための仕組みで、そのかわり画質が一切落ちません。</p>
+  </div>
+
+  <a href="../" style="color:#adbcff; font-size:13.5px; text-decoration:none">← ファイル編集の道具へ</a>
+</main>
+
+{{FOOTER}}
+<script src="mp4.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
