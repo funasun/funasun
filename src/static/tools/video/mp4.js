@@ -51,8 +51,9 @@
       get size() { return size; },
       name: url,
       init: function () {
-        // 1バイトだけ読んで、全体の大きさ（Content-Range の分母）を知る
-        return rangeFetch(0, 1).then(function () {
+        // 先頭を少しだけ読んで、全体の大きさ（Content-Range の分母）を知る。
+        // 1バイトだけだと Content-Range を返さないサーバーがあるので数バイト読む。
+        return rangeFetch(0, 16).then(function () {
           if (!size) throw new Error('この置き場所は途中読み(Range)に対応していません');
         });
       },
