@@ -908,8 +908,163 @@
     return m ? m[1] : '';
   }
 
+  /* ---- PDFを軽くする（圧縮） ----
+     各ページを画像として描き直し、その画像だけのPDFに作り替える。
+     文字は画像になる（選べなくなる）が、写真の多い資料はよく縮む。
+       opts.dpi     … ページの解像度（大きいほどきれい・重い）
+       opts.quality … JPEGの画質（0〜1）
+     元より大きくなってしまったら、元をそのまま返す（軽くする道具なので）。 */
+  function compressPdf(file, opts, onProgress) {
+    opts = opts || {};
+    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
+    var scale = (Number(opts.dpi) || 120) / 72;
+    var quality = typeof opts.quality === 'number' ? opts.quality : 0.72;
+
+    return Promise.all([loadPdfLib(), openForRender(file)]).then(function (r) {
+      var PDFLib = r[0], doc = r[1];
+      return PDFLib.PDFDocument.create().then(function (out) {
+        var n = doc.numPages;
+        return (function loop(i) {
+          if (i >= n) return Promise.resolve();
+          if (onProgress) onProgress(i, n);
+          return doc.getPage(i + 1).then(function (page) {
+            var base = page.getViewport({ scale: 1 });
+            var vp = page.getViewport({ scale: scale });
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.floor(vp.width));
+            canvas.height = Math.max(1, Math.floor(vp.height));
+            var cx = canvas.getContext('2d');
+            cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, canvas.width, canvas.height);
+            return page.render({ canvasContext: cx, viewport: vp }).promise.then(function () {
+              return new Promise(function (res) { canvas.toBlob(res, 'image/jpeg', quality); });
+            }).then(function (blob) {
+              return readBuffer(blob).then(function (buf) {
+                return out.embedJpg(new Uint8Array(buf)).then(function (img) {
+                  // 紙の大きさ(pt)は元のページと同じにする＝見た目の寸法が変わらない
+                  var pg = out.addPage([base.width, base.height]);
+                  pg.drawImage(img, { x: 0, y: 0, width: base.width, height: base.height });
+                });
+              });
+            });
+          }).then(function () { return loop(i + 1); });
+        })(0).then(function () {
+          if (onProgress) onProgress(n, n);
+          doc.destroy();
+          return out.save().then(function (bytes) {
+            return { blob: new Blob([bytes], { type: 'application/pdf' }), newSize: bytes.length };
+          });
+        });
+      });
+    }).then(function (made) {
+      // 軽くならなかった（もともと文字だけ等）なら、元をそのまま返して知らせる
+      return readBuffer(file).then(function (orig) {
+        if (made.newSize >= orig.byteLength) {
+          return { blob: new Blob([orig], { type: 'application/pdf' }), origSize: orig.byteLength, newSize: orig.byteLength, notShrunk: true };
+        }
+        return { blob: made.blob, origSize: orig.byteLength, newSize: made.newSize, notShrunk: false };
+      });
+    });
+  }
+
+  /* ---- 余白を切る（トリミング） ----
+     margins: { t,b,l,r } は 0〜1 の割合（そのページの高さ・幅に対して）。
+     PDF の CropBox を動かすだけ＝中身は描き直さないので、文字も画質もそのまま。
+       perPage: { ページ番号(0始まり): {t,b,l,r} } を渡すと、そのページだけ別の切り方。 */
+  function cropPdf(file, opts) {
+    opts = opts || {};
+    var m = opts.margins || { t: 0, b: 0, l: 0, r: 0 };
+    var perPage = opts.perPage || null;
+    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
+
+    return Promise.all([loadPdfLib(), readBuffer(file)]).then(function (r) {
+      var PDFLib = r[0];
+      return PDFLib.PDFDocument.load(r[1]).then(function (pdf) {
+        var pages = pdf.getPages();
+        pages.forEach(function (page, i) {
+          var mg = (perPage && perPage[i]) || m;
+          // いまの「見えている枠」（CropBox が無ければ MediaBox）を基準に切る
+          var box = page.getCropBox();
+          var x = box.x, y = box.y, w = box.width, h = box.height;
+          var nx = x + w * (mg.l || 0);
+          var ny = y + h * (mg.b || 0);
+          var nw = w * (1 - (mg.l || 0) - (mg.r || 0));
+          var nh = h * (1 - (mg.t || 0) - (mg.b || 0));
+          if (nw > 1 && nh > 1) page.setCropBox(nx, ny, nw, nh);
+        });
+        return pdf.save().then(function (bytes) {
+          return new Blob([bytes], { type: 'application/pdf' });
+        });
+      });
+    });
+  }
+
+  /* 白い余白を自動で見つける。ページを一度描いて、外側から
+     「ほぼ白い行・列」がどこまで続くかを数える。返り値は割合 {t,b,l,r}。 */
+  function detectMargins(file, pageIndex) {
+    return renderPages(file, { maxEdge: 700, pages: [pageIndex || 0], type: 'image/png' }, null)
+      .then(function (rs) {
+        var r = rs[0];
+        var cv = document.createElement('canvas');
+        cv.width = r.width; cv.height = r.height;
+        var cx = cv.getContext('2d');
+        return new Promise(function (res) {
+          var img = new Image();
+          img.onload = function () {
+            cx.drawImage(img, 0, 0);
+            var d = cx.getImageData(0, 0, cv.width, cv.height).data;
+            var W = cv.width, H = cv.height;
+            var THRESH = 244;   // これより明るければ「白」とみなす
+            function rowWhite(yy) {
+              for (var xx = 0; xx < W; xx++) {
+                var o = (yy * W + xx) * 4;
+                if (d[o] < THRESH || d[o + 1] < THRESH || d[o + 2] < THRESH) return false;
+              }
+              return true;
+            }
+            function colWhite(xx) {
+              for (var yy = 0; yy < H; yy++) {
+                var o = (yy * W + xx) * 4;
+                if (d[o] < THRESH || d[o + 1] < THRESH || d[o + 2] < THRESH) return false;
+              }
+              return true;
+            }
+            var top = 0; while (top < H && rowWhite(top)) top++;
+            var bot = 0; while (bot < H && rowWhite(H - 1 - bot)) bot++;
+            var left = 0; while (left < W && colWhite(left)) left++;
+            var right = 0; while (right < W && colWhite(W - 1 - right)) right++;
+            // 少しだけ余白を残す（詰めすぎると窮屈）。画像上の座標→割合へ
+            var pad = 0.01;
+            res({
+              t: Math.max(0, top / H - pad), b: Math.max(0, bot / H - pad),
+              l: Math.max(0, left / W - pad), r: Math.max(0, right / W - pad)
+            });
+          };
+          img.onerror = function () { res({ t: 0, b: 0, l: 0, r: 0 }); };
+          img.src = r.url;
+        });
+      });
+  }
+
+  /* ---- ページを抜き出す ----
+     0始まりの番号配列 indices の順に、そのページだけの新しいPDFを作る。
+     makeDoc が並べ替え・複製にも対応しているので、それをそのまま使う。 */
+  function extractPdf(file, indices) {
+    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
+    if (!indices || !indices.length) return Promise.reject(new Error('抜き出すページを選んでください。'));
+    return Promise.all([loadPdfLib(), readBuffer(file)]).then(function (r) {
+      return openPdf(r[0], r[1], file.name).then(function (src) {
+        // makeDoc は copyPages→addPage→save まで一括で Blob を返す
+        return makeDoc(r[0], src, indices);
+      });
+    });
+  }
+
   global.FileTools = {
     mergePdf: mergePdf,
+    compressPdf: compressPdf,
+    cropPdf: cropPdf,
+    detectMargins: detectMargins,
+    extractPdf: extractPdf,
     splitPdf: splitPdf,
     organizePdf: organizePdf,
     addPageNumbers: addPageNumbers,

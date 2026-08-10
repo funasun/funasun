@@ -172,6 +172,12 @@
     .grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 12px; }
     .card .th { height: 92px; }
   }
+  /* 追加3機能で使う小物 */
+  .field { width: 100%; box-sizing: border-box; font: 400 14px 'Noto Sans JP', sans-serif; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: #0c0c11; color: #f4f4f5; }
+  #ext-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 4px; }
+  #ext-thumbs .thumb.sel { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(111,140,255,.3); }
+  #crop-canvas { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -199,6 +205,12 @@
       <svg viewBox="0 0 24 24"><rect x="4" y="2.5" width="16" height="7.5" rx="1.5"/><rect x="4" y="14" width="16" height="7.5" rx="1.5"/><path d="M12 10.2v3.6"/></svg>つなげる</button>
     <button type="button" data-tool="webp">
       <svg viewBox="0 0 24 24"><path d="M12 3v10m0 0 3.5-3.6M12 13 8.5 9.4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>軽くする<small>webp</small></button>
+    <button type="button" data-tool="compress">
+      <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><path d="M8 12h8" stroke-dasharray="2 2"/><path d="m10 9 2 2 2-2M10 15l2-2 2 2"/></svg>PDFを軽く<small>compress</small></button>
+    <button type="button" data-tool="crop">
+      <svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>余白を切る<small>crop</small></button>
+    <button type="button" data-tool="extract">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M8 8h4M8 11h4M8 14h2"/><path d="M17 14v7m0 0 2.5-2.5M17 21l-2.5-2.5"/></svg>抜き出す<small>extract</small></button>
   </nav>
 
   <!-- ============ PDF結合 ============ -->
@@ -568,6 +580,111 @@
     <div class="out" id="webp-out"><h3>できあがり</h3><ul></ul></div>
   </section>
 
+  <!-- ============ PDFを軽く（圧縮） ============ -->
+  <section class="tool" id="tool-compress">
+    <div class="head"><h2>PDFを軽くする</h2><span class="count" id="cmp-count"></span></div>
+    <div class="drop" id="cmp-drop">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="pick">PDFを選ぶ</span><span class="tip">1つずつ処理します</span>
+    </div>
+    <input id="cmp-file" type="file" accept="application/pdf,.pdf" style="display:none">
+    <div class="two">
+      <div>
+        <label>仕上がり</label>
+        <select id="cmp-level">
+          <option value="high">きれいめ（あまり縮まないが読みやすい）</option>
+          <option value="mid" selected>ふつう（メール添付にちょうどよい）</option>
+          <option value="low">とにかく軽く（画質は落ちる）</option>
+        </select>
+      </div>
+      <div>
+        <label>ページの解像度 <span class="hint" id="cmp-dpi-val">120</span> dpi</label>
+        <input id="cmp-dpi" type="range" min="72" max="200" step="4" value="120">
+      </div>
+    </div>
+    <div class="row">
+      <button class="go" id="cmp-go" type="button" disabled>軽くする</button>
+      <button class="ghost" id="cmp-clear" type="button">外す</button>
+    </div>
+    <p class="msg" id="cmp-msg" role="status" aria-live="polite"></p>
+    <p class="tip" id="cmp-note" style="margin:8px 0 0">
+      各ページを画像として描き直して、小さいPDFに作り替えます。
+      そのため<strong>文字は選べなくなり（画像になり）、細かい線はぼやけます</strong>。
+      写真の多い資料ほどよく縮みます。文字が主のPDFはあまり縮みません。</p>
+    <div class="out" id="cmp-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
+  <!-- ============ 余白を切る（トリミング） ============ -->
+  <section class="tool" id="tool-crop">
+    <div class="head"><h2>PDFの余白を切る</h2><span class="count" id="crop-count"></span></div>
+    <div class="drop" id="crop-drop">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="pick">PDFを選ぶ</span><span class="tip">1つずつ処理します</span>
+    </div>
+    <input id="crop-file" type="file" accept="application/pdf,.pdf" style="display:none">
+    <div class="stage" id="crop-stage" hidden>
+      <div class="top"><b>プレビュー</b><span class="dim" id="crop-page-lbl"></span></div>
+      <div class="view" style="position:relative">
+        <canvas id="crop-canvas" style="max-width:100%; display:block; margin:0 auto"></canvas>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="ghost" id="crop-auto" type="button">白い余白を自動で切る</button>
+        <button class="ghost" id="crop-reset" type="button">切らない状態に戻す</button>
+      </div>
+      <div class="two">
+        <div><label>上 <span class="hint"><span id="crop-t-val">0</span>%</span></label><input id="crop-t" type="range" min="0" max="45" value="0"></div>
+        <div><label>下 <span class="hint"><span id="crop-b-val">0</span>%</span></label><input id="crop-b" type="range" min="0" max="45" value="0"></div>
+        <div><label>左 <span class="hint"><span id="crop-l-val">0</span>%</span></label><input id="crop-l" type="range" min="0" max="45" value="0"></div>
+        <div><label>右 <span class="hint"><span id="crop-r-val">0</span>%</span></label><input id="crop-r" type="range" min="0" max="45" value="0"></div>
+      </div>
+      <div class="two">
+        <div><label>プレビューするページ</label>
+          <select id="crop-page"></select></div>
+        <div><label>切る範囲</label>
+          <select id="crop-scope">
+            <option value="all" selected>全ページ同じだけ切る</option>
+            <option value="one">このページだけ切る</option>
+          </select></div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="go" id="crop-go" type="button" disabled>余白を切る</button>
+      <button class="ghost" id="crop-clear" type="button">外す</button>
+    </div>
+    <p class="msg" id="crop-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="crop-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
+  <!-- ============ ページを抜き出す ============ -->
+  <section class="tool" id="tool-extract">
+    <div class="head"><h2>ページを抜き出す</h2><span class="count" id="ext-count"></span></div>
+    <div class="drop" id="ext-drop">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="pick">PDFを選ぶ</span><span class="tip">1つずつ処理します</span>
+    </div>
+    <input id="ext-file" type="file" accept="application/pdf,.pdf" style="display:none">
+    <div id="ext-body" hidden>
+      <div class="two">
+        <div style="grid-column:1/-1">
+          <label>抜き出すページ <span class="hint">（例: 1-3,7,10-12）／サムネイルを押しても選べます</span></label>
+          <input id="ext-range" type="text" class="field" placeholder="1-3,7">
+        </div>
+      </div>
+      <div class="row" style="margin:0 0 10px">
+        <button class="ghost" id="ext-all" type="button">全部選ぶ</button>
+        <button class="ghost" id="ext-none" type="button">全部外す</button>
+        <span class="tip" id="ext-picked"></span>
+      </div>
+      <div class="grid" id="ext-thumbs"></div>
+    </div>
+    <div class="row">
+      <button class="go" id="ext-go" type="button" disabled>抜き出す</button>
+      <button class="ghost" id="ext-clear" type="button">外す</button>
+    </div>
+    <p class="msg" id="ext-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="ext-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
   <!-- ここへは Works の道具一覧から来る。ホームに飛ばすと戻り道を見失う -->
   <a href="/works.html" class="back">← 道具の一覧へ戻る</a>
   <a href="/files/" class="back">ファイルを送る →</a>
@@ -584,7 +701,7 @@
   'use strict';
   var T = window.FileTools;
   var $ = function (id) { return document.getElementById(id); };
-  var TOOLS = ['merge', 'organize', 'split', 'num', 'topic', 'img2pdf', 'join', 'webp'];
+  var TOOLS = ['merge', 'organize', 'split', 'num', 'topic', 'img2pdf', 'join', 'webp', 'compress', 'crop', 'extract'];
 
   // ---- 道具の切り替え ----
   $('picker').addEventListener('click', function (e) {
@@ -2298,6 +2415,252 @@
         setMsg('webp-msg', errors[0] || '変換できませんでした。', 'err');
       }
     });
+  });
+
+  /* ============ PDFを軽くする（圧縮） ============ */
+  var cmpFile = null;
+  var CMP_PRESET = { high: { dpi: 150, q: 0.82 }, mid: { dpi: 120, q: 0.7 }, low: { dpi: 96, q: 0.55 } };
+
+  wireDrop('cmp-drop', 'cmp-file', function (list) {
+    var pdf = list.filter(T.isPdf)[0];
+    if (!pdf) { setMsg('cmp-msg', 'PDFを選んでください。', 'err'); return; }
+    cmpFile = pdf;
+    $('cmp-count').textContent = pdf.name + '（' + T.humanSize(pdf.size) + '）';
+    setDropSlim('cmp', true);
+    $('cmp-go').disabled = false;
+    setMsg('cmp-msg', '', '');
+  });
+  $('cmp-level').addEventListener('change', function () {
+    var p = CMP_PRESET[$('cmp-level').value];
+    $('cmp-dpi').value = p.dpi; $('cmp-dpi-val').textContent = p.dpi;
+  });
+  $('cmp-dpi').addEventListener('input', function () { $('cmp-dpi-val').textContent = $('cmp-dpi').value; });
+  $('cmp-clear').addEventListener('click', function () {
+    cmpFile = null; $('cmp-count').textContent = ''; setDropSlim('cmp', false);
+    $('cmp-go').disabled = true; setMsg('cmp-msg', '', ''); $('cmp-out').querySelector('ul').innerHTML = '';
+  });
+  $('cmp-go').addEventListener('click', function () {
+    if (!cmpFile) return;
+    $('cmp-go').disabled = true;
+    var q = CMP_PRESET[$('cmp-level').value].q;
+    var dpi = Number($('cmp-dpi').value);
+    setMsg('cmp-msg', '軽くしています…', 'info');
+    T.compressPdf(cmpFile, { dpi: dpi, quality: q }, function (done, total) {
+      setMsg('cmp-msg', '軽くしています… ' + done + ' / ' + total + 'ページ', 'info');
+    }).then(function (r) {
+      var pct = Math.round((1 - r.newSize / r.origSize) * 100);
+      if (r.notShrunk) {
+        setMsg('cmp-msg', 'このPDFはこれ以上小さくなりませんでした（文字が主のPDFはあまり縮みません）。元のまま返します。', 'info');
+      } else {
+        setMsg('cmp-msg', T.humanSize(r.origSize) + ' → ' + T.humanSize(r.newSize) + '（' + pct + '%小さく）', 'ok');
+      }
+      showOutput('cmp-out', [{ name: T.baseName(cmpFile.name) + '_軽量.pdf', blob: r.blob,
+        note: T.humanSize(r.newSize) }]);
+      $('cmp-go').disabled = false;
+    }).catch(function (e) { setMsg('cmp-msg', e.message, 'err'); $('cmp-go').disabled = false; });
+  });
+
+  /* ============ 余白を切る（トリミング） ============ */
+  var cropFile = null, cropPages = [], cropPerPage = {}, cropShownIdx = 0;
+
+  function cropMargins() {
+    return { t: Number($('crop-t').value) / 100, b: Number($('crop-b').value) / 100,
+      l: Number($('crop-l').value) / 100, r: Number($('crop-r').value) / 100 };
+  }
+  function cropDrawPreview() {
+    var r = cropPages[cropShownIdx];
+    if (!r) return;
+    var cv = $('crop-canvas');
+    var img = new Image();
+    img.onload = function () {
+      var maxW = Math.min(560, cv.parentNode.clientWidth || 560);
+      var k = maxW / r.width;
+      cv.width = r.width * k; cv.height = r.height * k;
+      var cx = cv.getContext('2d');
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      // 切り落とす部分に薄い覆いを掛けて、残る範囲を枠で示す
+      var m = (cropPerPage[cropShownIdx]) || cropMargins();
+      var x = cv.width * m.l, y = cv.height * m.t;
+      var w = cv.width * (1 - m.l - m.r), h = cv.height * (1 - m.t - m.b);
+      cx.fillStyle = 'rgba(6,6,10,.62)';
+      cx.fillRect(0, 0, cv.width, y);
+      cx.fillRect(0, y + h, cv.width, cv.height - (y + h));
+      cx.fillRect(0, y, x, h);
+      cx.fillRect(x + w, y, cv.width - (x + w), h);
+      cx.strokeStyle = '#6f8cff'; cx.lineWidth = 1.5;
+      cx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    };
+    img.src = r.url;
+  }
+  function cropSyncLabels() {
+    ['t', 'b', 'l', 'r'].forEach(function (k) { $('crop-' + k + '-val').textContent = $('crop-' + k).value; });
+  }
+
+  wireDrop('crop-drop', 'crop-file', function (list) {
+    var pdf = list.filter(T.isPdf)[0];
+    if (!pdf) { setMsg('crop-msg', 'PDFを選んでください。', 'err'); return; }
+    cropFile = pdf; cropPerPage = {}; cropShownIdx = 0;
+    $('crop-count').textContent = pdf.name;
+    setDropSlim('crop', true);
+    setMsg('crop-msg', 'プレビューを作っています…', 'info');
+    // 全ページのプレビュー（軽く）を描く
+    T.renderPages(pdf, { maxEdge: 700, type: 'image/png' }, null).then(function (rs) {
+      cropPages = rs;
+      var sel = $('crop-page'); sel.innerHTML = '';
+      rs.forEach(function (r, i) {
+        var o = document.createElement('option'); o.value = i; o.textContent = (i + 1) + 'ページ目';
+        sel.appendChild(o);
+      });
+      $('crop-page-lbl').textContent = rs.length + 'ページ';
+      $('crop-stage').hidden = false;
+      $('crop-go').disabled = false;
+      setMsg('crop-msg', '', '');
+      cropSyncLabels(); cropDrawPreview();
+    }).catch(function (e) { setMsg('crop-msg', e.message, 'err'); });
+  });
+  ['t', 'b', 'l', 'r'].forEach(function (k) {
+    $('crop-' + k).addEventListener('input', function () {
+      cropSyncLabels();
+      if ($('crop-scope').value === 'one') cropPerPage[cropShownIdx] = cropMargins();
+      cropDrawPreview();
+    });
+  });
+  $('crop-page').addEventListener('change', function () {
+    cropShownIdx = Number($('crop-page').value);
+    var m = cropPerPage[cropShownIdx] || cropMargins();
+    $('crop-t').value = Math.round(m.t * 100); $('crop-b').value = Math.round(m.b * 100);
+    $('crop-l').value = Math.round(m.l * 100); $('crop-r').value = Math.round(m.r * 100);
+    cropSyncLabels(); cropDrawPreview();
+  });
+  $('crop-auto').addEventListener('click', function () {
+    if (!cropFile) return;
+    setMsg('crop-msg', '白い余白を探しています…', 'info');
+    T.detectMargins(cropFile, cropShownIdx).then(function (m) {
+      $('crop-t').value = Math.round(m.t * 100); $('crop-b').value = Math.round(m.b * 100);
+      $('crop-l').value = Math.round(m.l * 100); $('crop-r').value = Math.round(m.r * 100);
+      cropSyncLabels();
+      if ($('crop-scope').value === 'one') cropPerPage[cropShownIdx] = cropMargins();
+      cropDrawPreview();
+      setMsg('crop-msg', '自動で切る範囲を入れました。スライダーで微調整できます。', 'ok');
+    }).catch(function (e) { setMsg('crop-msg', e.message, 'err'); });
+  });
+  $('crop-reset').addEventListener('click', function () {
+    ['t', 'b', 'l', 'r'].forEach(function (k) { $('crop-' + k).value = 0; });
+    cropPerPage[cropShownIdx] = { t: 0, b: 0, l: 0, r: 0 };
+    if ($('crop-scope').value === 'all') cropPerPage = {};
+    cropSyncLabels(); cropDrawPreview();
+  });
+  $('crop-clear').addEventListener('click', function () {
+    cropFile = null; cropPages = []; cropPerPage = {};
+    $('crop-count').textContent = ''; $('crop-stage').hidden = true;
+    setDropSlim('crop', false); $('crop-go').disabled = true;
+    setMsg('crop-msg', '', ''); $('crop-out').querySelector('ul').innerHTML = '';
+  });
+  $('crop-go').addEventListener('click', function () {
+    if (!cropFile) return;
+    $('crop-go').disabled = true;
+    setMsg('crop-msg', '切っています…', 'info');
+    var opts = ($('crop-scope').value === 'one')
+      ? { perPage: cropPerPage, margins: { t: 0, b: 0, l: 0, r: 0 } }
+      : { margins: cropMargins() };
+    T.cropPdf(cropFile, opts).then(function (blob) {
+      setMsg('crop-msg', 'できました。', 'ok');
+      showOutput('crop-out', [{ name: T.baseName(cropFile.name) + '_余白カット.pdf', blob: blob }]);
+      $('crop-go').disabled = false;
+    }).catch(function (e) { setMsg('crop-msg', e.message, 'err'); $('crop-go').disabled = false; });
+  });
+
+  /* ============ ページを抜き出す ============ */
+  var extFile = null, extCount = 0, extSel = {};
+
+  function extUpdate() {
+    var picked = [];
+    for (var i = 0; i < extCount; i++) if (extSel[i]) picked.push(i + 1);
+    $('ext-picked').textContent = picked.length ? picked.length + 'ページ選択中' : '（未選択）';
+    $('ext-go').disabled = picked.length === 0;
+    // 入力欄も選択に合わせて書き換える（見た目と一致させる）
+    $('ext-range').value = compactRanges(picked);
+    [].forEach.call($('ext-thumbs').children, function (el, i) {
+      el.classList.toggle('sel', !!extSel[i]);
+    });
+  }
+  function compactRanges(nums) {
+    if (!nums.length) return '';
+    nums = nums.slice().sort(function (a, b) { return a - b; });
+    var out = [], s = nums[0], p = nums[0];
+    for (var i = 1; i <= nums.length; i++) {
+      if (nums[i] === p + 1) { p = nums[i]; continue; }
+      out.push(s === p ? '' + s : s + '-' + p);
+      s = p = nums[i];
+    }
+    return out.join(',');
+  }
+
+  wireDrop('ext-drop', 'ext-file', function (list) {
+    var pdf = list.filter(T.isPdf)[0];
+    if (!pdf) { setMsg('ext-msg', 'PDFを選んでください。', 'err'); return; }
+    extFile = pdf; extSel = {};
+    $('ext-count').textContent = pdf.name;
+    setDropSlim('ext', true);
+    setMsg('ext-msg', 'ページを読み込んでいます…', 'info');
+    T.renderPages(pdf, { maxEdge: 300, type: 'image/png' }, null).then(function (rs) {
+      extCount = rs.length;
+      var box = $('ext-thumbs'); box.innerHTML = '';
+      rs.forEach(function (r, i) {
+        var card = document.createElement('button');
+        card.type = 'button'; card.className = 'thumb';
+        card.style.cssText = 'position:relative;padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;background:#0e0e13;cursor:pointer';
+        var im = document.createElement('img');
+        im.src = r.url; im.style.cssText = 'width:100%;display:block';
+        var no = document.createElement('span');
+        no.textContent = (i + 1);
+        no.style.cssText = 'position:absolute;left:4px;top:4px;font:500 11px sans-serif;background:rgba(6,6,10,.7);color:#fff;padding:1px 6px;border-radius:999px';
+        card.appendChild(im); card.appendChild(no);
+        card.addEventListener('click', function () { extSel[i] = !extSel[i]; extUpdate(); });
+        box.appendChild(card);
+      });
+      $('ext-body').hidden = false;
+      $('ext-picked').textContent = '（未選択）';
+      setMsg('ext-msg', '', '');
+    }).catch(function (e) { setMsg('ext-msg', e.message, 'err'); });
+  });
+  $('ext-range').addEventListener('input', function () {
+    var raw = $('ext-range').value.trim();
+    // 空欄なら「全ページ」ではなく「未選択」にする（parsePages は空=全ページなので分ける）
+    var idx = [];
+    if (raw) { try { idx = T.parsePages(raw, extCount); } catch (e) { setMsg('ext-msg', e.message, 'err'); return; } }
+    setMsg('ext-msg', '', '');
+    extSel = {}; idx.forEach(function (i) { extSel[i] = true; });
+    var picked = idx.map(function (i) { return i + 1; });
+    $('ext-picked').textContent = picked.length ? picked.length + 'ページ選択中' : '（未選択）';
+    $('ext-go').disabled = picked.length === 0;
+    [].forEach.call($('ext-thumbs').children, function (el, i) { el.classList.toggle('sel', !!extSel[i]); });
+  });
+  $('ext-all').addEventListener('click', function () {
+    for (var i = 0; i < extCount; i++) extSel[i] = true; extUpdate();
+  });
+  $('ext-none').addEventListener('click', function () { extSel = {}; extUpdate(); });
+  $('ext-clear').addEventListener('click', function () {
+    extFile = null; extCount = 0; extSel = {};
+    $('ext-count').textContent = ''; $('ext-body').hidden = true;
+    setDropSlim('ext', false); $('ext-go').disabled = true;
+    $('ext-range').value = ''; setMsg('ext-msg', '', ''); $('ext-out').querySelector('ul').innerHTML = '';
+  });
+  $('ext-go').addEventListener('click', function () {
+    if (!extFile) return;
+    var raw = $('ext-range').value.trim();
+    if (!raw) { setMsg('ext-msg', '抜き出すページを選んでください。', 'err'); return; }
+    // 入力欄の順番（1-3,7 のように書いた順）を尊重して抜き出す
+    var idx;
+    try { idx = T.parsePages(raw, extCount); } catch (e) { setMsg('ext-msg', e.message, 'err'); return; }
+    if (!idx.length) { setMsg('ext-msg', '抜き出すページを選んでください。', 'err'); return; }
+    $('ext-go').disabled = true;
+    setMsg('ext-msg', '抜き出しています…', 'info');
+    T.extractPdf(extFile, idx).then(function (blob) {
+      setMsg('ext-msg', idx.length + 'ページを抜き出しました。', 'ok');
+      showOutput('ext-out', [{ name: T.baseName(extFile.name) + '_抜き出し.pdf', blob: blob }]);
+      $('ext-go').disabled = false;
+    }).catch(function (e) { setMsg('ext-msg', e.message, 'err'); $('ext-go').disabled = false; });
   });
 })();
 </script>
