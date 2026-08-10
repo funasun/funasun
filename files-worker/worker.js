@@ -301,11 +301,16 @@ async function loadConfig(env) {
   if (cfgCache && Date.now() - cfgAt < CFG_TTL) return cfgCache;
   /* 読めなかったときは「合言葉が要る」に倒す。
      設定が読めないことを理由に誰でも上げられるようになる、は絶対に避ける。 */
-  let cfg = { requireCode: true, codeHash: '' };
+  let cfg = { requireCode: true, codeHash: '', maxBytes: 0 };
   try {
     const token = await getAccessToken(env, TOKEN_KEYS[0]);
     const p = ((await configFile(token)) || {}).appProperties || {};
-    cfg = { requireCode: p.requireCode !== '0', codeHash: p.codeHash || '' };
+    cfg = {
+      requireCode: p.requireCode !== '0',
+      codeHash: p.codeHash || '',
+      // 1ファイルの上限。0 は「決めない」＝仮置き場に入るかどうかだけが上限
+      maxBytes: Math.max(0, Number(p.maxBytes) || 0)
+    };
   } catch (e) { /* 既定のまま＝合言葉が要る */ }
   cfgCache = cfg; cfgAt = Date.now();
   return cfg;
@@ -316,7 +321,8 @@ async function saveConfig(env, cfg) {
   const props = {
     app: APP_TAG, kind: CONFIG_TAG,
     requireCode: cfg.requireCode ? '1' : '0',
-    codeHash: cfg.codeHash || ''
+    codeHash: cfg.codeHash || '',
+    maxBytes: String(Math.max(0, Number(cfg.maxBytes) || 0))
   };
   const found = await configFile(token);
   const res = found
@@ -396,7 +402,10 @@ export default {
       /* 送る画面が「合言葉の欄を出すかどうか」を決めるために聞く。
          合言葉そのものは返さない。要るか要らないかは、試せば分かることなので隠さない。 */
       if (path === '/config' && request.method === 'GET') {
-        return json({ requireCode: (await loadConfig(env)).requireCode }, 200, origin);
+        {
+          const c = await loadConfig(env);
+          return json({ requireCode: c.requireCode, maxBytes: c.maxBytes }, 200, origin);
+        }
       }
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
       if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
@@ -448,6 +457,16 @@ async function create(request, env, origin) {
 
   const size = Number(b.size) || 0;
   if (size <= 0) return json({ message: 'ファイルが空です。' }, 400, origin);
+
+  /* 1ファイルの上限。管理画面で決める（0 なら決めない）。
+     持ち主が自分で上げるときは、この上限にかからない。 */
+  {
+    const lim = (await loadConfig(env)).maxBytes;
+    if (!b.idToken && lim > 0 && size > lim) {
+      return json({ message: '1つのファイルは ' + humanSize(lim) + ' までです。'
+        + '（このファイルは ' + humanSize(size) + '）' }, 413, origin);
+    }
+  }
 
   /* 空きのある保管先を、登録した順に探す。
      どれも足りなければ、期限切れを片付けてから一度だけ探し直す。
@@ -1386,10 +1405,16 @@ async function adminConfig(request, env, origin) {
   if (b.save) {
     const cur = await loadConfig(env);
     const code = typeof b.code === 'string' ? b.code : '';
+    /* 上限は GB で受け取る。0（や空）は「決めない」。
+       仮置き場に入りきらない物は、この設定と関係なく create が断る。 */
+    const gb = Number(b.maxGb);
     const next = {
       requireCode: !!b.requireCode,
       // 空のまま送られたら、今の合言葉をそのまま残す（うっかり消させない）
-      codeHash: code ? await sha256hex(code) : cur.codeHash
+      codeHash: code ? await sha256hex(code) : cur.codeHash,
+      maxBytes: (b.maxGb === undefined || b.maxGb === null || b.maxGb === '')
+        ? cur.maxBytes
+        : Math.max(0, Math.round((isFinite(gb) ? gb : 0) * 1024 * 1024 * 1024))
     };
     if (next.requireCode && !next.codeHash && !env.UPLOAD_CODE) {
       return json({ message: '合言葉が空です。合言葉を決めるか、「合言葉なし」を選んでください。' }, 400, origin);
@@ -1400,6 +1425,7 @@ async function adminConfig(request, env, origin) {
   const cfg = await loadConfig(env);
   return json({
     requireCode: cfg.requireCode,
+    maxBytes: cfg.maxBytes,
     hasCode: !!cfg.codeHash,
     // まだ管理画面で決めていない＝Cloudflare に登録した合言葉が使われている
     usingSecret: !cfg.codeHash && !!env.UPLOAD_CODE

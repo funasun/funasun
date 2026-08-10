@@ -158,6 +158,7 @@
   var btn = $('btn-up');
   var chosen = [];   // 選ばれたファイルたち
   var needCode = true;   // 合言葉が要るか（管理画面で変えられる。下の方で聞きに行く）
+  var maxBytes = 0;      // 1ファイルの上限（0は上限なし）。同じく管理画面で変えられる
 
   function setMsg(t, c) { msg.textContent = t; msg.className = 'msg' + (c ? ' ' + c : ''); }
   function humanSize(n) {
@@ -363,6 +364,12 @@
         return c.name === f.name && c.size === f.size && c.lastModified === f.lastModified;
       });
       if (dup) continue;
+      /* 上限を超える物は、選んだ時点で断る。送り始めてから断られるより、
+         ここで気づけたほうが待たされない。 */
+      if (maxBytes > 0 && f.size > maxBytes) {
+        setMsg('「' + f.name + '」は大きすぎます（1つ ' + humanSize(maxBytes) + ' まで）。', 'err');
+        continue;
+      }
       chosen.push(f); added++;
       noteHevc(f);           // 動画なら、相手が見られない形式でないかを裏で確かめる
     }
@@ -656,6 +663,11 @@
      聞けなかったときは「要る」ままにしておく（欄が出ているだけなら送れなくならない）。 */
   fetch(WORKER_URL + '/config').then(function (r) { return r.json(); }).then(function (j) {
     needCode = j.requireCode !== false;
+    maxBytes = Number(j.maxBytes) || 0;
+    if (maxBytes > 0) {
+      var dh = document.querySelector('#drop p');
+      if (dh) dh.textContent = '1つ ' + humanSize(maxBytes) + ' まで ／ まとめて' + MAX_FILES + '個まで';
+    }
     if (!needCode) {
       $('code-label').hidden = true;
       $('code').hidden = true;

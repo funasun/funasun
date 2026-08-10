@@ -543,6 +543,41 @@
       } });
       wrap.appendChild(el('p', { style: 'margin:12px 0 0' }, [save]));
       wrap.appendChild(msg);
+
+      /* ---- 1ファイルの上限 ----
+         0（または空）にすると上限なし。上限なしでも「そのとき仮置き場に
+         入る大きさか」は別に見ているので、置ける量を超えることはない。 */
+      var curGb = codeCache.maxBytes ? (codeCache.maxBytes / (1024 * 1024 * 1024)) : 0;
+      var lim = el('input', { type: 'number', min: '0', step: '0.5', id: 'max-gb',
+        value: String(Math.round(curGb * 10) / 10) });
+      var limMsg = el('p', { class: 'fh' });
+      function limText() {
+        limMsg.textContent = codeCache.maxBytes
+          ? ('いまの上限は 1ファイルあたり ' + (Math.round(curGb * 10) / 10) + ' GB です。')
+          : 'いまは上限なし（仮置き場に入る大きさなら、そのまま受け取ります）。';
+      }
+      limText();
+      var limSave = el('button', { class: 'mini', type: 'button', text: '上限を保存', onclick: function () {
+        var v = Number(lim.value);
+        if (!isFinite(v) || v < 0) { limMsg.textContent = '0 以上の数を入れてください。'; return; }
+        limSave.disabled = true;
+        limMsg.textContent = '保存中…';
+        filesApi('/admin/config', { save: true, requireCode: codeCache.requireCode, code: '', maxGb: v })
+          .then(function (j) {
+            codeCache = j; curGb = j.maxBytes ? (j.maxBytes / (1024 * 1024 * 1024)) : 0;
+            limSave.disabled = false; limText();
+            setStatus(j.maxBytes ? ('1ファイル ' + (Math.round(curGb * 10) / 10) + ' GB までにしました。')
+              : '上限なしにしました。', 'ok');
+          })
+          .catch(function (e) { limSave.disabled = false; limMsg.textContent = e.message || '保存できませんでした。'; });
+      } });
+      wrap.appendChild(el('hr', { style: 'margin:22px 0 16px; border:0; border-top:1px solid rgba(255,255,255,.12)' }));
+      wrap.appendChild(el('label', { class: 'fl', text: '1ファイルの上限（GB）' }, [
+        el('span', { class: 'fh', text: '0 にすると上限なし。大きすぎるものを置かれたくないときに使います。' })
+      ]));
+      wrap.appendChild(lim);
+      wrap.appendChild(el('p', { style: 'margin:10px 0 0' }, [limSave]));
+      wrap.appendChild(limMsg);
     }
 
     draw();
