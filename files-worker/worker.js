@@ -54,6 +54,7 @@
    （wrangler deploy のたびに自動で作り直される。手で編集しない）。
    受け取りページも tsutsumufunakoshi.com の一部として見えるように。 */
 import { CHROME_HEAD, NAV_HTML, FOOTER_HTML } from './chrome.gen.js';
+import { qrSvg } from './qr.js';
 
 const ALLOW_ORIGINS = [
   'https://tsutsumufunakoshi.com',
@@ -407,6 +408,9 @@ export default {
           return json({ requireCode: c.requireCode, maxBytes: c.maxBytes }, 200, origin);
         }
       }
+      if (path.startsWith('/qr/') && request.method === 'GET') return await qrImage(env, path.slice(4), url, origin);
+      if (path.startsWith('/zip/') && request.method === 'GET') return await zipGroup(env, path.slice(5), url, request, origin);
+      if (path === '/revoke' && request.method === 'POST') return await revoke(request, env, origin);
       if (path.startsWith('/f/') && request.method === 'GET') return await landing(env, path.slice(3), url);
       if (path.startsWith('/g/') && request.method === 'GET') return await groupLanding(env, path.slice(3), url);
       if (path.startsWith('/ok/') && request.method === 'GET') return await checkPw(env, path.slice(4), url, origin);
@@ -508,12 +512,19 @@ async function create(request, env, origin) {
   const grp = safeId(b.group || '').slice(0, 40);
   const idx = Math.max(0, Math.min(MAX_GROUP - 1, Number(b.index) || 0));
 
+  /* maxDl … 何回まで渡すか（0 は制限なし）。ダウンロードのたびに dlCount が増える。
+     delHash … 送った人が自分で取り消すための合鍵（本体は送った人の手元だけ）。 */
+  const maxDl = Math.max(0, Math.min(9999, Number(b.maxDl) || 0));
+  const delHash = typeof b.delHash === 'string' ? b.delHash.slice(0, 128) : '';
+
   const props = {
     app: APP_TAG,
     pw: pw,
     expiresAt: String(expiresAt),
     ctype: contentType
   };
+  if (maxDl) props.maxDl = String(maxDl);
+  if (delHash) props.delHash = delHash;
   if (grp) { props.grp = grp; props.idx = String(idx); }
 
   // レジューム式アップロードのセッションを作る
@@ -705,6 +716,222 @@ async function nasFetch(link, range) {
   return null;
 }
 
+/* ---------------- 渡した回数 ----------------
+   maxDl（何回まで）と dlCount（何回渡したか）は付箋に持たせる。
+   数えるのは「保存」だけ。プレビューで見ただけで1回減るのは、
+   受け取る人にとって理不尽なので数えない。
+   途中で切れた再取得（Range 付き）も数えない（1回の保存で何度も来るため）。 */
+function dlLeft(meta) {
+  const max = Number(meta.maxDl || 0);
+  if (!max) return null;                       // 制限なし
+  return Math.max(0, max - Number(meta.dlCount || 0));
+}
+
+async function bumpDownload(token, fileId, meta) {
+  const next = String(Number(meta.dlCount || 0) + 1);
+  try {
+    await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appProperties: { dlCount: next, dlAt: String(Date.now()) } })
+    });
+  } catch (e) { /* 数え損ねても配布は止めない */ }
+  return next;
+}
+
+/* ---------------- QRコード ----------------
+   受け取りURLを、スマホのカメラで読める絵にして返す。
+   文字を外から受け取って何でも描くと、知らないページのQRを
+   このドメインで配れてしまうので、IDだけ受け取って
+   URLはこちら側で組み立てる。 */
+async function qrImage(env, rest, url, origin) {
+  const parts = String(rest || '').split('/');
+  const isGroup = parts[0] === 'g';
+  const id = safeId(isGroup ? parts[1] : parts[0]);
+  if (!id) return json({ message: '見つかりません' }, 404, origin);
+
+  const base = url.origin + (isGroup ? '/g/' : '/f/') + encodeURIComponent(id);
+  // 合言葉つきのURLをそのまま渡せるように、h= は引き継ぐ（内容は見ない）
+  const h = url.searchParams.get('h');
+  const target = h ? base + '?h=' + encodeURIComponent(h) : base;
+
+  const svg = qrSvg(target);
+  if (!svg) return json({ message: 'URLが長すぎてQRにできません' }, 400, origin);
+  return new Response(svg, {
+    status: 200,
+    headers: Object.assign({
+      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600'
+    }, corsHeaders(origin))
+  });
+}
+
+/* ---------------- 送った人が自分で取り消す ----------------
+   送るときにブラウザが作った「取り消しキー」の合鍵(delHash)と照合する。
+   合えば消す。まとめて送ったものは、まとめごと消す。
+   合鍵は保存していないので、こちらからキーを言い当てることはできない。 */
+async function revoke(request, env, origin) {
+  let b = {};
+  try { b = await request.json(); } catch (e) { }
+  const id = safeId(String(b.id || ''));
+  const key = String(b.key || '');
+  if (!id || !key) return json({ message: '取り消しキーを入れてください。' }, 400, origin);
+
+  const found = await findFile(env, id);
+  const p = (found && found.file.appProperties) || {};
+  if (!found || p.app !== APP_TAG || p.kind === CONFIG_TAG) {
+    return json({ message: 'このファイルは見つかりません（すでに消えているかもしれません）。' }, 404, origin);
+  }
+  if (!p.delHash) {
+    return json({ message: 'このファイルには取り消しキーが設定されていません。' }, 400, origin);
+  }
+  if ((await sha256hex(key)) !== p.delHash) {
+    return json({ message: '取り消しキーが違います。' }, 403, origin);
+  }
+
+  let n = 0;
+  if (p.grp) {
+    for (const f of await listByGroup(env, p.grp)) {
+      try { await driveDelete(f._tok, f.id); n++; } catch (e) { /* 残りを続ける */ }
+    }
+  } else {
+    await driveDelete(found.token, found.file.id); n = 1;
+  }
+  return json({ ok: true, deleted: n }, 200, origin);
+}
+
+/* ---------------- まとめて1つのZIPで渡す ----------------
+   受け取る側が「全部まとめて欲しい」と思う場面のため。
+   圧縮はしない（保存するだけの zip）。理由は2つ:
+     ・元が写真や動画なら、縮まないのに時間とCPUだけ食う
+     ・縮めないなら、読みながらそのまま流せる＝大きくてもメモリに載せずに済む
+   大きさが先に分からないので Content-Length は付けない（そういうzipも規格内）。 */
+function crc32Table() {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+}
+const CRC_T = crc32Table();
+function crcUpdate(crc, chunk) {
+  let c = crc ^ 0xFFFFFFFF;
+  for (let i = 0; i < chunk.length; i++) c = CRC_T[(c ^ chunk[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function u32(n) { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+function u16(n) { return [n & 255, (n >>> 8) & 255]; }
+/* zip に入れる日時は MS-DOS 時代の形。0 のままだと「1980年00月00日」になって
+   一覧が変に見えるので、いまの時刻を入れる。 */
+function dosDateTime(ms) {
+  const d = new Date(ms);
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2);
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  return { time: time, date: date };
+}
+
+async function zipGroup(env, rawGid, url, request, origin) {
+  const gid = safeId(rawGid);
+  if (!gid) return json({ message: '見つかりません' }, 404, origin);
+  const files = await listByGroup(env, gid);
+  const now = Date.now();
+  const alive = files.filter((f) => {
+    const m = f.appProperties || {};
+    const exp = Number(m.expiresAt || 0);
+    return m.app === APP_TAG && !(exp > 0 && now > exp);
+  }).sort((a, b) => (Number((a.appProperties || {}).idx) || 0) - (Number((b.appProperties || {}).idx) || 0));
+  if (!alive.length) return htmlPage('見つかりません', '<p class="muted">このファイルは存在しないか、期限切れで削除されました。</p>', 404);
+
+  // 合言葉は1つめのファイルに付いている（まとめ全体で共通）
+  const gate = pwGate(alive[0].appProperties || {}, url, gid, false);
+  if (gate) return gate;
+
+  // 回数を使い切っているものが1つでもあれば、まとめての配布はしない
+  for (const f of alive) {
+    if (dlLeft(f.appProperties || {}) === 0) {
+      return htmlPage('受け取れる回数を過ぎました',
+        '<p class="muted">このまとめには、決められた回数を過ぎたファイルが含まれています。</p>', 410);
+    }
+  }
+
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(ctrl) {
+      const central = [];
+      const dt = dosDateTime(Date.now());
+      let offset = 0;
+      const put = (arr) => { const u = arr instanceof Uint8Array ? arr : new Uint8Array(arr); ctrl.enqueue(u); offset += u.length; };
+
+      for (const f of alive) {
+        const meta = f.appProperties || {};
+        const asMp4 = isVideoName(f.name) && !!meta.pvUrl;
+        const name = asMp4 ? mp4Name(f.name || 'file') : (f.name || 'file');
+        const nameBytes = enc.encode(name);
+
+        // 中身の出どころ（NASの控え → NAS本体 → Drive）
+        let res = null;
+        if (asMp4) res = await nasFetch(meta.pvUrl, '');
+        if (!res && meta.nasUrl) res = await nasFetch(meta.nasUrl, '');
+        if (!res) {
+          res = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(f.id) + '?alt=media',
+            { headers: { Authorization: 'Bearer ' + f._tok } });
+          if (!res.ok || !res.body) continue;     // 1つ取れなくても残りは渡す
+        }
+
+        const localAt = offset;
+        // ローカルヘッダ。大きさとCRCは後ろ(データ記述子)で伝える＝流しながら書ける
+        /* フラグ 0x0808 … 0x0008=大きさは後ろで伝える / 0x0800=名前はUTF-8。
+           0x0800 が無いと、Windows や unzip で日本語のファイル名が化ける。 */
+        put([0x50, 0x4B, 0x03, 0x04, 20, 0, 0x08, 0x08, 0, 0]
+          .concat(u16(dt.time), u16(dt.date), u32(0), u32(0), u32(0),
+            u16(nameBytes.length), u16(0)));
+        put(nameBytes);
+
+        let crc = 0, size = 0;
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          crc = crcUpdate(crc, value);
+          size += value.length;
+          put(value);
+        }
+        put([0x50, 0x4B, 0x07, 0x08].concat(u32(crc), u32(size), u32(size)));
+        central.push({ name: nameBytes, crc: crc, size: size, at: localAt });
+      }
+
+      const cdAt = offset;
+      for (const c of central) {
+        put([0x50, 0x4B, 0x01, 0x02, 20, 0, 20, 0, 0x08, 0x08, 0, 0]
+          .concat(u16(dt.time), u16(dt.date),
+            u32(c.crc), u32(c.size), u32(c.size), u16(c.name.length),
+            u16(0), u16(0), u16(0), u16(0), u32(0), u32(c.at)));
+        put(c.name);
+      }
+      put([0x50, 0x4B, 0x05, 0x06, 0, 0, 0, 0]
+        .concat(u16(central.length), u16(central.length), u32(offset - cdAt), u32(cdAt), u16(0)));
+      ctrl.close();
+    }
+  });
+
+  // 数えるのは「まとめて1回」。中の1本ずつを別々に数えると、実感と合わない
+  for (const f of alive) {
+    const m = f.appProperties || {};
+    if (Number(m.maxDl || 0)) await bumpDownload(f._tok, f.id, m);
+  }
+
+  return new Response(stream, {
+    status: 200,
+    headers: Object.assign({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': "attachment; filename*=UTF-8''" + encodeURIComponent('files-' + gid + '.zip'),
+      'Cache-Control': 'private, no-store'
+    }, corsHeaders(origin))
+  });
+}
+
 async function serveFile(env, rawId, url, request, inline, origin) {
   const fileId = safeId(rawId);
   const found = await findFile(env, fileId);
@@ -719,6 +946,14 @@ async function serveFile(env, rawId, url, request, inline, origin) {
   }
   const gate = pwGate(meta, url, rawId, false);
   if (gate) return gate;
+
+  /* 回数制限。使い切っていたら、その場で断る（中身には触らせない）。 */
+  const left = dlLeft(meta);
+  if (!inline && left === 0) {
+    return htmlPage('受け取れる回数を過ぎました',
+      '<p class="muted">このファイルは、決められた回数だけ渡す設定になっていました。'
+      + 'もう一度必要なときは、送ってくれた人に頼んでください。</p>', 410);
+  }
 
   const filename = file.name || 'file';
 
@@ -833,6 +1068,12 @@ async function serveFile(env, rawId, url, request, inline, origin) {
     headers.set('Vary', 'Origin');
   }
 
+  /* 数えるのは「保存」で、かつ頭から通しで取りに来たときだけ。
+     途中から（Range）は、1回の保存の続きなので数えない。 */
+  if (!inline && !range && Number(meta.maxDl || 0)) {
+    await bumpDownload(token, fileId, meta);
+  }
+
   return new Response(res.body, { status: res.status === 206 ? 206 : 200, headers: headers });
 }
 
@@ -872,6 +1113,7 @@ async function landing(env, id, url) {
      動画に mp4 の控えができていれば、渡すのはそちらなので、
      見せる名前も大きさもその控えのものにする。 */
   const onNas = !!meta.nasUrl;
+  const left = dlLeft(meta);
   const asMp4 = isVideoName(origName) && !!meta.pvUrl;
   const filename = asMp4 ? mp4Name(origName) : origName;
   const kind = previewKind(previewType(filename));
@@ -894,7 +1136,11 @@ async function landing(env, id, url) {
         ${kind ? '<div id="pv" class="pv"></div>'
           : '<p class="muted nopv">この種類のファイルは、そのまま表示できません。</p>'}
         ${onNas ? '<p class="muted nopv" style="font-size:12px">保管庫からのお渡しのため、始まりに少し時間がかかることがあります。</p>' : ''}
+        ${left !== null ? '<p class="muted nopv" style="font-size:12px">あと ' + left + ' 回まで受け取れます。</p>' : ''}
         <a id="dlbtn" class="btn" href="#">ダウンロード</a>
+        <details class="qrbox"><summary>スマホで受け取る（QRコード）</summary>
+          <img id="qr" alt="受け取りURLのQRコード" width="180" height="180">
+        </details>
       </div>
     </div>
     <script>
@@ -909,6 +1155,8 @@ async function landing(env, id, url) {
         var q = h ? '?h=' + h : '';
         document.getElementById('dlbtn').setAttribute('href', '/dl/' + ID + q);
         document.getElementById('area').hidden = false;
+        var qr = document.getElementById('qr');
+        if (qr) qr.src = '/qr/' + ID + q;
         var box = document.getElementById('pv');
         if (box) renderPreview(box, '/pv/' + ID + q, KIND, NAME, CONV);
       }
@@ -1001,16 +1249,27 @@ async function groupLanding(env, gid, url) {
            <button id="unlock" class="btn">開く</button>
            <p id="msg" class="msg"></p>`
         : ''}
+      <div id="gtop" ${needsPw ? 'hidden' : ''} style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px">
+        <a id="zipbtn" class="btn" href="#" style="margin:0">まとめてダウンロード（ZIP）</a>
+      </div>
       <ul id="list" class="list" ${needsPw ? 'hidden' : ''}>${rows}</ul>
+      <details id="gqr" class="qrbox" ${needsPw ? 'hidden' : ''}><summary>スマホで受け取る（QRコード）</summary>
+        <img id="qr" alt="受け取りURLのQRコード" width="180" height="180">
+      </details>
     </div>
     <script>
     (function () {
       var NEEDS = ${needsPw ? 'true' : 'false'};
       var FIRST = ${jsStr(encodeURIComponent(alive[0].id))};
+      var GID = ${jsStr(encodeURIComponent(groupId))};
       ${PREVIEW_JS}
       function wire(h) {
         var q = h ? '?h=' + h : '';
         document.getElementById('list').hidden = false;
+        document.getElementById('gtop').hidden = false;
+        document.getElementById('gqr').hidden = false;
+        document.getElementById('zipbtn').setAttribute('href', '/zip/' + GID + q);
+        document.getElementById('qr').src = '/qr/g/' + GID + q;
         [].forEach.call(document.querySelectorAll('.row'), function (row) {
           var id = row.getAttribute('data-id');
           var kind = row.getAttribute('data-kind');
@@ -1198,6 +1457,13 @@ ${CHROME_HEAD}
     background:#08080c; border:1px solid rgba(255,255,255,.1); font:400 12.5px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;
     color:#dcdce0; white-space:pre-wrap; word-break:break-word; }
   .nopv { margin:0 0 20px; font-size:13px; }
+  /* QRは普段たたんでおく。要る人だけ開けばいい */
+  .qrbox { margin:16px 0 0; }
+  .qrbox summary { cursor:pointer; font-size:13px; color:#adbcff; list-style:none; }
+  .qrbox summary::-webkit-details-marker { display:none; }
+  .qrbox summary::before { content:'▸ '; }
+  .qrbox[open] summary::before { content:'▾ '; }
+  .qrbox img { display:block; margin:12px auto 0; background:#fff; border-radius:8px; padding:8px; }
   /* まとめ一覧 */
   .list { list-style:none; margin:0; padding:0; text-align:left; }
   .row { padding:16px 0; border-top:1px solid rgba(255,255,255,.1); }
@@ -1329,6 +1595,10 @@ async function adminList(request, env, origin) {
       locked: !!p.pw,                       // 合言葉つきか（合言葉そのものは返さない）
       nas: p.nas === '1',                   // NASに控えが取れているか
       nasServed: !!p.nasUrl,                // 本体がNASへ引っ越し済み（Driveは付箋だけ）
+      dlCount: Number(p.dlCount || 0),      // 何回渡したか
+      maxDl: Number(p.maxDl || 0),          // 何回までにしてあるか（0は制限なし）
+      dlAt: Number(p.dlAt || 0),            // 最後に渡した日時
+      dlAtText: p.dlAt ? fmtDate(Number(p.dlAt)) : '',
       group: p.grp || '',
       pageUrl: base + '/f/' + f.id,
       downloadUrl: base + '/dl/' + f.id,

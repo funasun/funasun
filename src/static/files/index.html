@@ -66,6 +66,13 @@
   .result .u { display: flex; gap: 10px; margin-top: 10px; }
   .result input { font-size: 13px; }
   .result .note { margin: 14px 0 0; font: 400 12px/1.8 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); }
+  /* 渡し方のおまけ（メール・QR）と、取り消しキーの箱 */
+  .rtools { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .rtool { font: 400 13px 'Noto Sans JP', sans-serif; padding: 9px 16px; border: 1px solid rgba(255,255,255,.24);
+    border-radius: 999px; background: none; color: #f4f4f5; text-decoration: none; cursor: pointer; }
+  .rtool:hover { background: rgba(255,255,255,.06); }
+  #qrwrap img { display: block; margin: 14px auto 0; background: #fff; border-radius: 10px; padding: 10px; }
+  .delbox { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.14); }
   .back { display: inline-block; margin-top: 40px; font: 400 12.5px 'Noto Sans JP', sans-serif; color: rgba(244,244,245,.84); text-decoration: none; }
 </style>
 </head>
@@ -117,6 +124,15 @@
   <label>ダウンロード合言葉 <span class="hint">（任意・ダウンロードする人に必要）</span></label>
   <input id="dlpw" type="text" autocomplete="off" placeholder="空ならURLだけでダウンロード可">
 
+  <label>受け取れる回数 <span class="hint">（任意・使い切ると開けなくなります）</span></label>
+  <select id="maxdl">
+    <option value="0" selected>制限なし</option>
+    <option value="1">1回だけ</option>
+    <option value="3">3回まで</option>
+    <option value="5">5回まで</option>
+    <option value="10">10回まで</option>
+  </select>
+
   <div class="row">
     <button id="btn-up" type="button">アップロード</button>
   </div>
@@ -131,6 +147,24 @@
       <button id="copy" type="button" style="padding:12px 18px">コピー</button>
     </div>
     <p id="rnote" class="note"></p>
+
+    <!-- 渡し方のおまけ。QRはスマホへ、メールは本文にURLを入れて開くだけ -->
+    <div class="rtools">
+      <a id="rmail" class="rtool" href="#">メールで送る</a>
+      <button id="rqr" type="button" class="rtool">QRコードを出す</button>
+    </div>
+    <div id="qrwrap" hidden><img id="rqrimg" alt="共有URLのQRコード" width="200" height="200"></div>
+
+    <!-- 送った本人が取り消すための合鍵。ここにしか出ないので、控えてもらう -->
+    <div id="delbox" class="delbox" hidden>
+      <p class="note" style="margin:0 0 6px">取り消しキー <span class="hint">（このファイルを自分で消すときに使います。ここにしか出ません）</span></p>
+      <div class="u">
+        <input id="delkey" type="text" readonly>
+        <button id="delcopy" type="button" style="padding:12px 18px">コピー</button>
+      </div>
+      <p style="margin:8px 0 0"><button id="delnow" type="button" class="rtool">いま取り消す</button></p>
+      <p id="delmsg" class="note"></p>
+    </div>
   </div>
 
   <!-- ここへは Works の道具一覧から来る。ホームに飛ばすと戻り道を見失う -->
@@ -520,6 +554,7 @@
           code: opts.code, filename: file.upName || file.name, size: file.size,
           contentType: file.type || 'application/octet-stream',
           expiryDays: opts.days, pwHash: opts.pwHash,
+          maxDl: opts.maxDl, delHash: opts.delHash,
           group: opts.group, index: opts.index
         })
       });
@@ -600,6 +635,11 @@
     try {
       var pwHash = '';
       if ($('dlpw').value) pwHash = await sha256hex($('dlpw').value);
+      /* 取り消しキーは、この端末で作ってサーバーには合鍵(ハッシュ)しか渡さない。
+         なので、あとから「キーを教えて」と聞かれても誰にも答えられない。 */
+      var delKey = randomId() + randomId();
+      var delHash = await sha256hex(delKey);
+      var maxDl = Number($('maxdl').value) || 0;
       /* 送りかけがあるファイルは、その続きから送る。
          そのとき「まとめID」も前回のものを引き継ぐ。新しく振り直すと、
          前回すでに送り終えていたファイルが別のまとめに取り残されてしまうため。 */
@@ -607,6 +647,7 @@
       var prior = resumes.filter(Boolean)[0];
       var group = (prior && prior.group) || (files.length > 1 ? randomId() : '');
       var lastUrl = '';
+      var firstId = '';
 
       for (var i = 0; i < files.length; i++) {
         // 1つ前までに送り終えた量。今のファイルの進み具合はこれに足して数える
@@ -616,6 +657,7 @@
         setMsg('アップロード中… ' + label, 'info');
         lastUrl = await uploadOne(f, {
           code: code, days: Number($('expiry').value), pwHash: pwHash,
+          maxDl: maxDl, delHash: delHash,
           group: group, index: i, resume: resumes[i],
           onProgress: function (n) {
             barI.style.width = Math.min(100, Math.round((done + n) / grandTotal * 100)) + '%';
@@ -626,6 +668,7 @@
           }
         });
         sent = done + f.size;
+        if (!firstId) firstId = String(lastUrl).split('/f/')[1] || '';
       }
 
       var shareUrl = group ? WORKER_URL + '/g/' + group : lastUrl;
@@ -639,6 +682,23 @@
           : 'この URL を相手に伝えてください。')
         + expText + '。';
       $('result').style.display = 'block';
+
+      // 渡し方のおまけと、取り消しキーを出す
+      var mailBody = '共有URL：' + shareUrl + '\n'
+        + ($('dlpw').value ? '合言葉は別でお伝えします。\n' : '')
+        + expText + '。\n';
+      $('rmail').setAttribute('href',
+        'mailto:?subject=' + encodeURIComponent('ファイルをお送りします')
+        + '&body=' + encodeURIComponent(mailBody));
+      var qrPath = group ? '/qr/g/' + group : '/qr/' + shareUrl.split('/f/')[1];
+      $('rqrimg').setAttribute('data-src', WORKER_URL + qrPath);
+      $('qrwrap').hidden = true;
+      $('delkey').value = delKey;
+      $('delbox').hidden = false;
+      $('delmsg').textContent = '';
+      revokeTarget = group ? null : shareUrl.split('/f/')[1];
+      revokeGroupFirst = firstId;
+
       chosen = []; renderList();
     } catch (e) {
       setMsg(e.message || '失敗しました。もう一度お試しください。', 'err');
@@ -646,6 +706,48 @@
       btn.disabled = false;
       showResumeHint();          // 途中で終わったなら、次に開いたとき続きから送れることを出す
       setTimeout(function () { bar.style.display = 'none'; }, 800);
+    }
+  });
+
+  /* 取り消しの相手。1本ならそのID、まとめなら1つめのID（サーバー側で
+     まとめ全体をたどって消す）。 */
+  var revokeTarget = null, revokeGroupFirst = '';
+
+  $('rqr').addEventListener('click', function () {
+    var img = $('rqrimg'), wrap = $('qrwrap');
+    if (wrap.hidden) {
+      if (!img.getAttribute('src')) img.src = img.getAttribute('data-src');
+      wrap.hidden = false; $('rqr').textContent = 'QRコードを隠す';
+    } else {
+      wrap.hidden = true; $('rqr').textContent = 'QRコードを出す';
+    }
+  });
+
+  $('delcopy').addEventListener('click', function () {
+    $('delkey').select();
+    try { navigator.clipboard.writeText($('delkey').value); } catch (e) { document.execCommand('copy'); }
+    $('delcopy').textContent = 'コピー済';
+    setTimeout(function () { $('delcopy').textContent = 'コピー'; }, 1500);
+  });
+
+  $('delnow').addEventListener('click', async function () {
+    if (!window.confirm('このファイルを取り消します。相手はもう受け取れなくなります。よろしいですか？')) return;
+    var id = revokeTarget || revokeGroupFirst;
+    if (!id) { $('delmsg').textContent = '取り消せる対象が分かりませんでした。'; return; }
+    $('delnow').disabled = true;
+    $('delmsg').textContent = '取り消しています…';
+    try {
+      var r = await fetch(WORKER_URL + '/revoke', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, key: $('delkey').value })
+      });
+      var j = await r.json();
+      if (!r.ok) throw new Error(j.message || '取り消せませんでした');
+      $('delmsg').textContent = '取り消しました（' + j.deleted + '個）。このURLはもう開けません。';
+      $('rurl').value = '';
+    } catch (e) {
+      $('delnow').disabled = false;
+      $('delmsg').textContent = e.message || '取り消せませんでした。';
     }
   });
 
