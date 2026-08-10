@@ -211,6 +211,8 @@
       <svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg>余白を切る<small>crop</small></button>
     <button type="button" data-tool="extract">
       <svg viewBox="0 0 24 24"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M8 8h4M8 11h4M8 14h2"/><path d="M17 14v7m0 0 2.5-2.5M17 21l-2.5-2.5"/></svg>抜き出す<small>extract</small></button>
+    <button type="button" data-tool="sign">
+      <svg viewBox="0 0 24 24"><path d="M3 20s2-1 4-1 3 1 5 1 3-1 5-1 4 1 4 1"/><path d="M5 16 15 6l3 3L8 19l-4 1z"/></svg>署名・書き込み<small>sign</small></button>
   </nav>
 
   <!-- ============ PDF結合 ============ -->
@@ -685,6 +687,68 @@
     <div class="out" id="ext-out"><h3>できあがり</h3><ul></ul></div>
   </section>
 
+  <!-- ============ 署名・書き込み ============ -->
+  <section class="tool" id="tool-sign">
+    <div class="head"><h2>署名・書き込み</h2><span class="count" id="sign-count"></span></div>
+    <div class="drop" id="sign-drop">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span class="pick">PDFを選ぶ</span><span class="tip">署名や文字・線・枠を重ねます</span>
+    </div>
+    <input id="sign-file" type="file" accept="application/pdf,.pdf" style="display:none">
+    <div id="sign-body" hidden>
+      <!-- 置くものを用意する道具箱 -->
+      <div class="two" style="align-items:start">
+        <div>
+          <label>手書きの署名・サイン</label>
+          <canvas id="sign-pad" style="width:100%; height:140px; background:#fff; border-radius:10px; touch-action:none; display:block"></canvas>
+          <div class="row" style="margin-top:6px">
+            <button class="ghost" id="sign-pad-clear" type="button">消す</button>
+            <button class="ghost" id="sign-pad-add" type="button">この署名を置く</button>
+          </div>
+        </div>
+        <div>
+          <label>文字を入れる <span class="hint">（日本語OK・改行OK）</span></label>
+          <textarea id="sign-text" rows="2" class="field" placeholder="例）確認しました"></textarea>
+          <div class="row" style="margin-top:6px">
+            <label style="margin:0; font-size:12px; color:#9a9aa0">色</label>
+            <input id="sign-text-color" type="color" value="#111111" style="width:36px; height:28px; padding:0; border:none; background:none">
+            <label style="margin:0; font-size:12px; color:#9a9aa0">大きさ</label>
+            <input id="sign-text-size" type="range" min="18" max="96" value="40" style="flex:1">
+            <button class="ghost" id="sign-text-add" type="button">文字を置く</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label style="margin:0; font-size:12px; color:#9a9aa0">図形</label>
+            <input id="sign-shape-color" type="color" value="#e23b3b" style="width:36px; height:28px; padding:0; border:none; background:none">
+            <button class="ghost" id="sign-add-line" type="button">線を置く</button>
+            <button class="ghost" id="sign-add-rect" type="button">枠を置く</button>
+            <button class="ghost" id="sign-add-check" type="button">✓ を置く</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 置いたものを、ページの上でドラッグして位置と大きさを決める -->
+      <div class="stage" style="margin-top:12px">
+        <div class="top"><b>置き場所を決める</b><span class="dim" id="sign-page-lbl"></span></div>
+        <div class="view" id="sign-view" style="position:relative; overflow:hidden; user-select:none">
+          <canvas id="sign-canvas" style="max-width:100%; display:block; margin:0 auto"></canvas>
+          <div id="sign-layer" style="position:absolute; inset:0"></div>
+        </div>
+        <p class="tip" style="margin:6px 0 0">置いたものを指やマウスでドラッグ。角の●で大きさ、右上の×で削除。線・枠は両端の●で形を変えられます。</p>
+      </div>
+      <div class="two">
+        <div><label>編集するページ</label><select id="sign-page"></select></div>
+        <div><label>&nbsp;</label>
+          <button class="ghost" id="sign-clear-page" type="button" style="width:100%">このページの書き込みを消す</button></div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="go" id="sign-go" type="button" disabled>書き込んで保存用PDFを作る</button>
+      <button class="ghost" id="sign-clear" type="button">外す</button>
+    </div>
+    <p class="msg" id="sign-msg" role="status" aria-live="polite"></p>
+    <div class="out" id="sign-out"><h3>できあがり</h3><ul></ul></div>
+  </section>
+
   <!-- ここへは Works の道具一覧から来る。ホームに飛ばすと戻り道を見失う -->
   <a href="/works.html" class="back">← 道具の一覧へ戻る</a>
   <a href="/files/" class="back">ファイルを送る →</a>
@@ -701,7 +765,7 @@
   'use strict';
   var T = window.FileTools;
   var $ = function (id) { return document.getElementById(id); };
-  var TOOLS = ['merge', 'organize', 'split', 'num', 'topic', 'img2pdf', 'join', 'webp', 'compress', 'crop', 'extract'];
+  var TOOLS = ['merge', 'organize', 'split', 'num', 'topic', 'img2pdf', 'join', 'webp', 'compress', 'crop', 'extract', 'sign'];
 
   // ---- 道具の切り替え ----
   $('picker').addEventListener('click', function (e) {
@@ -2661,6 +2725,307 @@
       showOutput('ext-out', [{ name: T.baseName(extFile.name) + '_抜き出し.pdf', blob: blob }]);
       $('ext-go').disabled = false;
     }).catch(function (e) { setMsg('ext-msg', e.message, 'err'); $('ext-go').disabled = false; });
+  });
+
+  /* ============ 署名・書き込み ============
+     置いたものは「割合座標(0〜1)」で持ち、画面でも書き出しでも同じ位置になる。
+     signItems[ページ番号] = [{id,type,...}] */
+  var signFile = null, signPages = [], signItems = {}, signShownIdx = 0;
+  var signSeq = 0;
+
+  /* ---- 手書きパッド ---- */
+  (function () {
+    var pad = $('sign-pad');
+    var drawing = false, has = false, cx = null, last = null;
+    function fit() {
+      var rect = pad.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      pad.width = Math.max(1, Math.round(rect.width * dpr));
+      pad.height = Math.max(1, Math.round(rect.height * dpr));
+      cx = pad.getContext('2d');
+      cx.scale(dpr, dpr);
+      cx.lineWidth = 2.4; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.strokeStyle = '#111';
+    }
+    function pt(e) {
+      var r = pad.getBoundingClientRect();
+      var s = e.touches ? e.touches[0] : e;
+      return { x: s.clientX - r.left, y: s.clientY - r.top };
+    }
+    function start(e) { e.preventDefault(); if (!cx) fit(); drawing = true; last = pt(e); }
+    function move(e) {
+      if (!drawing) return; e.preventDefault();
+      var p = pt(e);
+      cx.beginPath(); cx.moveTo(last.x, last.y); cx.lineTo(p.x, p.y); cx.stroke();
+      last = p; has = true;
+    }
+    function end() { drawing = false; }
+    pad.addEventListener('mousedown', start); pad.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    pad.addEventListener('touchstart', start, { passive: false });
+    pad.addEventListener('touchmove', move, { passive: false });
+    pad.addEventListener('touchend', end);
+    window.addEventListener('resize', function () { if (has) return; cx = null; });
+    $('sign-pad-clear').addEventListener('click', function () {
+      if (cx) cx.clearRect(0, 0, pad.width, pad.height); has = false;
+    });
+    // トリミングして透明PNGにする（周りの空白を落として、置いたとき小さくまとまる）
+    window._signPadImage = function () {
+      if (!has) return null;
+      var w = pad.width, h = pad.height, d = pad.getContext('2d').getImageData(0, 0, w, h).data;
+      var minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 10) { found = true; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+      }
+      if (!found) return null;
+      var pad2 = 6;
+      minX = Math.max(0, minX - pad2); minY = Math.max(0, minY - pad2);
+      maxX = Math.min(w - 1, maxX + pad2); maxY = Math.min(h - 1, maxY + pad2);
+      var cw = maxX - minX + 1, ch = maxY - minY + 1;
+      var out = document.createElement('canvas'); out.width = cw; out.height = ch;
+      out.getContext('2d').drawImage(pad, minX, minY, cw, ch, 0, 0, cw, ch);
+      return { dataUrl: out.toDataURL('image/png'), w: cw, h: ch };
+    };
+  })();
+
+  function signAddItem(item) {
+    item.id = ++signSeq;
+    if (!signItems[signShownIdx]) signItems[signShownIdx] = [];
+    signItems[signShownIdx].push(item);
+    signRenderLayer();
+    $('sign-go').disabled = false;
+  }
+
+  // 画面上の px を、いま見えているページ画像に対する割合へ
+  function signPxToFrac() {
+    var cv = $('sign-canvas');
+    return { W: cv.clientWidth, H: cv.clientHeight };
+  }
+
+  $('sign-pad-add').addEventListener('click', function () {
+    var img = window._signPadImage();
+    if (!img) { setMsg('sign-msg', '先に署名を手書きしてください。', 'err'); return; }
+    setMsg('sign-msg', '', '');
+    var v = signPxToFrac();
+    var wFrac = Math.min(0.4, img.w / v.W);
+    var hFrac = wFrac * (img.h / img.w) * (v.W / v.H);
+    signAddItem({ type: 'image', dataUrl: img.dataUrl, ratio: img.h / img.w,
+      x: 0.1, y: 0.1, w: wFrac, h: hFrac });
+  });
+  $('sign-text-add').addEventListener('click', function () {
+    var text = $('sign-text').value.trim();
+    if (!text) { setMsg('sign-msg', '文字を入力してください。', 'err'); return; }
+    setMsg('sign-msg', '', '');
+    var img = T.textToImage(text, { size: Number($('sign-text-size').value), color: $('sign-text-color').value });
+    var v = signPxToFrac();
+    var wFrac = Math.min(0.6, img.w / v.W);
+    var hFrac = wFrac * (img.h / img.w) * (v.W / v.H);
+    signAddItem({ type: 'image', dataUrl: img.dataUrl, ratio: img.h / img.w, x: 0.1, y: 0.1, w: wFrac, h: hFrac });
+  });
+  $('sign-add-check').addEventListener('click', function () {
+    var img = T.textToImage('✓', { size: 80, color: $('sign-shape-color').value });
+    var v = signPxToFrac();
+    var wFrac = Math.min(0.15, img.w / v.W);
+    var hFrac = wFrac * (img.h / img.w) * (v.W / v.H);
+    signAddItem({ type: 'image', dataUrl: img.dataUrl, ratio: img.h / img.w, x: 0.4, y: 0.4, w: wFrac, h: hFrac });
+  });
+  $('sign-add-line').addEventListener('click', function () {
+    signAddItem({ type: 'line', color: $('sign-shape-color').value, width: 2.5, x1: 0.25, y1: 0.5, x2: 0.6, y2: 0.5 });
+  });
+  $('sign-add-rect').addEventListener('click', function () {
+    signAddItem({ type: 'rect', color: $('sign-shape-color').value, width: 2.5, fill: false, x: 0.3, y: 0.35, w: 0.35, h: 0.18 });
+  });
+
+  wireDrop('sign-drop', 'sign-file', function (list) {
+    var pdf = list.filter(T.isPdf)[0];
+    if (!pdf) { setMsg('sign-msg', 'PDFを選んでください。', 'err'); return; }
+    signFile = pdf; signItems = {}; signShownIdx = 0;
+    $('sign-count').textContent = pdf.name;
+    setDropSlim('sign', true);
+    setMsg('sign-msg', 'プレビューを作っています…', 'info');
+    T.renderPages(pdf, { maxEdge: 900, type: 'image/png' }, null).then(function (rs) {
+      signPages = rs;
+      var sel = $('sign-page'); sel.innerHTML = '';
+      rs.forEach(function (r, i) { var o = document.createElement('option'); o.value = i; o.textContent = (i + 1) + 'ページ目'; sel.appendChild(o); });
+      $('sign-page-lbl').textContent = rs.length + 'ページ';
+      $('sign-body').hidden = false;
+      setMsg('sign-msg', '', '');
+      signShowPage(0);
+    }).catch(function (e) { setMsg('sign-msg', e.message, 'err'); });
+  });
+
+  function signShowPage(i) {
+    signShownIdx = i;
+    $('sign-page').value = i;
+    var r = signPages[i];
+    var cv = $('sign-canvas');
+    var img = new Image();
+    img.onload = function () {
+      var maxW = Math.min(680, cv.parentNode.clientWidth || 680);
+      var k = maxW / r.width;
+      cv.width = r.width * k; cv.height = r.height * k;
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      $('sign-layer').style.width = cv.width + 'px';
+      $('sign-layer').style.height = cv.height + 'px';
+      $('sign-layer').style.left = ((cv.parentNode.clientWidth - cv.width) / 2) + 'px';
+      signRenderLayer();
+    };
+    img.src = r.url;
+  }
+  $('sign-page').addEventListener('change', function () { signShowPage(Number($('sign-page').value)); });
+  $('sign-clear-page').addEventListener('click', function () {
+    signItems[signShownIdx] = []; signRenderLayer();
+    $('sign-go').disabled = !Object.keys(signItems).some(function (k) { return signItems[k] && signItems[k].length; });
+  });
+
+  /* 置いたものを画面に描く（HTML要素で。ドラッグ・リサイズできるように） */
+  function signRenderLayer() {
+    var layer = $('sign-layer');
+    layer.innerHTML = '';
+    var cv = $('sign-canvas');
+    var W = cv.width, H = cv.height;
+    var items = signItems[signShownIdx] || [];
+    items.forEach(function (it) {
+      if (it.type === 'line') { signRenderLine(layer, it, W, H); return; }
+      var el = document.createElement('div');
+      el.style.cssText = 'position:absolute; box-sizing:border-box; cursor:move;';
+      el.style.left = (it.x * W) + 'px'; el.style.top = (it.y * H) + 'px';
+      el.style.width = (it.w * W) + 'px'; el.style.height = (it.h * H) + 'px';
+      if (it.type === 'image') {
+        var im = document.createElement('img');
+        im.src = it.dataUrl; im.style.cssText = 'width:100%; height:100%; pointer-events:none; display:block';
+        el.appendChild(im);
+        el.style.outline = '1px dashed rgba(111,140,255,.7)';
+      } else if (it.type === 'rect') {
+        el.style.border = (it.width || 2) + 'px solid ' + it.color;
+        if (it.fill) el.style.background = it.color;
+      }
+      addHandles(el, it, W, H);
+      layer.appendChild(el);
+    });
+  }
+  function signRenderLine(layer, it, W, H) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('style', 'position:absolute; left:0; top:0; overflow:visible; pointer-events:none');
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ln.setAttribute('x1', it.x1 * W); ln.setAttribute('y1', it.y1 * H);
+    ln.setAttribute('x2', it.x2 * W); ln.setAttribute('y2', it.y2 * H);
+    ln.setAttribute('stroke', it.color); ln.setAttribute('stroke-width', (it.width || 2));
+    svg.appendChild(ln); layer.appendChild(svg);
+    [['x1', 'y1'], ['x2', 'y2']].forEach(function (k) { addEndHandle(layer, it, k[0], k[1], W, H); });
+    // 削除ボタン（中点）
+    var del = mkDot((it.x1 + it.x2) / 2 * W, (it.y1 + it.y2) / 2 * H, '#ff6b6b', '×');
+    del.addEventListener('mousedown', function (e) { e.stopPropagation(); removeItem(it); });
+    del.addEventListener('touchstart', function (e) { e.stopPropagation(); removeItem(it); }, { passive: false });
+    layer.appendChild(del);
+  }
+  function mkDot(x, y, color, label) {
+    var d = document.createElement('div');
+    d.style.cssText = 'position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:' + color
+      + '; left:' + x + 'px; top:' + y + 'px; cursor:pointer; z-index:5; display:flex; align-items:center; justify-content:center; color:#fff; font:600 11px sans-serif';
+    if (label) d.textContent = label;
+    return d;
+  }
+  function pointer(e) { var s = e.touches ? e.touches[0] : e; return { x: s.clientX, y: s.clientY }; }
+  function addEndHandle(layer, it, kx, ky, W, H) {
+    var dot = mkDot(it[kx] * W, it[ky] * H, '#6f8cff');
+    function down(e) {
+      e.preventDefault(); e.stopPropagation();
+      var rect = $('sign-canvas').getBoundingClientRect();
+      function mv(ev) {
+        var p = pointer(ev);
+        it[kx] = Math.max(0, Math.min(1, (p.x - rect.left) / rect.width));
+        it[ky] = Math.max(0, Math.min(1, (p.y - rect.top) / rect.height));
+        signRenderLayer();
+      }
+      function up() { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); }
+      window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
+    }
+    dot.addEventListener('mousedown', down); dot.addEventListener('touchstart', down, { passive: false });
+    layer.appendChild(dot);
+  }
+  function removeItem(it) {
+    var arr = signItems[signShownIdx] || [];
+    var i = arr.indexOf(it); if (i >= 0) arr.splice(i, 1);
+    signRenderLayer();
+    $('sign-go').disabled = !Object.keys(signItems).some(function (k) { return signItems[k] && signItems[k].length; });
+  }
+  function addHandles(el, it, W, H) {
+    // 本体ドラッグで移動
+    el.addEventListener('mousedown', dragStart);
+    el.addEventListener('touchstart', dragStart, { passive: false });
+    function dragStart(e) {
+      if (e.target !== el && e.target.tagName === 'IMG') { /* 画像でもOK */ }
+      if (e.target.dataset && e.target.dataset.role) return;   // ハンドルは別処理
+      e.preventDefault();
+      var rect = $('sign-canvas').getBoundingClientRect();
+      var p0 = pointer(e); var x0 = it.x, y0 = it.y;
+      function mv(ev) {
+        var p = pointer(ev);
+        it.x = Math.max(0, Math.min(1 - it.w, x0 + (p.x - p0.x) / rect.width));
+        it.y = Math.max(0, Math.min(1 - it.h, y0 + (p.y - p0.y) / rect.height));
+        el.style.left = (it.x * W) + 'px'; el.style.top = (it.y * H) + 'px';
+      }
+      function up() { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); }
+      window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
+    }
+    // 右上に削除、右下にリサイズ
+    var del = document.createElement('div');
+    del.dataset.role = 'del';
+    del.textContent = '×';
+    del.style.cssText = 'position:absolute; right:-9px; top:-9px; width:18px; height:18px; border-radius:50%; background:#ff6b6b; color:#fff; font:600 11px sans-serif; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:6';
+    del.addEventListener('mousedown', function (e) { e.stopPropagation(); e.preventDefault(); removeItem(it); });
+    del.addEventListener('touchstart', function (e) { e.stopPropagation(); e.preventDefault(); removeItem(it); }, { passive: false });
+    el.appendChild(del);
+
+    var rs = document.createElement('div');
+    rs.dataset.role = 'resize';
+    rs.style.cssText = 'position:absolute; right:-8px; bottom:-8px; width:16px; height:16px; border-radius:50%; background:#6f8cff; cursor:nwse-resize; z-index:6';
+    rs.addEventListener('mousedown', resizeStart); rs.addEventListener('touchstart', resizeStart, { passive: false });
+    function resizeStart(e) {
+      e.preventDefault(); e.stopPropagation();
+      var rect = $('sign-canvas').getBoundingClientRect();
+      var keepRatio = (it.type === 'image');
+      function mv(ev) {
+        var p = pointer(ev);
+        var nw = Math.max(0.03, (p.x - rect.left) / rect.width - it.x);
+        it.w = Math.min(1 - it.x, nw);
+        if (keepRatio && it.ratio) {
+          it.h = it.w * it.ratio * (rect.width / rect.height);
+        } else {
+          var nh = Math.max(0.03, (p.y - rect.top) / rect.height - it.y);
+          it.h = Math.min(1 - it.y, nh);
+        }
+        el.style.width = (it.w * W) + 'px'; el.style.height = (it.h * H) + 'px';
+      }
+      function up() { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); window.removeEventListener('touchmove', mv); window.removeEventListener('touchend', up); }
+      window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', mv, { passive: false }); window.addEventListener('touchend', up);
+    }
+    el.appendChild(rs);
+  }
+
+  $('sign-text-size').addEventListener('input', function () { /* 次に置くときの大きさ */ });
+  $('sign-clear').addEventListener('click', function () {
+    signFile = null; signPages = []; signItems = {};
+    $('sign-count').textContent = ''; $('sign-body').hidden = true;
+    setDropSlim('sign', false); $('sign-go').disabled = true;
+    setMsg('sign-msg', '', ''); $('sign-out').querySelector('ul').innerHTML = '';
+  });
+  $('sign-go').addEventListener('click', function () {
+    if (!signFile) return;
+    var any = Object.keys(signItems).some(function (k) { return signItems[k] && signItems[k].length; });
+    if (!any) { setMsg('sign-msg', '置くものがありません。署名や文字を置いてください。', 'err'); return; }
+    $('sign-go').disabled = true;
+    setMsg('sign-msg', '書き込んでいます…', 'info');
+    // signItems（画面座標=割合）をそのまま渡す。yは annotatePdf 側で反転する
+    T.annotatePdf(signFile, signItems).then(function (blob) {
+      setMsg('sign-msg', 'できました。', 'ok');
+      showOutput('sign-out', [{ name: T.baseName(signFile.name) + '_書き込み.pdf', blob: blob }]);
+      $('sign-go').disabled = false;
+    }).catch(function (e) { setMsg('sign-msg', e.message, 'err'); $('sign-go').disabled = false; });
   });
 })();
 </script>

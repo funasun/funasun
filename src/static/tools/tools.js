@@ -1059,8 +1059,112 @@
     });
   }
 
+  /* ---- 書き込み（署名・文字・線・枠）を焼き込む ----
+     items: そのページに置くものの配列。座標は「割合(0〜1)」で持つ。
+       画面プレビューの canvas と PDF の紙で寸法が違っても、割合なら一致する。
+       共通: { page(0始まり), type }
+       image … { x,y,w,h, dataUrl }         手書き署名・文字画像・図形の画像
+       line  … { x1,y1,x2,y2, color, width } 直線・矢印の軸
+       rect  … { x,y,w,h, color, width, fill } 枠
+     日本語の文字はフォントを積まずに済むよう、呼ぶ側で画像(dataUrl)にしてから image で渡す。 */
+  function annotatePdf(file, itemsByPage) {
+    if (!isPdf(file)) return Promise.reject(new Error('PDFを選んでください。'));
+    return Promise.all([loadPdfLib(), readBuffer(file)]).then(function (r) {
+      var PDFLib = r[0];
+      return PDFLib.PDFDocument.load(r[1]).then(function (pdf) {
+        var pages = pdf.getPages();
+        // まず使う画像を全部埋め込む（同じ画像は1回だけ）
+        var cache = {};
+        var embeds = [];
+        Object.keys(itemsByPage).forEach(function (pi) {
+          itemsByPage[pi].forEach(function (it) {
+            if (it.type === 'image' && it.dataUrl && !(it.dataUrl in cache)) {
+              cache[it.dataUrl] = true;
+              embeds.push(dataUrlToBytes(it.dataUrl).then(function (b) {
+                var isPng = /^data:image\/png/i.test(it.dataUrl);
+                return (isPng ? pdf.embedPng(b.bytes) : pdf.embedJpg(b.bytes)).then(function (img) {
+                  cache[it.dataUrl] = img;
+                });
+              }));
+            }
+          });
+        });
+        return Promise.all(embeds).then(function () {
+          Object.keys(itemsByPage).forEach(function (pi) {
+            var page = pages[Number(pi)];
+            if (!page) return;
+            var box = page.getCropBox();
+            var W = box.width, H = box.height, X0 = box.x, Y0 = box.y;
+            // 画面は「左上が原点・下向き」、PDFは「左下が原点・上向き」。yを反転する
+            function px(fx) { return X0 + fx * W; }
+            function py(fy) { return Y0 + (1 - fy) * H; }
+            itemsByPage[pi].forEach(function (it) {
+              if (it.type === 'image') {
+                var img = cache[it.dataUrl];
+                if (!img || !img.width) return;
+                page.drawImage(img, { x: px(it.x), y: py(it.y + it.h), width: it.w * W, height: it.h * H });
+              } else if (it.type === 'line') {
+                var c = hexRgb(PDFLib, it.color || '#e23b3b');
+                page.drawLine({
+                  start: { x: px(it.x1), y: py(it.y1) }, end: { x: px(it.x2), y: py(it.y2) },
+                  thickness: (it.width || 2), color: c
+                });
+              } else if (it.type === 'rect') {
+                var c2 = hexRgb(PDFLib, it.color || '#e23b3b');
+                var o = { x: px(it.x), y: py(it.y + it.h), width: it.w * W, height: it.h * H,
+                  borderColor: c2, borderWidth: (it.width || 2) };
+                if (it.fill) o.color = c2;
+                page.drawRectangle(o);
+              }
+            });
+          });
+          return pdf.save().then(function (bytes) {
+            return new Blob([bytes], { type: 'application/pdf' });
+          });
+        });
+      });
+    });
+  }
+
+  function dataUrlToBytes(dataUrl) {
+    return fetch(dataUrl).then(function (r) { return r.arrayBuffer(); })
+      .then(function (b) { return { bytes: new Uint8Array(b) }; });
+  }
+  function hexRgb(PDFLib, hex) {
+    var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+    if (!m) return PDFLib.rgb(0.89, 0.23, 0.23);
+    return PDFLib.rgb(parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255);
+  }
+
+  /* 文字を画像にする（日本語フォントを積まないため）。透明背景のPNGを返す。
+     戻り値 { dataUrl, w, h }（w,hは px）。呼ぶ側は紙に対する割合に直して置く。 */
+  function textToImage(text, opts) {
+    opts = opts || {};
+    var size = Number(opts.size) || 48;
+    var color = opts.color || '#111111';
+    var font = size + "px 'Noto Sans JP', 'Hiragino Sans', sans-serif";
+    var pad = Math.round(size * 0.25);
+    var cv = document.createElement('canvas');
+    var mcx = cv.getContext('2d');
+    mcx.font = font;
+    var lines = String(text).split('\n');
+    var wMax = 1;
+    lines.forEach(function (ln) { wMax = Math.max(wMax, mcx.measureText(ln).width); });
+    var lineH = Math.round(size * 1.3);
+    cv.width = Math.ceil(wMax) + pad * 2;
+    cv.height = lineH * lines.length + pad * 2;
+    var cx = cv.getContext('2d');
+    cx.font = font;
+    cx.textBaseline = 'top';
+    cx.fillStyle = color;
+    lines.forEach(function (ln, i) { cx.fillText(ln, pad, pad + i * lineH); });
+    return { dataUrl: cv.toDataURL('image/png'), w: cv.width, h: cv.height };
+  }
+
   global.FileTools = {
     mergePdf: mergePdf,
+    annotatePdf: annotatePdf,
+    textToImage: textToImage,
     compressPdf: compressPdf,
     cropPdf: cropPdf,
     detectMargins: detectMargins,
