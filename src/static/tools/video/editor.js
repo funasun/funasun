@@ -59,7 +59,8 @@
     return MP4.parse(reader).then(function (movie) {
       var clip = {
         movie: movie, reader: reader, name: name, srcUrl: srcUrl,
-        in: 0, out: movie.video.duration, vDur: movie.video.duration
+        in: 0, out: movie.video.duration, vDur: movie.video.duration,
+        effects: newEffects()
       };
       clips.push(clip);
       renderClips();
@@ -67,6 +68,18 @@
       return clip;
     });
   }
+
+  // 効果の初期値。ここが全部そのままなら「作り直し不要」と判断する
+  function newEffects() {
+    return { text: '', textPos: 'bottom', textSize: 6, textColor: '#ffffff',
+      volume: 1, speed: 1, fadeIn: 0, fadeOut: 0 };
+  }
+  function hasEffects(c) {
+    var e = c.effects || {};
+    return !!(e.text && e.text.trim()) || Number(e.volume) !== 1 || Number(e.speed) !== 1
+      || Number(e.fadeIn) > 0 || Number(e.fadeOut) > 0;
+  }
+  function anyEffects() { return clips.some(hasEffects); }
 
   /* ---------- クリップ一覧 ---------- */
   function renderClips() {
@@ -81,8 +94,15 @@
       inf.className = 'inf';
       inf.innerHTML = '<div class="nm"></div><div class="rg"></div>';
       inf.querySelector('.nm').textContent = (i + 1) + '. ' + c.name;
+      var marks = [];
+      var e = c.effects || {};
+      if (e.text && e.text.trim()) marks.push('文字');
+      if (Number(e.volume) !== 1) marks.push(Number(e.volume) === 0 ? '無音' : '音量' + Math.round(e.volume * 100) + '%');
+      if (Number(e.speed) !== 1) marks.push(e.speed + '倍');
+      if (Number(e.fadeIn) > 0 || Number(e.fadeOut) > 0) marks.push('フェード');
       inf.querySelector('.rg').textContent =
-        fmt(c.in) + '秒 〜 ' + fmt(c.out) + '秒（' + fmt(c.out - c.in) + '秒）';
+        fmt(c.in) + '秒 〜 ' + fmt(c.out) + '秒（' + fmt(c.out - c.in) + '秒）'
+        + (marks.length ? '　／　' + marks.join('・') : '');
       var ops = document.createElement('div');
       ops.className = 'ops';
       [['↑', function () { move(i, -1); }],
@@ -103,7 +123,8 @@
     $('total').textContent = fmt(total) + '秒';
     $('clips-card').hidden = clips.length === 0;
     $('export-card').hidden = clips.length === 0;
-    if (clips.length === 0) $('edit-card').hidden = true;
+    if (clips.length === 0) { $('edit-card').hidden = true; $('fx-card').hidden = true; }
+    updateModeNote();
   }
 
   function move(i, d) {
@@ -115,7 +136,9 @@
   }
   function dup(i) {
     var c = clips[i];
-    clips.splice(i + 1, 0, { movie: c.movie, reader: c.reader, name: c.name, srcUrl: c.srcUrl, in: c.in, out: c.out, vDur: c.vDur });
+    var ef = {}; Object.keys(c.effects || {}).forEach(function (k) { ef[k] = c.effects[k]; });
+    clips.splice(i + 1, 0, { movie: c.movie, reader: c.reader, name: c.name, srcUrl: c.srcUrl,
+      in: c.in, out: c.out, vDur: c.vDur, effects: ef });
     if (current > i) current++;
     renderClips();
   }
@@ -144,10 +167,83 @@
   /* ---------- 切る ---------- */
   var player = $('player');
 
+  /* ---- 効果（テロップ・音量・速さ・フェード） ---- */
+  function fxLoad(c) {
+    var e = c.effects || (c.effects = newEffects());
+    $('fx-text').value = e.text || '';
+    $('fx-textpos').value = e.textPos || 'bottom';
+    $('fx-textsize').value = e.textSize || 6;
+    $('fx-textcolor').value = e.textColor || '#ffffff';
+    $('fx-vol').value = Math.round((e.volume === undefined ? 1 : e.volume) * 100);
+    $('fx-speed').value = String(e.speed || 1);
+    $('fx-fadein').value = Math.round((e.fadeIn || 0) * 10);
+    $('fx-fadeout').value = Math.round((e.fadeOut || 0) * 10);
+    fxSyncLabels();
+  }
+  function fxSave() {
+    if (current < 0) return;
+    var e = clips[current].effects || (clips[current].effects = newEffects());
+    e.text = $('fx-text').value;
+    e.textPos = $('fx-textpos').value;
+    e.textSize = Number($('fx-textsize').value);
+    e.textColor = $('fx-textcolor').value;
+    e.volume = Number($('fx-vol').value) / 100;
+    e.speed = Number($('fx-speed').value);
+    e.fadeIn = Number($('fx-fadein').value) / 10;
+    e.fadeOut = Number($('fx-fadeout').value) / 10;
+    fxSyncLabels();
+    updateModeNote();
+    renderClips();
+  }
+  function fxSyncLabels() {
+    $('fx-vol-val').textContent = $('fx-vol').value + '%';
+    $('fx-fi-val').textContent = (Number($('fx-fadein').value) / 10).toFixed(1) + '秒';
+    $('fx-fo-val').textContent = (Number($('fx-fadeout').value) / 10).toFixed(1) + '秒';
+  }
+  ['fx-text', 'fx-textpos', 'fx-textsize', 'fx-textcolor', 'fx-vol', 'fx-speed', 'fx-fadein', 'fx-fadeout']
+    .forEach(function (id) {
+      $(id).addEventListener('input', fxSave);
+      $(id).addEventListener('change', fxSave);
+    });
+  $('fx-clear').addEventListener('click', function () {
+    if (current < 0) return;
+    clips[current].effects = newEffects();
+    fxLoad(clips[current]); updateModeNote(); renderClips();
+  });
+  $('fx-copy-all').addEventListener('click', function () {
+    if (current < 0) return;
+    var src = clips[current].effects;
+    clips.forEach(function (c) {
+      var ef = {}; Object.keys(src).forEach(function (k) { ef[k] = src[k]; });
+      c.effects = ef;
+    });
+    updateModeNote(); renderClips();
+    setMsg($('ex-msg'), '全部のクリップに同じ効果を使いました。', 'ok');
+  });
+
+  // いま「無劣化」で書き出せるのか「作り直し」になるのかを、押す前に知らせる
+  function updateModeNote() {
+    var note = $('mode-note');
+    if (!clips.length) { note.textContent = ''; return; }
+    if (anyEffects()) {
+      var totalSec = clips.reduce(function (s, c) {
+        return s + (c.out - c.in) / (Number(c.effects.speed) || 1);
+      }, 0);
+      note.innerHTML = '書き出し方: <strong>作り直し</strong>（テロップなどの効果を使っているため）。'
+        + 'おおよそ ' + Math.ceil(totalSec) + '秒ぶんを作り直します。端末によっては時間がかかります。';
+    } else {
+      note.innerHTML = '書き出し方: <strong>無劣化</strong>（効果なし）。一瞬で終わり、画質は元のままです。';
+    }
+  }
+
   function selectClip(i) {
     current = i;
     var c = clips[i];
     $('edit-card').hidden = false;
+    $('fx-card').hidden = false;
+    $('fx-name').textContent = '— ' + (i + 1) + '. ' + c.name;
+    fxLoad(c);
+    updateModeNote();
     $('edit-name').textContent = '— ' + (i + 1) + '. ' + c.name;
     if (player.getAttribute('src') !== c.srcUrl) {
       player.crossOrigin = 'anonymous';
@@ -277,6 +373,20 @@
     return chain.then(function () { return out; });
   }
 
+  /* 書き出したものを渡す（保存リンクを出して、自動で保存も試みる） */
+  function deliver(blob, exMsg, extraNote) {
+    var name = ($('outname').value.trim() || '編集した動画') + '';
+    if (!/\.mp4$/i.test(name)) name += '.mp4';
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    a.textContent = name + '（' + humanSize(blob.size) + '）をダウンロード';
+    $('result').innerHTML = '';
+    $('result').appendChild(a);
+    a.click();
+    setMsg(exMsg, '書き出しました' + (extraNote || '') + '。保存が始まらないときは上のリンクを押してください。', 'ok');
+  }
+
   $('export').addEventListener('click', function () {
     if (!clips.length) return;
     var exMsg = $('ex-msg');
@@ -284,6 +394,24 @@
     $('export').disabled = true;
     $('result').textContent = '';
     bar.style.display = 'block'; barI.style.width = '0%';
+
+    // 効果を使っているなら「作り直し」の道へ
+    if (anyEffects()) {
+      var maxW = Number($('outsize').value) || 100000;
+      setMsg(exMsg, '準備しています…', 'info');
+      MP4Render.render(clips, { maxWidth: maxW }, function (p, label) {
+        barI.style.width = Math.round(p * 100) + '%';
+        setMsg(exMsg, (label || '作り直しています') + '… ' + Math.round(p * 100) + '%', 'info');
+      }).then(function (blob) {
+        deliver(blob, exMsg, '（作り直し）');
+      }).catch(function (e) {
+        setMsg(exMsg, e.message || '書き出せませんでした。', 'err');
+      }).then(function () {
+        $('export').disabled = false;
+        setTimeout(function () { bar.style.display = 'none'; }, 800);
+      });
+      return;
+    }
 
     Promise.resolve().then(function () {
       // 形式が揃っているかを先に見る（揃っていないと1本にできない）
@@ -379,16 +507,7 @@
           barI.style.width = (60 + Math.round(p * 40)) + '%';
         });
       }).then(function (blob) {
-        var name = ($('outname').value.trim() || '編集した動画') + '';
-        if (!/\.mp4$/i.test(name)) name += '.mp4';
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = name;
-        a.textContent = name + '（' + humanSize(blob.size) + '）をダウンロード';
-        $('result').innerHTML = '';
-        $('result').appendChild(a);
-        a.click();
-        setMsg(exMsg, '書き出しました' + dropNote + '。保存が始まらないときは上のリンクを押してください。', 'ok');
+        deliver(blob, exMsg, dropNote);
       });
     }).catch(function (e) {
       setMsg(exMsg, e.message || '書き出せませんでした。', 'err');

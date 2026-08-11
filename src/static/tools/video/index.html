@@ -112,18 +112,75 @@
     </div>
   </div>
 
+  <div class="card" id="fx-card" hidden>
+    <h2>3.5 効果をつける <span class="hint" id="fx-name"></span></h2>
+    <p class="hint" style="margin:0 0 12px">
+      ここを使うと動画を作り直すので、書き出しに時間がかかります（そのかわり文字入れや正確なカットができます）。
+      何も設定しなければ、今までどおり一瞬・無劣化で書き出します。</p>
+
+    <label>テロップ（文字）<span class="hint">　空なら入れません／改行できます</span></label>
+    <textarea id="fx-text" rows="2" class="field" placeholder="例）ここがポイント"></textarea>
+    <div class="row" style="margin-top:8px">
+      <select id="fx-textpos" class="field" style="flex:1; min-width:120px">
+        <option value="bottom" selected>下に出す</option>
+        <option value="middle">真ん中に出す</option>
+        <option value="top">上に出す</option>
+      </select>
+      <label class="hint" style="margin:0">大きさ</label>
+      <input id="fx-textsize" type="range" min="3" max="14" value="6" style="flex:1">
+      <input id="fx-textcolor" type="color" value="#ffffff" style="width:40px; height:34px; padding:0; border:none; background:none">
+    </div>
+
+    <div class="trim" style="margin-top:14px">
+      <div>
+        <label>音量 <span class="hint" id="fx-vol-val">100%</span></label>
+        <input id="fx-vol" type="range" min="0" max="200" step="5" value="100">
+      </div>
+      <div>
+        <label>速さ</label>
+        <select id="fx-speed" class="field">
+          <option value="0.5">ゆっくり（0.5倍）</option>
+          <option value="1" selected>そのまま（1倍）</option>
+          <option value="1.5">早め（1.5倍）</option>
+          <option value="2">倍速（2倍）</option>
+        </select>
+      </div>
+      <div>
+        <label>始まりのフェード <span class="hint" id="fx-fi-val">0.0秒</span></label>
+        <input id="fx-fadein" type="range" min="0" max="30" value="0">
+      </div>
+      <div>
+        <label>終わりのフェード <span class="hint" id="fx-fo-val">0.0秒</span></label>
+        <input id="fx-fadeout" type="range" min="0" max="30" value="0">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="fx-clear" class="mini" type="button">このクリップの効果を消す</button>
+      <button id="fx-copy-all" class="mini" type="button">全クリップに同じ効果を使う</button>
+    </div>
+    <p class="hint" id="fx-preview-note" style="margin:10px 0 0"></p>
+  </div>
+
   <div class="card" id="export-card" hidden>
     <h2>4. 書き出す</h2>
     <div class="row">
       <input id="outname" class="field" style="flex:1; min-width:180px" type="text" value="編集した動画.mp4">
+      <select id="outsize" class="field" style="width:auto">
+        <option value="0">元の大きさ</option>
+        <option value="1920" selected>フルHD（1920）まで</option>
+        <option value="1280">HD（1280）まで</option>
+        <option value="854">小さめ（854）</option>
+      </select>
       <button id="export" class="btn primary" type="button">MP4に書き出す</button>
     </div>
+    <p class="hint" id="mode-note" style="margin:10px 0 0"></p>
     <div class="bar" id="bar"><i id="bar-i"></i></div>
     <p id="ex-msg" class="msg" role="status" aria-live="polite"></p>
     <p class="result" id="result"></p>
     <p class="hint" style="margin:12px 0 0">
-      開始位置は動画の「区切りの良い場所（キーフレーム）」に合わせて数秒単位で丸まります。
-      作り直しをしないための仕組みで、そのかわり画質が一切落ちません。</p>
+      効果を使わないときは、動画を作り直さずに並べ替えるだけなので<strong>一瞬・無劣化</strong>です。
+      そのかわり開始位置が「区切りの良い場所」に数秒単位で丸まります。
+      テロップなどの効果を使うと<strong>作り直し</strong>になり、時間はかかりますが1コマ単位で正確に切れます。</p>
   </div>
 
   <a href="../" style="color:#adbcff; font-size:13.5px; text-decoration:none">← ファイル編集の道具へ</a>
@@ -131,6 +188,7 @@
 
 {{FOOTER}}
 <script src="mp4.js"></script>
+<script src="render.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

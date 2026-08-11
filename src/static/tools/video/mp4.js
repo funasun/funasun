@@ -509,9 +509,13 @@
       var traks = tracks.map(function (t, ti) {
         var isV = t.kind === 'video';
         var tkDur = Math.round(t._durUnits / t.timescale * movieTs);
+        /* tkhd の並びは決まっている。1つでもずれると iPhone / Mac の再生機構が
+           「開けない」と言って丸ごと拒否するので、項目を省略しないこと。
+           作成/更新/ID/予備/長さ → 予備8 → 層・組・音量・予備 → 行列36 → 幅・高さ */
         var tkhd = full('tkhd', 0, 3, [
           be32(0), be32(0), be32(ti + 1), be32(0), be32(tkDur),
-          be32(0), be32(0), be16(0), be16(isV ? 0 : 0x0100), be16(0),
+          be32(0), be32(0),
+          be16(0), be16(0), be16(isV ? 0 : 0x0100), be16(0),
           be32(0x00010000), be32(0), be32(0), be32(0), be32(0x00010000), be32(0), be32(0), be32(0), be32(0x40000000),
           be32(isV ? (t.width << 16) : 0), be32(isV ? (t.height << 16) : 0)
         ]);
@@ -614,12 +618,161 @@
     return next(0);
   }
 
+  /* ---------- 作り直し（再エンコード）用の道具 ----------
+     無劣化のときは stsd をまるごと写せばよいが、作り直したときは
+     中身が変わるので「これはこういう映像です」という説明書きを
+     こちらで組み立て直す必要がある。 */
+
+  /* 元の stsd から、ブラウザの復号器に渡す設定を取り出す。
+     description は avcC / hvcC / esds の中身そのもの。 */
+  function codecConfigFrom(track) {
+    var u8 = track.stsdBytes;
+    // stsdBytes は stsd 箱の先頭から。中の最初の sample entry を探す
+    var entryStart = 8 + 4 + 4;      // 箱ヘッダ8 + version/flags4 + entry_count4
+    var entryEnd = u8.length;
+    var type = TXT.decode(u8.subarray(entryStart + 4, entryStart + 8));
+    var kid = null;
+    /* sample entry の中の子箱（avcC/hvcC/esds）を探す。
+       固定部の長さ: 箱ヘッダ8 ＋ 共通部8 ＋ 映像70 / 音声20 */
+    var payloadStart = entryStart + 8 + 8 + (track.kind === 'video' ? 70 : 20);
+    walkBoxes(u8, payloadStart, entryEnd, function (t, s, e) {
+      if (t === 'avcC' || t === 'hvcC' || t === 'esds') kid = { type: t, start: s, end: e };
+    });
+    if (!kid) return null;
+    var desc = u8.slice(kid.start, kid.end);
+
+    if (kid.type === 'avcC') {
+      var hex = [desc[1], desc[2], desc[3]].map(function (b) {
+        return (b < 16 ? '0' : '') + b.toString(16);
+      }).join('');
+      return { codec: 'avc1.' + hex, description: desc };
+    }
+    if (kid.type === 'hvcC') {
+      // HEVC は文字列が複雑。よくある形（Main profile）で組む
+      return { codec: 'hvc1.1.6.L93.B0', description: desc };
+    }
+    // esds の中の DecoderSpecificInfo（AACの設定）だけ取り出す
+    var asc = findDescriptor(desc, 0x05);
+    /* 音の「1秒あたりの本数（サンプリング周波数）」と「何チャンネルか」。
+       時間の刻み（mdhd の timescale）と同じとは限らないので、
+       sample entry の中の値と、AACの設定そのものから読む。 */
+    var chs = (u8[entryStart + 24] << 8) | u8[entryStart + 25];
+    var sr = (u8[entryStart + 32] << 8) | u8[entryStart + 33];
+    var fromAsc = ascInfo(asc);
+    return {
+      codec: 'mp4a.40.2', description: asc,
+      sampleRate: (fromAsc && fromAsc.rate) || sr || track.timescale || 48000,
+      channels: (fromAsc && fromAsc.channels) || chs || 2
+    };
+  }
+
+  /* AACの設定（AudioSpecificConfig）の頭を読む。
+     5ビット: 種類 / 4ビット: 周波数の番号 / 4ビット: チャンネル構成 */
+  var AAC_RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+  function ascInfo(asc) {
+    if (!asc || asc.length < 2) return null;
+    var bitPos = 0;
+    function bits(n) {
+      var v = 0;
+      for (var i = 0; i < n; i++) {
+        var byteI = bitPos >> 3, bitI = 7 - (bitPos & 7);
+        v = (v << 1) | ((asc[byteI] >> bitI) & 1);
+        bitPos++;
+      }
+      return v;
+    }
+    var objType = bits(5);
+    if (objType === 31) objType = 32 + bits(6);
+    var freqIdx = bits(4);
+    var rate = freqIdx === 15 ? bits(24) : AAC_RATES[freqIdx];
+    var channels = bits(4);
+    if (!rate) return null;
+    return { rate: rate, channels: channels || 0, objType: objType };
+  }
+
+  // MPEG-4 の記述子（tag で探す）。長さは可変長（上位ビットが続きの印）
+  function findDescriptor(u8, wantTag) {
+    var i = 4;   // esds の version/flags を飛ばす
+    function walk(start, end) {
+      var p = start;
+      while (p < end) {
+        var tag = u8[p++];
+        var len = 0, b;
+        do { b = u8[p++]; len = (len << 7) | (b & 0x7f); } while (b & 0x80);
+        if (tag === wantTag) return u8.slice(p, p + len);
+        // ES_Descriptor(3) と DecoderConfig(4) は中に入れ子がある
+        if (tag === 0x03) {
+          var q = p + 3;                      // ES_ID(2) + flags(1)
+          var r = walk(q, p + len); if (r) return r;
+        } else if (tag === 0x04) {
+          var q2 = p + 13;                    // objectType(1)+streamType等(12)
+          var r2 = walk(q2, p + len); if (r2) return r2;
+        }
+        p += len;
+      }
+      return null;
+    }
+    return walk(i, u8.length);
+  }
+
+  /* 作り直した映像用の説明書き（stsd）を組み立てる。
+     description はブラウザの符号器がくれる avcC の中身。 */
+  function buildVideoStsd(width, height, description) {
+    var name = new Uint8Array(32);   // compressorname（32バイト固定・空でよい）
+    var entry = box('avc1', [
+      [0, 0, 0, 0, 0, 0], be16(1),                       // reserved + data_reference_index
+      be16(0), be16(0), be32(0), be32(0), be32(0),       // pre_defined / reserved
+      be16(width), be16(height),
+      be32(0x00480000), be32(0x00480000),                // 72dpi
+      be32(0), be16(1),                                  // reserved, frame_count
+      name, be16(0x0018), be16(0xFFFF),                  // depth, pre_defined(-1)
+      box('avcC', [description])
+    ]);
+    return full('stsd', 0, 0, [be32(1), entry]);
+  }
+
+  /* 作り直した音声用の説明書き（stsd）。AAC の設定は esds に包む必要がある。 */
+  function buildAudioStsd(sampleRate, channels, asc) {
+    // 記述子は「タグ＋長さ＋中身」。長さは127以下なら1バイトで書ける
+    function desc(tag, body) {
+      var out = [tag];
+      var len = body.length;
+      if (len < 128) out.push(len);
+      else { out.push(0x80 | ((len >> 7) & 0x7f), len & 0x7f); }
+      return out.concat(Array.from(body));
+    }
+    var dsi = desc(0x05, asc);                                  // DecoderSpecificInfo
+    // 種類(AAC)＋音声ストリーム＋緩衝の大きさ＋最大/平均ビットレート
+    var br = 128000;
+    var dcd = desc(0x04, [0x40, 0x15,
+      0x00, 0x18, 0x00,                                         // bufferSizeDB
+      (br >>> 24) & 255, (br >>> 16) & 255, (br >>> 8) & 255, br & 255,
+      (br >>> 24) & 255, (br >>> 16) & 255, (br >>> 8) & 255, br & 255
+    ].concat(dsi));
+    var sl = desc(0x06, [0x02]);
+    var es = desc(0x03, [0, 1, 0].concat(dcd, sl));             // ES_ID=1, flags=0
+    var esds = full('esds', 0, 0, [es]);
+
+    var entry = box('mp4a', [
+      [0, 0, 0, 0, 0, 0], be16(1),
+      be32(0), be32(0),
+      be16(channels), be16(16),
+      be16(0), be16(0),
+      be32(Math.round(sampleRate) << 16 >>> 0),
+      esds
+    ]);
+    return full('stsd', 0, 0, [be32(1), entry]);
+  }
+
   global.MP4 = {
     readerForFile: readerForFile,
     readerForUrl: readerForUrl,
     parse: parse,
     cutVideo: cutVideo,
     cutAudio: cutAudio,
-    buildMp4: buildMp4
+    buildMp4: buildMp4,
+    codecConfigFrom: codecConfigFrom,
+    buildVideoStsd: buildVideoStsd,
+    buildAudioStsd: buildAudioStsd
   };
 })(window);
