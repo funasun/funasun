@@ -269,7 +269,11 @@
       var id = box.getAttribute('data-ytid');
       if (!id || box.querySelector('iframe')) return;
       var iframe = document.createElement('iframe');
-      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&playsinline=1';
+      /* 長い番組の一部で取り上げられたときは、その場面から始める
+         （data-ytstart に秒数。無ければ頭から）。 */
+      var start = parseInt(box.getAttribute('data-ytstart'), 10);
+      var at = start > 0 ? '&start=' + start : '';
+      iframe.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&playsinline=1' + at;
       iframe.title = box.getAttribute('data-title') || '演奏動画';
       iframe.allow = 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture';
       iframe.allowFullscreen = true;

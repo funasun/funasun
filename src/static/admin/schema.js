@@ -109,6 +109,8 @@
           key: 'video', label: '演奏動画', type: 'group',
           fields: [
             { key: 'ytid', label: 'YouTube ID', type: 'text', placeholder: '例: IW_ZmnryWgs' },
+            { key: 'ytstart', label: '再生を始める位置（秒）', type: 'text', placeholder: '空なら頭から',
+              hint: '途中から流したいときだけ。2分12秒なら 132。' },
             { key: 'title', label: 'タイトル', type: 'text' },
             { key: 'caption', label: 'キャプション', type: 'text' },
             { key: 'poster', label: 'サムネイル画像', type: 'image' }
@@ -276,7 +278,9 @@
         { key: 'thumb', label: 'サムネイル画像', type: 'image',
           hint: '自分で撮った写真のみ。番組や記事の画面を無断で載せないでください。' },
         { key: 'ytid', label: 'YouTube の動画ID', type: 'text', placeholder: 'IW_ZmnryWgs',
-          hint: '動画を載せる許可がある場合のみ。YouTube の URL の v= のあとの文字列です。' }
+          hint: '動画を載せる許可がある場合のみ。YouTube の URL の v= のあとの文字列です。' },
+        { key: 'ytstart', label: '再生を始める位置（秒）', type: 'text', placeholder: '132',
+          hint: '長い番組の一部で取り上げられたとき、その場面の秒数を入れると、そこから再生が始まります。頭から流すなら空のままで。2分12秒なら 132。' }
       ]
     },
 

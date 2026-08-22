@@ -699,6 +699,19 @@
   ],
   "media": [
     {
+      "date": "2026.07.26",
+      "kind": "テレビ",
+      "outlet": "愛媛CATV",
+      "program": "たうんニュース",
+      "title": "社会共創コンテスト2026 — グランプリ受賞",
+      "summary": "愛媛大学社会共創学部が主催する社会共創コンテスト2026の特集。表彰式のもようとともに、グランプリ（最高賞）を受賞した「廃棄うどんからの水素生成」の研究が取り上げられた。",
+      "quote": "",
+      "url": "https://www.youtube.com/watch?v=3Wm84TW407A&t=132s",
+      "thumb": "images/kyoso-hyosho.webp",
+      "ytid": "3Wm84TW407A",
+      "ytstart": 132
+    },
+    {
       "date": "2025.12.29",
       "kind": "テレビ",
       "outlet": "TBS『THE TIME,』",
@@ -708,7 +721,8 @@
       "quote": "",
       "url": "https://x.com/THETIME_TBS/status/2005197817581891740",
       "thumb": "images/daiku-solo.webp",
-      "ytid": "EwbHf07W7uA"
+      "ytid": "EwbHf07W7uA",
+      "ytstart": ""
     },
     {
       "date": "2026.03.17",
@@ -720,7 +734,8 @@
       "quote": "",
       "url": "https://note.com/min_shin/n/n02b5bf4474a6",
       "thumb": "",
-      "ytid": ""
+      "ytid": "",
+      "ytstart": ""
     },
     {
       "date": "2025.09.26",
@@ -732,7 +747,8 @@
       "quote": "壊れた部分をうまく活かして、より良い作品に仕上げることができた",
       "url": "https://note.com/seitokai/n/ne44f34b7b9bb",
       "thumb": "",
-      "ytid": ""
+      "ytid": "",
+      "ytstart": ""
     }
   ],
   "contact": {

@@ -221,7 +221,7 @@ function aboutVideo() {
   // クリックした瞬間に site.js が youtube-nocookie の iframe に差し替える。
   return `<section data-reveal style="padding: 0 7vw 16vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transition: opacity 1s ease">
   <p style="margin: 0 0 34px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1">Music — 演奏</p>
-  <div class="yt-lite" data-ytid="${esc(v.ytid)}" data-title="${esc(v.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(v.poster || '')}')">
+  <div class="yt-lite" data-ytid="${esc(v.ytid)}"${ytStartAttr(v.ytstart)} data-title="${esc(v.title || '')}" style="background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(v.poster || '')}')">
     <button class="yt-play" type="button" aria-label="演奏動画を再生"></button>
   </div>
   <p style="margin: 16px 0 0; font: 400 12.5px ui-monospace, Menlo, monospace; color: #c4c4c6">${esc(v.caption || '')}</p>
@@ -700,6 +700,13 @@ function pressAwards() {
    自分の活動記録（articles）とは別物として持つ。あちらは「やったこと」、
    こちらは「外から取り上げられたこと」で、性質も出どころも違うため。
    新しい順に並べる（日付は 2025.12.29 のような文字列なので辞書順で足りる）。 */
+/* 長い番組の一部で取り上げられたときは、その場面から再生を始める。
+   秒数が入っていなければ何も足さない（頭から再生）。 */
+function ytStartAttr(sec) {
+  const n = Math.floor(Number(sec) || 0);
+  return n > 0 ? ` data-ytstart="${n}"` : '';
+}
+
 function mediaSorted() {
   return (data.media || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 }
@@ -723,7 +730,7 @@ function mediaCards() {
 
     // カードの角丸は外側（16px）で付いているので、中の動画の角丸と枠は消す
     const video = hasVideo
-      ? `\n      <div class="yt-lite" data-ytid="${esc(m.ytid)}" data-title="${esc(m.title || '')}" style="border-radius: 0; border: 0; border-bottom: 1px solid rgba(255,255,255,.1); background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(m.thumb || '')}')">
+      ? `\n      <div class="yt-lite" data-ytid="${esc(m.ytid)}"${ytStartAttr(m.ytstart)} data-title="${esc(m.title || '')}" style="border-radius: 0; border: 0; border-bottom: 1px solid rgba(255,255,255,.1); background-image: linear-gradient(rgba(6,6,8,.05), rgba(6,6,8,.45)), url('${esc(m.thumb || '')}')">
         <button class="yt-play" type="button" aria-label="${esc(m.title || '動画')}を再生"></button>
       </div>`
       : (m.thumb ? `\n      <div style="aspect-ratio: 16 / 9; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,.1)">
@@ -759,8 +766,9 @@ function mediaCardsHome() {
   const items = mediaSorted();
   if (!items.length) return '';
   return items.map((m) => {
+    const at = Math.floor(Number(m.ytstart) || 0);
     const url = String(m.ytid || '').trim()
-      ? 'https://youtu.be/' + String(m.ytid).trim()
+      ? 'https://youtu.be/' + String(m.ytid).trim() + (at > 0 ? '?t=' + at : '')
       : String(m.url || '').trim();
     const tag = url ? 'a' : 'div';
     const linkAttrs = url ? ` href="${esc(url)}" target="_blank" rel="noopener"` : '';
