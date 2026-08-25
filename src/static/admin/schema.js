@@ -53,7 +53,7 @@
             { key: 'alt', label: '説明（alt）', type: 'text' }
           ]
         },
-        {
+                {
           key: 'campaign', label: '投票の呼びかけ（政策甲子園）', type: 'group',
           fields: [
             {
@@ -61,9 +61,10 @@
               placeholder: 'https://manavote.jp/ippyodasen/',
               hint: '空にすると、ホームからこの枠が丸ごと消えます（呼びかけが終わったら空に）。'
             },
-            { key: 'badge', label: '肩書き（丸い札の文字）', type: 'text', placeholder: '政策甲子園 2026 全国大会　副会頭賞（全国2位）' },
-            { key: 'heading', label: '見出し', type: 'text' },
-            { key: 'note', label: '説明文', type: 'textarea' },
+            { key: 'image', label: '見せる画像', type: 'image',
+              hint: '公式サイトの1枚絵。賞・見出し・投票期間が絵の中に入っているので、文字で説明しなくても伝わります。' },
+            { key: 'imageAlt', label: '画像の説明（alt）', type: 'textarea',
+              hint: '目の見えない方や検索エンジンに、絵の中の文字を伝えるための文です。絵を差し替えたら、ここも直してください。' },
             {
               key: 'voteUrl', label: '投票の入口 URL', type: 'text', placeholder: 'https://line.me/R/ti/p/@…',
               hint: '押すと投票できる先（公式LINEなど）。空にすると、ボタンは政策ページに向きます。'
@@ -71,7 +72,6 @@
             { key: 'voteStart', label: '投票の開始日', type: 'text', placeholder: '2026-09-01',
               hint: '年-月-日 の形で。この日より前は「あと◯日」、期間中は「◯日まで」、終わったら「終わりました」と自動で変わります。' },
             { key: 'voteEnd', label: '投票の終了日', type: 'text', placeholder: '2026-09-20' },
-            { key: 'voteHow', label: '投票のしかた（小さい字）', type: 'textarea' },
             { key: 'linkText', label: 'リンクの文字', type: 'text', placeholder: '政策の中身を読む　→' }
           ]
         },

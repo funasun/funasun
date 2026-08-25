@@ -923,30 +923,38 @@ function campaignBlock(style) {
     ? `投票期間：${jpDate(c.voteStart)}〜${jpDate(c.voteEnd)}`
     : '';
   const ctaHref = voteOk ? vote : page;
+  /* 主役は公式サイトの1枚絵。読ませるより先に、ひと目で伝える。
+     画像の中に賞・見出し・期間が入っているので、こちらは文字を足しすぎない。 */
+  const img = String(c.image || '').trim();
+  const alt = c.imageAlt || '一票打線 — 政策甲子園2026 全国大会 副会頭賞（2位）。ようこそ、政治界隈へ。';
 
   if (style === 'classic') {
-    return `  <section class="c-camp"${attrs}>
-    <p class="c-camp-badge">${esc(c.badge || '')}</p>
-    <p class="c-camp-h">${esc(c.heading || '')}</p>
-    <p class="c-camp-note">${escLines(c.note || '')}</p>
-    <p class="c-camp-state" data-camp-state>${esc(period)}</p>
-    <p class="c-camp-act">
-      <a class="c-camp-btn" data-camp-cta href="${esc(ctaHref)}" target="_blank" rel="noopener">LINEから投票する</a>
-      <a class="c-camp-sub" href="${esc(page)}" target="_blank" rel="noopener">${esc(c.linkText || '政策の中身を読む　→')}</a>
-    </p>
-    <p class="c-camp-how">${escLines(c.voteHow || '')}</p>
+    const visual = img
+      ? `\n    <a class="c-camp-vis" href="${esc(page)}" target="_blank" rel="noopener">
+      <img src="${esc(img)}" alt="${esc(alt)}" loading="lazy" decoding="async">
+    </a>`
+      : '';
+    return `  <section class="c-camp"${attrs}>${visual}
+    <div class="c-camp-body">
+      <p class="c-camp-state" data-camp-state>${esc(period)}</p>
+      <p class="c-camp-act">
+        <a class="c-camp-btn" data-camp-cta href="${esc(ctaHref)}" target="_blank" rel="noopener">LINEから投票する</a>
+        <a class="c-camp-sub" href="${esc(page)}" target="_blank" rel="noopener">${esc(c.linkText || '政策の中身を読む　→')}</a>
+      </p>
+    </div>
   </section>`;
   }
-  return `<section id="vote" data-reveal${attrs} style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw; max-width: 1280px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1s ease, transform 1s ease">
-  <p style="margin: 0 0 16px; display: inline-block; font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: 5px 14px; border: 1px solid rgba(111,140,255,.5); border-radius: 999px; color: var(--accent-text, #adbcff)">${esc(c.badge || '')}</p>
-  <h2 style="margin: 0 0 20px; font: 600 clamp(26px, 3vw, 40px)/1.45 'Noto Serif JP', serif; max-width: 20em">${esc(c.heading || '')}</h2>
-  <p style="margin: 0 0 22px; font: 400 17px/1.85 'Noto Sans JP', sans-serif; color: #d8d8da; max-width: 44em; text-wrap: pretty">${escLines(c.note || '')}</p>
-  <p data-camp-state style="margin: 0 0 22px; font: 500 15px/1.7 'Noto Sans JP', sans-serif; color: #f4f4f5">${esc(period)}</p>
-  <p style="margin: 0 0 18px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap">
+  const visualB = img
+    ? `\n  <a href="${esc(page)}" target="_blank" rel="noopener" style="display: block; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); margin-bottom: 26px">
+    <img src="${esc(img)}" alt="${esc(alt)}" loading="lazy" decoding="async" style="display: block; width: 100%; height: auto">
+  </a>`
+    : '';
+  return `<section id="vote" data-reveal${attrs} style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw; max-width: 1000px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1s ease, transform 1s ease">${visualB}
+  <p data-camp-state style="margin: 0 0 20px; font: 500 15.5px/1.7 'Noto Sans JP', sans-serif; color: #f4f4f5">${esc(period)}</p>
+  <p style="margin: 0; display: flex; gap: 24px; align-items: center; flex-wrap: wrap">
     <a data-camp-cta href="${esc(ctaHref)}" target="_blank" rel="noopener" style="font: 500 15px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 14px 30px; border-radius: 999px; background: #6f8cff; color: #060608; text-decoration: none">LINEから投票する</a>
     <a href="${esc(page)}" target="_blank" rel="noopener" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none">${esc(c.linkText || '政策の中身を読む　→')}</a>
   </p>
-  <p style="margin: 0; font: 400 13.5px/1.85 'Noto Sans JP', sans-serif; color: #9a9aa0; max-width: 40em">${escLines(c.voteHow || '')}</p>
 </section>`;
 }
 

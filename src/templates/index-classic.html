@@ -73,18 +73,17 @@
 
 .c-block { margin-bottom: 4rem; }
 
-/* 政策甲子園の国民投票の呼びかけ。期間ものなので他より少し強く見せる */
-.c-camp { margin: 0 0 4rem; padding: 1.8rem; border: 1px solid rgba(111,140,255,.42); border-radius: 14px; background: rgba(111,140,255,.06); }
-.c-camp-badge { margin: 0 0 .9rem; display: inline-block; font: 400 .7rem 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: .28rem .8rem; border: 1px solid rgba(111,140,255,.55); border-radius: 999px; color: var(--accent-text, #adbcff); }
-.c-camp-h { margin: 0 0 .7rem; font: 400 1.2rem/1.6 'Noto Serif JP', serif; }
-.c-camp-note { margin: 0 0 1rem; font: 400 .85rem/1.9 'Noto Sans JP', sans-serif; color: #cfcfd1; text-wrap: pretty; }
-.c-camp-state { margin: 0 0 1.1rem; font: 500 .85rem/1.7 'Noto Sans JP', sans-serif; color: #f4f4f5; }
-.c-camp-act { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; margin: 0 0 1rem; }
+/* 政策甲子園の国民投票の呼びかけ。公式サイトの1枚絵を主役にして、ひと目で伝える */
+.c-camp { margin: 0 0 4rem; border: 1px solid rgba(111,140,255,.42); border-radius: 14px; overflow: hidden; background: rgba(111,140,255,.06); }
+.c-camp-vis { display: block; }
+.c-camp-vis img { display: block; width: 100%; height: auto; }
+.c-camp-body { padding: 1.3rem 1.5rem 1.5rem; }
+.c-camp-state { margin: 0 0 1rem; font: 500 .85rem/1.7 'Noto Sans JP', sans-serif; color: #f4f4f5; }
+.c-camp-act { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; margin: 0; }
 .c-camp-btn { font: 500 .85rem 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: .8rem 1.6rem; border-radius: 999px; background: #6f8cff; color: #060608; text-decoration: none; }
 .c-camp-btn:hover { opacity: .85; }
 .c-camp-sub { font: 400 .8rem 'Noto Sans JP', sans-serif; color: var(--accent-text, #adbcff); text-decoration: none; }
 .c-camp-sub:hover { opacity: .7; }
-.c-camp-how { margin: 0; font: 400 .75rem/1.85 'Noto Sans JP', sans-serif; color: #8a8a8f; text-wrap: pretty; }
 
 /* クラウドファンディングの札。文章と widget を横に並べ、狭い画面では縦に */
 .c-cf { display: flex; gap: 1.8rem; align-items: center; margin: 0 0 4rem; padding: 1.8rem; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(255,255,255,.02); }

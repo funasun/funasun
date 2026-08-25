@@ -313,13 +313,13 @@
     var days = function (ms) { return Math.ceil(ms / 86400000); };
 
     if (now < s0) {
-      stateEl.textContent = '投票は ' + jp(start) + ' から。あと' + days(s0 - now) + '日です（先にLINEを友だち追加しておけます）';
+      stateEl.textContent = '投票は ' + jp(start) + ' から。あと' + days(s0 - now) + '日';
       if (voteUrl) cta.textContent = 'LINEを友だち追加しておく';
     } else if (now <= e0) {
       stateEl.textContent = '投票を受付中。' + jp(end) + ' まで、あと' + days(e0 - now) + '日';
       if (voteUrl) cta.textContent = 'LINEから投票する';
     } else {
-      stateEl.textContent = '投票は ' + jp(end) + ' に終わりました。応援ありがとうございました。';
+      stateEl.textContent = '投票は終わりました。応援ありがとうございました。';
       cta.textContent = '結果と政策を見る';
       if (pageUrl) cta.href = pageUrl;
     }
