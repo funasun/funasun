@@ -904,6 +904,61 @@ function homePortrait(style) {
    ・載せるのは camp-fire.jp のページだけ。他所のURLは無視する（うっかり
      知らないサイトを自分のページの中で開かせない）
    ・widget は 245x365 の決め打ちなので、狭い画面でもこの幅のまま置く */
+/* ---------------- 政策甲子園の国民投票の呼びかけ ----------------
+   期間が決まっている話なので、日付でボタンの文言が変わる（site.js が見る）。
+   終わったあとに消し忘れても「投票は終了しました」に切り替わる。
+   pageUrl を空にすると、ホームから丸ごと消える。 */
+function campaignBlock(style) {
+  const c = data.home.campaign || {};
+  const page = String(c.pageUrl || '').trim();
+  const vote = String(c.voteUrl || '').trim();
+  // 外へ送り出す先なので、https のリンクだけを載せる
+  if (!/^https:\/\//.test(page)) return '';
+  const voteOk = /^https:\/\//.test(vote);
+  const attrs = ` data-campaign data-vote-start="${esc(c.voteStart || '')}" data-vote-end="${esc(c.voteEnd || '')}"`
+    + ` data-vote-url="${esc(voteOk ? vote : '')}" data-page-url="${esc(page)}"`;
+  /* JSが動かない場合にも正しい文が出るよう、既定は期間の告知にしておく
+     （期間前でも「友だち追加」で入口には行けるので、押して困らない） */
+  const period = [c.voteStart, c.voteEnd].every(Boolean)
+    ? `投票期間：${jpDate(c.voteStart)}〜${jpDate(c.voteEnd)}`
+    : '';
+  const ctaHref = voteOk ? vote : page;
+
+  if (style === 'classic') {
+    return `  <section class="c-camp"${attrs}>
+    <p class="c-camp-badge">${esc(c.badge || '')}</p>
+    <p class="c-camp-h">${esc(c.heading || '')}</p>
+    <p class="c-camp-note">${escLines(c.note || '')}</p>
+    <p class="c-camp-state" data-camp-state>${esc(period)}</p>
+    <p class="c-camp-act">
+      <a class="c-camp-btn" data-camp-cta href="${esc(ctaHref)}" target="_blank" rel="noopener">LINEから投票する</a>
+      <a class="c-camp-sub" href="${esc(page)}" target="_blank" rel="noopener">${esc(c.linkText || '政策の中身を読む　→')}</a>
+    </p>
+    <p class="c-camp-how">${escLines(c.voteHow || '')}</p>
+  </section>`;
+  }
+  return `<section id="vote" data-reveal${attrs} style="border-top: 1px solid rgba(255,255,255,.08); padding: 12vh 7vw; max-width: 1280px; margin: 0 auto; box-sizing: border-box; opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1s ease, transform 1s ease">
+  <p style="margin: 0 0 16px; display: inline-block; font: 400 12px 'Noto Sans JP', sans-serif; letter-spacing: .1em; padding: 5px 14px; border: 1px solid rgba(111,140,255,.5); border-radius: 999px; color: var(--accent-text, #adbcff)">${esc(c.badge || '')}</p>
+  <h2 style="margin: 0 0 20px; font: 600 clamp(26px, 3vw, 40px)/1.45 'Noto Serif JP', serif; max-width: 20em">${esc(c.heading || '')}</h2>
+  <p style="margin: 0 0 22px; font: 400 17px/1.85 'Noto Sans JP', sans-serif; color: #d8d8da; max-width: 44em; text-wrap: pretty">${escLines(c.note || '')}</p>
+  <p data-camp-state style="margin: 0 0 22px; font: 500 15px/1.7 'Noto Sans JP', sans-serif; color: #f4f4f5">${esc(period)}</p>
+  <p style="margin: 0 0 18px; display: flex; gap: 22px; align-items: center; flex-wrap: wrap">
+    <a data-camp-cta href="${esc(ctaHref)}" target="_blank" rel="noopener" style="font: 500 15px 'Noto Sans JP', sans-serif; letter-spacing: .06em; padding: 14px 30px; border-radius: 999px; background: #6f8cff; color: #060608; text-decoration: none">LINEから投票する</a>
+    <a href="${esc(page)}" target="_blank" rel="noopener" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none">${esc(c.linkText || '政策の中身を読む　→')}</a>
+  </p>
+  <p style="margin: 0; font: 400 13.5px/1.85 'Noto Sans JP', sans-serif; color: #9a9aa0; max-width: 40em">${escLines(c.voteHow || '')}</p>
+</section>`;
+}
+
+/* 2026-09-01 → 2026年9月1日（火） */
+function jpDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return String(iso || '');
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const w = '日月火水木金土'[d.getUTCDay()];
+  return `${+m[1]}年${+m[2]}月${+m[3]}日（${w}）`;
+}
+
 function campfireBlock(style) {
   const c = data.home.campfire || {};
   const url = String(c.url || '').trim();
@@ -958,6 +1013,7 @@ const pages = [
       '{{PHOTO_GOVERNANCE}}': pillarPhoto('governance'),
       '{{PHOTO_MUSIC}}': pillarPhoto('music'),
       // ここから下は classic だけが使う（brand 側には無いので素通りする）
+      '{{CAMPAIGN}}': campaignBlock(homeStyle),
       '{{CAMPFIRE}}': campfireBlock(homeStyle),
       '{{C_NEWS}}': classicNews(),
       '{{C_PREVIEWS}}': classicPreviews(),

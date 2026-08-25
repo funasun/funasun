@@ -54,6 +54,28 @@
           ]
         },
         {
+          key: 'campaign', label: '投票の呼びかけ（政策甲子園）', type: 'group',
+          fields: [
+            {
+              key: 'pageUrl', label: '政策ページの URL', type: 'text',
+              placeholder: 'https://manavote.jp/ippyodasen/',
+              hint: '空にすると、ホームからこの枠が丸ごと消えます（呼びかけが終わったら空に）。'
+            },
+            { key: 'badge', label: '肩書き（丸い札の文字）', type: 'text', placeholder: '政策甲子園 2026 全国大会　副会頭賞（全国2位）' },
+            { key: 'heading', label: '見出し', type: 'text' },
+            { key: 'note', label: '説明文', type: 'textarea' },
+            {
+              key: 'voteUrl', label: '投票の入口 URL', type: 'text', placeholder: 'https://line.me/R/ti/p/@…',
+              hint: '押すと投票できる先（公式LINEなど）。空にすると、ボタンは政策ページに向きます。'
+            },
+            { key: 'voteStart', label: '投票の開始日', type: 'text', placeholder: '2026-09-01',
+              hint: '年-月-日 の形で。この日より前は「あと◯日」、期間中は「◯日まで」、終わったら「終わりました」と自動で変わります。' },
+            { key: 'voteEnd', label: '投票の終了日', type: 'text', placeholder: '2026-09-20' },
+            { key: 'voteHow', label: '投票のしかた（小さい字）', type: 'textarea' },
+            { key: 'linkText', label: 'リンクの文字', type: 'text', placeholder: '政策の中身を読む　→' }
+          ]
+        },
+        {
           key: 'campfire', label: 'クラウドファンディング', type: 'group',
           fields: [
             {

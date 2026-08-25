@@ -283,6 +283,48 @@
     }, { once: true });
   });
 
+  /* ============ 国民投票の呼びかけ（ホーム）============ */
+  /* 期間が決まっている話なので、見ている日によって文言を変える。
+     ページは作り置き（静的）なので、ここは見る人の端末で判断する。
+     日付は日本時間で数える（海外から見ても、日本の期間で正しく出るように）。 */
+  document.querySelectorAll('[data-campaign]').forEach(function (box) {
+    var start = box.getAttribute('data-vote-start');
+    var end = box.getAttribute('data-vote-end');
+    var voteUrl = box.getAttribute('data-vote-url');
+    var pageUrl = box.getAttribute('data-page-url');
+    var stateEl = box.querySelector('[data-camp-state]');
+    var cta = box.querySelector('[data-camp-cta]');
+    if (!start || !end || !stateEl || !cta) return;
+
+    var jst = function (iso, endOfDay) {
+      var t = Date.parse(iso + (endOfDay ? 'T23:59:59+09:00' : 'T00:00:00+09:00'));
+      return isNaN(t) ? null : t;
+    };
+    var s0 = jst(start, false), e0 = jst(end, true);
+    if (s0 === null || e0 === null) return;
+    var now = Date.now();
+
+    var jp = function (iso) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+      if (!m) return iso;
+      var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      return +m[2] + '月' + (+m[3]) + '日（' + '日月火水木金土'[d.getUTCDay()] + '）';
+    };
+    var days = function (ms) { return Math.ceil(ms / 86400000); };
+
+    if (now < s0) {
+      stateEl.textContent = '投票は ' + jp(start) + ' から。あと' + days(s0 - now) + '日です（先にLINEを友だち追加しておけます）';
+      if (voteUrl) cta.textContent = 'LINEを友だち追加しておく';
+    } else if (now <= e0) {
+      stateEl.textContent = '投票を受付中。' + jp(end) + ' まで、あと' + days(e0 - now) + '日';
+      if (voteUrl) cta.textContent = 'LINEから投票する';
+    } else {
+      stateEl.textContent = '投票は ' + jp(end) + ' に終わりました。応援ありがとうございました。';
+      cta.textContent = '結果と政策を見る';
+      if (pageUrl) cta.href = pageUrl;
+    }
+  });
+
   /* ============ プロフィール文コピー（Press プレスキット）============ */
   // 「コピー」ボタンで data-copy が指す要素の本文をクリップボードに入れる。
   document.querySelectorAll('.copy-btn').forEach(function (btn) {
