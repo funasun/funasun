@@ -228,3 +228,31 @@ select.field option { background: #0a0a0e; color: #f4f4f5; }
   [data-m="fgrid"] > div:nth-child(1) { grid-column: 1 / -1; }
   [data-m="fgrid"] > div:nth-child(3) { grid-column: 1 / -1; order: 4; }
 }
+
+/* ============ Story（About の読み物）============ */
+/* About に置く入口カード。写真を敷いて、カード全体が押せる */
+.story-card { position: relative; display: block; min-height: 300px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); text-decoration: none; color: #f4f4f5; background: #0b0b0f; isolation: isolate; }
+.story-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transform: scale(1.02); transition: transform 1.2s cubic-bezier(.2,.7,.2,1); }
+.story-card::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(6,6,8,.92) 0%, rgba(6,6,8,.72) 48%, rgba(6,6,8,.25) 100%); }
+.story-card-body { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; padding: 44px 44px 40px; max-width: 560px; box-sizing: border-box; }
+.story-card-eyebrow { font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1; }
+.story-card-title { font: 600 clamp(24px, 2.6vw, 34px)/1.45 'Noto Serif JP', serif; letter-spacing: .04em; }
+.story-card-lead { font: 400 15px/1.85 'Noto Sans JP', sans-serif; color: #d8d8da; text-wrap: pretty; }
+.story-card-link { margin-top: 8px; font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); }
+.story-card:hover img, .story-card:focus-visible img { transform: scale(1.06); }
+.story-card:focus-visible { outline: 2px solid #adbcff; outline-offset: 3px; }
+@media (max-width: 700px) {
+  .story-card { min-height: 0; }
+  .story-card::after { background: linear-gradient(180deg, rgba(6,6,8,.55) 0%, rgba(6,6,8,.9) 100%); }
+  .story-card-body { padding: 28px 22px 26px; }
+}
+
+/* Story ページ: 読み進み具合の細い線（ナビの真下）。JS なしで、スクロールに連動 */
+.story-progress { position: fixed; top: 52px; left: 0; width: 100%; height: 2px; z-index: 89; pointer-events: none; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, #6f8cff, #adbcff); }
+@supports (animation-timeline: scroll()) {
+  .story-progress { animation: storyProgress linear both; animation-timeline: scroll(root); }
+}
+@keyframes storyProgress { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+/* 演出を飛ばす道。普段は見えず、Tab で来たときだけ現れる */
+.story-skip { position: fixed; top: 60px; left: 16px; z-index: 95; padding: 10px 16px; border-radius: 999px; background: #6f8cff; color: #060608; font: 500 13px 'Noto Sans JP', sans-serif; text-decoration: none; transform: translateY(-200%); opacity: 0; pointer-events: none; transition: transform .25s ease, opacity .25s ease; }
+.story-skip:focus-visible { transform: none; opacity: 1; pointer-events: auto; outline: 2px solid #f4f4f5; outline-offset: 2px; }

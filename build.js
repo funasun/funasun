@@ -54,7 +54,9 @@ function reportUnusedTextKeys() {
   /* ホームは2つの見せ方があり、いま作っていない方の文言は当然「使われていない」。
      それを毎回並べると本当の消し忘れが埋もれるので、ホームの文言だけ除く。 */
   const otherHome = homeStyle === 'classic';
-  const unused = all.filter((k) => !usedTextKeys.has(k) && !(otherHome && k.startsWith('index.')));
+  // brand 版の本文は Story ページでも使うので、ホームにしか無い枠（掲載・新着）だけ除く
+  const homeOnly = (k) => k.startsWith('index.media.') || k.startsWith('index.news.');
+  const unused = all.filter((k) => !usedTextKeys.has(k) && !(otherHome && homeOnly(k)));
   if (unused.length) console.warn(`注意: どこにも使われていない文言 ${unused.length}件: ${unused.join(', ')}`);
 }
 
@@ -997,6 +999,58 @@ function campfireBlock(style) {
 </section>`;
 }
 
+/* ---------------- Story（スクロールで読む紹介） ----------------
+   ホームを「情報重視」にしても、読み物として強い brand 版を失わないための
+   別ページ。index.html の雛形をそのまま使い、ホーム専用の枠（投票の呼びかけ・
+   クラファン・掲載・新着）だけを切り落として、終わりに About へ戻る案内を足す。
+   複製を持たないので、brand 版を直せば Story も一緒に直る。 */
+function storyTransform(html) {
+  // ホーム専用の枠（{{CAMPAIGN}} から </main> の手前まで）を、Story の結びに差し替える
+  const a = html.indexOf('{{CAMPAIGN}}');
+  const b = html.indexOf('</main>');
+  if (a < 0 || b < 0 || b < a) throw new Error('story: index.html の切り出し位置が見つかりません');
+  html = html.slice(0, a) + '{{STORY_END}}\n' + html.slice(b);
+  // 旧サイトからの飛び先の付け替えはホームだけの仕事
+  html = html.replace(/<script>\s*\/\/ 旧サイト[\s\S]*?<\/script>\s*/, '');
+  // 読み進み具合の線と、演出を飛ばして最後へ行ける道（キーボード・読み上げ向け）
+  html = html.replace('<body class="p-home"', '<body class="p-home p-story"');
+  html = html.replace('<main>', `<a class="story-skip" href="#story-end">演出を飛ばして最後へ</a>
+<div class="story-progress" aria-hidden="true"></div>
+<main>`);
+  return html;
+}
+
+function storyEnd() {
+  return `<section id="story-end" style="border-top: 1px solid rgba(255,255,255,.08); padding: 14vh 7vw 16vh; text-align: center; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <p data-reveal style="margin: 0 0 18px; font: 500 12px 'EB Garamond', serif; letter-spacing: .4em; text-transform: uppercase; color: #cfcfd1; opacity: calc(var(--r, 0)); transition: opacity 1s ease">{{T:story.endEyebrow}}</p>
+  <p data-reveal style="margin: 0 0 34px; font: 500 clamp(18px, 2vw, 26px)/1.9 'Noto Serif JP', serif; letter-spacing: .1em; opacity: calc(var(--r, 0)); transition: opacity 1s ease .1s">{{T:story.endLine}}</p>
+  <div data-reveal style="display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; opacity: calc(var(--r, 0)); transition: opacity 1s ease .2s">
+    <a href="about.html" style="font: 500 14px 'Noto Sans JP', sans-serif; letter-spacing: .08em; padding: 13px 26px; border-radius: 999px; background: #6f8cff; color: #060608; text-decoration: none">{{T:story.link1}}</a>
+    <a href="research.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none; align-self: center">{{T:story.link2}}</a>
+    <a href="archive.html" style="font: 400 14px 'Noto Sans JP', sans-serif; letter-spacing: .1em; color: var(--accent-text, #adbcff); text-decoration: none; align-self: center">{{T:story.link3}}</a>
+  </div>
+</section>`;
+}
+
+/* About に置く Story への入口。写真を敷いた1枚のカードで、押す場所を迷わせない。
+   写真はホームの柱写真（研究）→ 顔写真 の順で、あるものを使う。 */
+function aboutStoryCard() {
+  const pp = (data.home.pillarPhotos || {});
+  const pick = ['research', 'music', 'politics', 'governance'].map((k) => (pp[k] || {}).src).find(Boolean)
+    || ((data.home.portrait || {}).src) || 'images/jigazo2.webp';
+  return `<section style="padding: 0 7vw 12vh; max-width: 1080px; margin: 0 auto; box-sizing: border-box">
+  <a href="story.html" class="story-card" data-reveal style="opacity: calc(var(--r, 0)); transform: translateY(calc((1 - var(--r, 0)) * 24px)); transition: opacity 1s ease, transform 1s ease">
+    <img src="${esc(pick)}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+    <span class="story-card-body">
+      <span class="story-card-eyebrow">{{T:about.storyEyebrow}}</span>
+      <span class="story-card-title">{{T:about.storyTitle}}</span>
+      <span class="story-card-lead">{{T:about.storyLead}}</span>
+      <span class="story-card-link">{{T:about.storyLink}}</span>
+    </span>
+  </a>
+</section>`;
+}
+
 /* ---------------- pages ---------------- */
 
 const pages = [
@@ -1041,8 +1095,29 @@ const pages = [
     tokens: {
       '{{ABOUT_PROSE}}': esc(data.about.prose),
       '{{META_ROWS}}': metaRows(),
+      '{{ABOUT_STORY}}': aboutStoryCard(),
       '{{ABOUT_VIDEO}}': aboutVideo(),
       '{{TIMELINE_ITEMS}}': timelineItems()
+    }
+  },
+  {
+    /* About の下に置く「読み物」。brand 版ホームと同じ雛形から切り出す
+       （複製を持たない）。ナビでは About の仲間として光らせる。 */
+    file: 'story.html',
+    template: 'index.html',
+    transform: storyTransform,
+    active: 'About',
+    canonicalPath: '/story.html',
+    title: 'Story — 船越温 / Tsutsumu Funakoshi',
+    desc: '研究・政治・制度設計・音楽。船越温の4つの顔を、写真と言葉でスクロールしながら読む紹介。',
+    tokens: {
+      '{{GAME_TILES}}': gameTiles(),
+      '{{PHOTO_RESEARCH}}': pillarPhoto('research'),
+      '{{PHOTO_POLITICS}}': pillarPhoto('politics'),
+      '{{PHOTO_GOVERNANCE}}': pillarPhoto('governance'),
+      '{{PHOTO_MUSIC}}': pillarPhoto('music'),
+      '{{HOME_PORTRAIT}}': homePortrait('width: 100%; height: 100%; object-fit: cover; object-position: top'),
+      '{{STORY_END}}': storyEnd()
     }
   },
   {
@@ -1197,6 +1272,8 @@ fillStaticPartials(DIST);
 for (const page of pages) {
   // 詳細ページのように「1つの型から何枚も作る」ページは template を別に指定する
   let html = read(path.join('templates', page.template || page.file));
+  // 1つの雛形から「別の顔」を切り出すページ（Story など）はここで加工する
+  if (page.transform) html = page.transform(html);
   const prefix = page.prefix || '';
   html = html
     .replace('{{HEAD}}', headHtml(page))
@@ -1261,6 +1338,7 @@ ${(data.media || []).length
 
 - [Home](${SITE}/): 研究・政治・制度設計・音楽を束ねる自己紹介
 - [About](${SITE}/about.html): プロフィール・経歴タイムライン
+- [Story](${SITE}/story.html): 研究・政治・制度設計・音楽の4つの顔を、写真と言葉でスクロールしながら読む紹介（読み物版）
 - [Research](${SITE}/research.html): 廃棄うどん研究の詳細（統計・プロセス・受賞）
 - [Works](${SITE}/works.html): 個人開発の Web アプリ・ゲームと、学校で実際に使われているサイト計${data.worksItems.length}本
 - [Archive](${SITE}/archive.html): 活動の時系列記録（記事全文）

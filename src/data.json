@@ -823,7 +823,11 @@
       "ctaLink3": "プレスキット　→",
       "eyebrow": "About",
       "h1": "船越 温",
-      "timelineEyebrow": "Timeline — 歩み"
+      "timelineEyebrow": "Timeline — 歩み",
+      "storyEyebrow": "Story — 読みもの",
+      "storyTitle": "スクロールで読む、船越温。",
+      "storyLead": "研究・政治・制度設計・音楽。4つの顔を、写真と言葉でひとつの物語に。およそ3分。",
+      "storyLink": "ストーリーを読む　→"
     },
     "archive": {
       "eyebrow": "Archive",
@@ -1029,6 +1033,13 @@
       "tool3Desc": "PDFをまとめる・ばらす・並べ替える。画像とPDFを行き来する。すべて端末の中だけで処理します。",
       "tool4Title": "動画編集　→",
       "tool4Desc": "動画を切って、つないで、1本に。共有した動画もそのまま編集でき、端末の中だけで処理します。"
+    },
+    "story": {
+      "endEyebrow": "Story — おわり",
+      "endLine": "読んでくれて、ありがとう。\n続きは、いまの活動で。",
+      "link1": "経歴とタイムライン（About）",
+      "link2": "研究を読む　→",
+      "link3": "活動記録を見る　→"
     }
   }
 }
