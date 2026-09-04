@@ -449,6 +449,8 @@ export const VIEWER360_JS = `
           muteBtn.addEventListener('click', function () { el.muted = !el.muted; muteBtn.textContent = el.muted ? '🔇' : '🔊'; });
           bar.appendChild(playBtn); bar.appendChild(seek); bar.appendChild(timeEl); bar.appendChild(muteBtn);
           root.appendChild(bar);
+          // 長さはもう分かっていることが多い（durationchange はこの前に済んでいる）ので、今すぐ出す
+          if (el.duration) timeEl.textContent = fmt(el.currentTime) + ' / ' + fmt(el.duration);
           tapBtn = document.createElement('button'); tapBtn.type = 'button'; tapBtn.className = 'v360-tap'; tapBtn.textContent = '▶'; tapBtn.setAttribute('aria-label', '再生');
           tapBtn.addEventListener('click', togglePlay);
           root.appendChild(tapBtn);
