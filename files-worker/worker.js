@@ -708,13 +708,56 @@ async function nasFetch(link, range) {
       if (range) h.Range = range;
       const r = await fetch('https://' + host + '/fsdownload/' + encodeURIComponent(g.token) + '/file',
         { headers: h, signal: nasAbort() });
-      if ((r.status === 200 || r.status === 206) && r.body) return r;
+      if (r.status === 206 && r.body) return r;
+      if (r.status === 200 && r.body) {
+        // Range を頼んでいないなら全体で正しい
+        if (!range) return r;
+        /* Range を頼んだのに全体(200)が来た。NAS がたまにやる。
+           取り直せば 206 になることが多いので、本文は捨ててやり直す。
+           最後まで直らなければ 200 のまま返し、呼び出し側で切り出す。 */
+        if (attempt < 2) { try { await r.body.cancel(); } catch (e) { } nasSidCache.delete(g.token); continue; }
+        return r;
+      }
       nasSidCache.delete(g.token);
     } catch (e) {
       nasSidCache.delete(g.token);
     }
   }
   return null;
+}
+
+/* 全体(200)の流れを、頼まれた Range（bytes=開始-終了）だけに切り出して 206 にする。
+   開始までの分は捨てながら読む（途中読みできない置き場所への最後の手段）。 */
+function sliceToRange(body, range, total) {
+  const m = /^bytes=(\d+)-(\d*)$/.exec(String(range || '').trim());
+  if (!m) return null;
+  const start = Number(m[1]);
+  let end = m[2] ? Number(m[2]) : (total ? total - 1 : -1);
+  if (end < 0 || end < start) return null;
+  if (total && end >= total) end = total - 1;
+  const reader = body.getReader();
+  let pos = 0;
+  const stream = new ReadableStream({
+    async pull(controller) {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) { controller.close(); return; }
+        const cs = pos, ce = pos + value.length;   // このかたまりの [cs, ce)
+        pos = ce;
+        if (ce <= start) continue;                  // まだ開始前：捨てる
+        const from = Math.max(0, start - cs);
+        const to = Math.min(value.length, end + 1 - cs);
+        if (to > from) controller.enqueue(value.subarray(from, to));
+        if (ce > end) { controller.close(); try { await reader.cancel(); } catch (e) { } return; }
+        return;
+      }
+    },
+    cancel() { try { reader.cancel(); } catch (e) { } }
+  });
+  const h = new Headers();
+  h.set('Content-Range', 'bytes ' + start + '-' + end + '/' + (total || '*'));
+  h.set('Content-Length', String(end - start + 1));
+  return new Response(stream, { status: 206, headers: h });
 }
 
 /* ---------------- 渡した回数 ----------------
@@ -1028,6 +1071,16 @@ async function serveFile(env, rawId, url, request, inline, origin) {
     }
   }
   if (!res.body) return htmlPage('ダウンロードできません', '<p class="muted">ファイルの中身を取り出せませんでした。</p>', 502);
+
+  /* Range を頼んだのに全体(200)が来たとき（NAS 中継のくせ）は、ここで切り出して
+     206 にして渡す。動画の編集・360°の切り出しは「途中読み」が前提なので、
+     全体を渡されると読めなくなる（クライアントが何百MBも落とすことになる）。 */
+  if (range && res.status === 200) {
+    const total = Number(res.headers.get('Content-Length') || 0)
+      || (servedPv ? Number(meta.pvSize || 0) : Number(meta.origSize || 0)) || 0;
+    const sliced = sliceToRange(res.body, range, total);
+    if (sliced) res = sliced;
+  }
 
   const headers = new Headers();
   headers.set('Content-Type', type);

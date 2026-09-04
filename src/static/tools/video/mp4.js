@@ -47,13 +47,15 @@
           var cr = r.headers.get('Content-Range');
           if (cr) { var m = cr.match(/\/(\d+)/); if (m) size = Number(m[1]); }
           if (r.status === 200 && !cr) {
-            // Range が効いていない。本文を止めて、少し待ってからもう一度
+            // Range が効いていない。全体の大きさだけ覚え、本文は止めて、少し待ってからもう一度
+            var cl = Number(r.headers.get('Content-Length') || 0);
+            if (cl > 0 && !size) size = cl;
             try { if (r.body && r.body.cancel) r.body.cancel(); } catch (e) { }
-            if (tries < 3) {
-              return new Promise(function (res) { setTimeout(res, 400 * (tries + 1)); })
+            if (tries < 5) {
+              return new Promise(function (res) { setTimeout(res, 1000 * (tries + 1)); })
                 .then(function () { return rangeFetch(off, len, tries + 1); });
             }
-            throw new Error('この置き場所は途中読み(Range)に対応していません');
+            throw new Error('この置き場所は途中読み(Range)に対応していません（しばらくしてからもう一度お試しください）');
           }
           return r.arrayBuffer().then(function (b) { return new Uint8Array(b).slice(0, len); });
         });

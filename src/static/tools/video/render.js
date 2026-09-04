@@ -269,7 +269,9 @@
     /* 音の1秒あたりの本数は、時間の刻み（timescale）とは別物。
        元の設定から読んだ値を使わないと、復号器が受け付けてくれない。 */
     var srcRate = cfg.sampleRate || a.timescale || 48000;
-    var srcCh = Math.max(1, Math.min(2, cfg.channels || 2));
+    // 復号器には元のチャンネル数をそのまま伝える（THETA の4ch 立体音響など）。
+    // 出来上がりは 2ch にまとめる（下の assemble で落とす）。
+    var srcCh = Math.max(1, cfg.channels || 2);
     var ef = clip.effects || {};
     var gain = ef.volume === undefined ? 1 : Number(ef.volume);
     var speed = Number(ef.speed) || 1;
@@ -341,6 +343,14 @@
     if (!chunks.length) return null;
     chunks.sort(function (x, y) { return x.t - y.t; });
     var want = Math.max(0, Math.round((clip.out - clip.in) * srcRate));
+    /* 3ch 以上は 2ch にまとめる。4ch（アンビソニック等）は 1ch目が「全方向」なので
+       それを左右に。3ch や 5.1ch は前の左右をそのまま使う。 */
+    var srcChs = chunks[0].planes.length;
+    if (srcChs > 2) {
+      chunks.forEach(function (ck) {
+        ck.planes = srcChs === 4 ? [ck.planes[0], ck.planes[0]] : [ck.planes[0], ck.planes[1]];
+      });
+    }
     var chs = Math.max(1, chunks[0].planes.length);
     var src = [];
     for (var c = 0; c < chs; c++) src.push(new Float32Array(want));
