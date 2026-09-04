@@ -55,6 +55,7 @@
    受け取りページも tsutsumufunakoshi.com の一部として見えるように。 */
 import { CHROME_HEAD, NAV_HTML, FOOTER_HTML } from './chrome.gen.js';
 import { qrSvg } from './qr.js';
+import { VIEWER360_JS, VIEWER360_CSS } from './viewer360.js';
 
 const ALLOW_ORIGINS = [
   'https://tsutsumufunakoshi.com',
@@ -1352,6 +1353,8 @@ const PREVIEW_JS = `
           var img = document.createElement('img');
           img.src = src; img.alt = name; img.loading = 'lazy';
           img.onerror = function () { box.textContent = 'プレビューを読み込めませんでした。'; };
+          // 横:縦 が 2:1 の全天球写真なら、見回せるビューアに切り替える
+          img.onload = function () { maybe360(box, img, 'image', src, false); };
           box.appendChild(img);
         } else if (kind === 'video') {
           var v = document.createElement('video');
@@ -1371,6 +1374,8 @@ const PREVIEW_JS = `
               : 'この端末では再生できない形式の動画です。「保存」なら中身はそのまま受け取れます。';
             box.appendChild(p);
           };
+          // 大きさが分かった時点で、全天球動画ならビューアに切り替える
+          v.addEventListener('loadedmetadata', function () { maybe360(box, v, 'video', src, false); });
           box.appendChild(v);
         } else if (kind === 'audio') {
           var a = document.createElement('audio');
@@ -1415,7 +1420,8 @@ const PREVIEW_JS = `
             })
             .catch(function () { pre.textContent = 'プレビューを読み込めませんでした。'; });
         }
-      }`;
+      }
+      ${VIEWER360_JS}`;
 
 /* ---------- 見た目つきHTML ---------- */
 
@@ -1478,6 +1484,7 @@ ${CHROME_HEAD}
   .mini.dl { border-color:var(--accent); color:var(--accent); }
   .mini:hover { background:rgba(255,255,255,.06); }
   .row .pv { margin:16px 0 0; }
+  ${VIEWER360_CSS}
 </style></head><body>
 ${NAV_HTML}
 <main class="stagearea">${inner.indexOf('class="card') === -1 ? '<div class="card">' + inner + '</div>' : inner}</main>
