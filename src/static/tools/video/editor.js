@@ -91,8 +91,23 @@
     return w > 0 && h > 0 && Math.abs(w / h - 2) < 0.06;
   }
   var DEG = Math.PI / 180;
-  function newView() { return { yaw: 0, pitch: 0, fov: 80 * DEG, end: null }; }
-  function copyView(v) { return v ? { yaw: v.yaw, pitch: v.pitch, fov: v.fov, end: v.end ? { yaw: v.end.yaw, pitch: v.end.pitch, fov: v.end.fov } : null } : null; }
+  // tilt/tdir は水平補正（元の映像の「上」のずれ）。クリップ全体で1つ
+  function newView() { return { yaw: 0, pitch: 0, fov: 80 * DEG, end: null, tilt: 0, tdir: 0 }; }
+  function copyView(v) { return v ? { yaw: v.yaw, pitch: v.pitch, fov: v.fov, tilt: v.tilt || 0, tdir: v.tdir || 0, end: v.end ? { yaw: v.end.yaw, pitch: v.end.pitch, fov: v.end.fov } : null } : null; }
+  // 3x3 行列（行優先）
+  function mul3(a, b) { var r = []; for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]; return r; }
+  function mulv3(m, v) { return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]]; }
+  function rx3(a) { var c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; }
+  function ry3(a) { var c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; }
+  /* いま画面の真ん中に見えている方向を「本当の上（sign=+1）／下（-1）」として、補正の角度を決める */
+  function levelFrom(view, cur, sign) {
+    var d = mulv3(ry3(-cur.yaw), mulv3(rx3(cur.pitch), [0, 0, -1]));
+    if (view.tilt) d = mulv3(mul3(mul3(ry3(view.tdir), rx3(-view.tilt)), ry3(-view.tdir)), d);
+    if (sign < 0) d = [-d[0], -d[1], -d[2]];
+    view.tilt = Math.acos(Math.max(-1, Math.min(1, d[1])));
+    view.tdir = Math.atan2(-d[0], -d[2]);
+    cur.pitch = 0;
+  }
   // k=0 で始まり、k=1 で終わりの向き（終わりが無ければずっと始まりのまま）
   function viewAt(v, k) {
     if (!v.end) return v;
@@ -323,7 +338,8 @@
     if (!v360.proj) { v360.proj = Proj360.create($('v360-prev').width || 560, $('v360-prev').height || 315, $('v360-prev')); if (!v360.proj) return; }
     v360Size();
     var v = v360Cur(); if (!v) return;
-    try { v360.proj.draw(withFrame && player.readyState >= 2 ? player : null, v.yaw, v.pitch, v.fov); } catch (e) { }
+    var cv0 = clips[current].view;
+    try { v360.proj.draw(withFrame && player.readyState >= 2 ? player : null, v.yaw, v.pitch, v.fov, cv0.tilt, cv0.tdir); } catch (e) { }
   }
   function v360Load(c) {
     v360.editing = 'start';
@@ -331,8 +347,12 @@
     $('v360-endrow').hidden = !c.view.end;
     v360Which();
     $('v360-fov').value = Math.round(c.view.fov / DEG); $('v360-fov-val').textContent = $('v360-fov').value + '°';
+    v360LevelState(c.view);
     v360Size();
     setTimeout(function () { v360Draw(true); }, 50);
+  }
+  function v360LevelState(v) {
+    $('v360-lv-state').textContent = v.tilt ? '補正中（' + Math.round(v.tilt / DEG) + '°のずれを直しています）' : '補正なし';
   }
   function v360Which() {
     $('v360-edit-start').classList.toggle('on', v360.editing === 'start');
@@ -379,6 +399,18 @@
       var v = v360Cur(); if (!v) return;
       v.fov = Number($('v360-fov').value) * DEG; $('v360-fov-val').textContent = $('v360-fov').value + '°';
       v360Draw(false);
+    });
+    $('v360-lv-up').addEventListener('click', function () {
+      var c = clips[current]; var v = v360Cur(); if (!c || !v) return;
+      levelFrom(c.view, v, 1); v360LevelState(c.view); v360Draw(false); renderClips();
+    });
+    $('v360-lv-down').addEventListener('click', function () {
+      var c = clips[current]; var v = v360Cur(); if (!c || !v) return;
+      levelFrom(c.view, v, -1); v360LevelState(c.view); v360Draw(false); renderClips();
+    });
+    $('v360-lv-off').addEventListener('click', function () {
+      var c = clips[current]; if (!c || !c.view) return;
+      c.view.tilt = 0; c.view.tdir = 0; v360LevelState(c.view); v360Draw(false);
     });
     $('v360-reset').addEventListener('click', function () {
       var v = v360Cur(); if (!v) return;
@@ -477,6 +509,8 @@
         clip.view.yaw = (Number(q.get('yaw')) || 0) * DEG;
         clip.view.pitch = (Number(q.get('pitch')) || 0) * DEG;
         clip.view.fov = Math.min(120, Math.max(30, Number(q.get('fov')) || 80)) * DEG;
+        clip.view.tilt = (Number(q.get('tilt')) || 0) * DEG;
+        clip.view.tdir = (Number(q.get('tdir')) || 0) * DEG;
         v360Load(clip); renderClips();
       }
       setMsg($('in-msg'), '読み込みました。向きを確かめて、比率を選んで書き出してください。', 'ok');
@@ -580,7 +614,7 @@
         var view = c.view;
         c.project = function (frame, tRel, dur) {
           var v = viewAt(view, dur > 0 ? Math.min(1, Math.max(0, tRel / dur)) : 0);
-          return pj.draw(frame, v.yaw, v.pitch, v.fov);
+          return pj.draw(frame, v.yaw, v.pitch, v.fov, view.tilt, view.tdir);
         };
       });
       setMsg(exMsg, '準備しています…', 'info');

@@ -173,6 +173,14 @@
       <input id="v360-fov" type="range" min="30" max="120" value="80" style="flex:1; min-width:120px">
       <button id="v360-reset" class="mini" type="button">正面にもどす</button>
     </div>
+    <p class="hint" style="margin:14px 0 6px"><strong>水平を直す</strong>：横を向くと斜めになるときは、元の映像の「上」がずれています。
+      空の真上（または足元の真下）が真ん中に来るよう向けてから押してください。</p>
+    <div class="row">
+      <button id="v360-lv-up" class="mini" type="button">ここを真上にする</button>
+      <button id="v360-lv-down" class="mini" type="button">ここを真下にする</button>
+      <button id="v360-lv-off" class="mini" type="button">補正をやめる</button>
+      <span class="hint" id="v360-lv-state"></span>
+    </div>
     <label class="hint" style="display:block; margin-top:12px">
       <input id="v360-useend" type="checkbox"> 終わりの視点も決める（始まりから終わりへ、ゆっくり向きが動く）
     </label>

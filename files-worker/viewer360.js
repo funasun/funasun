@@ -51,6 +51,12 @@ export const VIEWER360_CSS = `
   .v360 .v360-tap { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:74px; height:74px; border-radius:50%; border:0;
     background:rgba(6,6,8,.55); color:#f4f4f5; font-size:28px; cursor:pointer; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
   .v360 .v360-tap[hidden] { display:none; }
+  .v360 .v360-level { position:absolute; left:10px; right:10px; top:52px; padding:10px 12px; border-radius:12px; background:rgba(6,6,8,.78);
+    border:1px solid rgba(255,255,255,.16); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); font-size:12.5px; line-height:1.7; text-align:left; }
+  .v360 .v360-level[hidden] { display:none; }
+  .v360 .v360-level p { margin:0 0 8px; color:#f4f4f5; }
+  .v360 .v360-level-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .v360 .v360-level-state { color:#adbcff; }
   .v360-note { margin:8px 0 0; font-size:12px; color:rgba(244,244,245,.5); line-height:1.8; }
   .v360-note a, .v360-note button { color:#adbcff; background:none; border:0; padding:0; font:inherit; cursor:pointer; text-decoration:underline; }
   .v360.full .v360-note { display:none; }
@@ -103,6 +109,7 @@ export const VIEWER360_JS = `
           'varying vec2 vP;',
           'uniform sampler2D uTex;',
           'uniform float uYaw; uniform float uPitch; uniform float uFov; uniform float uAspect; uniform int uMode;',
+          'uniform float uTilt; uniform float uTdir;',   /* 水平補正: 元の「上」が真上からどれだけ(uTilt)・どちらへ(uTdir)ずれているか */
           'const float PI = 3.14159265358979;',
           'mat3 rotX(float a){ float c=cos(a), s=sin(a); return mat3(1.0,0.0,0.0, 0.0,c,s, 0.0,-s,c); }',
           'mat3 rotY(float a){ float c=cos(a), s=sin(a); return mat3(c,0.0,-s, 0.0,1.0,0.0, s,0.0,c); }',
@@ -138,6 +145,7 @@ export const VIEWER360_JS = `
           '    d = normalize(vec3(p.x * t * uAspect, p.y * t, -1.0));',
           '    d = rotY(-uYaw) * rotX(uPitch) * d;',
           '  }',
+          '  if (uTilt != 0.0) { d = rotY(uTdir) * rotX(-uTilt) * rotY(-uTdir) * d; }',
           '  float lon = atan(d.x, -d.z); float lat = asin(clamp(d.y, -1.0, 1.0));',
           '  uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);',
           '  gl_FragColor = texture2D(uTex, uv);',
@@ -158,7 +166,7 @@ export const VIEWER360_JS = `
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
         var aP = gl.getAttribLocation(prog, 'aP'); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
         var U = {};
-        ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect', 'uMode'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
+        ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect', 'uMode', 'uTilt', 'uTdir'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
 
         var tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -207,6 +215,10 @@ export const VIEWER360_JS = `
         var fov = 80 * Math.PI / 180; // 通常: 縦の画角
         var planet = 1.0, fish = Math.PI * 0.75, flatZoom = 1.0;
         var vyaw = 0, vpitch = 0;     // 指を離したあとの惰性
+        /* 水平補正。天頂補正なしで保存された映像（THETA でアプリの補正を通していない物など）は
+           元の「上」が真上からずれていて、横を向くと地平線が斜めになる。
+           tilt = ずれの角度、tdir = ずれている方角。0 なら補正なし */
+        var tilt = 0, tdir = 0;
         var autoSpin = kind === 'image';
         var touched = false;
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -233,6 +245,7 @@ export const VIEWER360_JS = `
           if (!texReady) { gl.clearColor(0.02, 0.02, 0.03, 1); gl.clear(gl.COLOR_BUFFER_BIT); return; }
           gl.uniform1f(U.uYaw, yaw); gl.uniform1f(U.uPitch, pitch);
           gl.uniform1f(U.uFov, fovNow()); gl.uniform1f(U.uAspect, W / H); gl.uniform1i(U.uMode, mode);
+          gl.uniform1f(U.uTilt, mode === 3 ? 0 : tilt); gl.uniform1f(U.uTdir, tdir);
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
 
@@ -346,6 +359,7 @@ export const VIEWER360_JS = `
         function rx(a) { var c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; }
         function ry(a) { var c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; }
         function rz(a) { var c = Math.cos(a), s = Math.sin(a); return [c, -s, 0, s, c, 0, 0, 0, 1]; }
+        function mulv(m, v) { return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]]; }
         function applyGyro() {
           var e = gyroLast; if (!e) return;
           var D = Math.PI / 180;
@@ -394,8 +408,44 @@ export const VIEWER360_JS = `
         gyroBtn.addEventListener('click', toggleGyro);
         var fullBtn = document.createElement('button'); fullBtn.type = 'button'; fullBtn.className = 'v360-btn'; fullBtn.textContent = '全画面';
         fullBtn.addEventListener('click', toggleFull);
-        top.appendChild(badge); top.appendChild(sp); top.appendChild(sel); top.appendChild(gyroBtn); top.appendChild(fullBtn);
+        var lvBtn = document.createElement('button'); lvBtn.type = 'button'; lvBtn.className = 'v360-btn'; lvBtn.textContent = '水平';
+        top.appendChild(badge); top.appendChild(sp); top.appendChild(sel); top.appendChild(lvBtn); top.appendChild(gyroBtn); top.appendChild(fullBtn);
         root.appendChild(top);
+
+        /* ---- 水平を直す（天頂補正）---- */
+        var lv = document.createElement('div'); lv.className = 'v360-level'; lv.hidden = true;
+        lv.innerHTML = '<p>横を向くと斜めになるときは、元の映像の「上」がずれています。'
+          + '<b>空の真上</b>（または足元の真下）が画面の真ん中に来るように向けてから、ボタンを押してください。</p>';
+        var lvRow = document.createElement('div'); lvRow.className = 'v360-level-row';
+        var upBtn = document.createElement('button'); upBtn.type = 'button'; upBtn.className = 'v360-btn'; upBtn.textContent = 'ここを真上にする';
+        var dnBtn = document.createElement('button'); dnBtn.type = 'button'; dnBtn.className = 'v360-btn'; dnBtn.textContent = 'ここを真下にする';
+        var offBtn = document.createElement('button'); offBtn.type = 'button'; offBtn.className = 'v360-btn'; offBtn.textContent = '補正をやめる';
+        var lvState = document.createElement('span'); lvState.className = 'v360-level-state';
+        lvRow.appendChild(upBtn); lvRow.appendChild(dnBtn); lvRow.appendChild(offBtn); lvRow.appendChild(lvState);
+        lv.appendChild(lvRow); root.appendChild(lv);
+        lvBtn.addEventListener('click', function () { lv.hidden = !lv.hidden; lvBtn.classList.toggle('on', !lv.hidden); });
+        /* いま画面の真ん中に見えている方向（補正後の座標）を、元の球の座標に戻して
+           「その方向が本当の上（または下）」として記憶する */
+        function viewDir() {
+          var d = [0, 0, -1];
+          d = mulv(rx(pitch), d); d = mulv(ry(-yaw), d);
+          if (tilt) d = mulv(mul(mul(ry(tdir), rx(-tilt)), ry(-tdir)), d);
+          return d;
+        }
+        function setLevelFrom(sign) {
+          var u = viewDir(); if (sign < 0) u = [-u[0], -u[1], -u[2]];
+          var t = Math.acos(Math.max(-1, Math.min(1, u[1])));
+          var p = Math.atan2(-u[0], -u[2]);
+          tilt = t; tdir = p;
+          // 補正後は「真上を見ている」状態になるので、地平線へ戻しておく
+          pitch = sign > 0 ? Math.PI / 2 - 0.001 : -(Math.PI / 2 - 0.001);
+          pitch = 0; touched = true;
+          lvState.textContent = '補正中（' + Math.round(t / Math.PI * 180) + '°）';
+          draw();
+        }
+        upBtn.addEventListener('click', function () { setLevelFrom(1); });
+        dnBtn.addEventListener('click', function () { setLevelFrom(-1); });
+        offBtn.addEventListener('click', function () { tilt = 0; tdir = 0; lvState.textContent = ''; draw(); });
 
         function setMode(m) {
           mode = m; touched = true;
@@ -496,7 +546,8 @@ export const VIEWER360_JS = `
           if (kind === 'video') {
             var abs = new URL(src, location.href).href;
             var u = 'https://tsutsumufunakoshi.com/tools/video/?src=' + encodeURIComponent(abs)
-              + '&yaw=' + deg(yaw) + '&pitch=' + deg(pitch) + '&fov=' + deg(fov);
+              + '&yaw=' + deg(yaw) + '&pitch=' + deg(pitch) + '&fov=' + deg(fov)
+              + (tilt ? '&tilt=' + deg(tilt) + '&tdir=' + deg(tdir) : '');
             window.open(u, '_blank', 'noopener');
             return;
           }

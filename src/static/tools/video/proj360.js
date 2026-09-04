@@ -16,6 +16,7 @@
     'varying vec2 vP;',
     'uniform sampler2D uTex;',
     'uniform float uYaw; uniform float uPitch; uniform float uFov; uniform float uAspect;',
+    'uniform float uTilt; uniform float uTdir;',      // 水平補正（元の「上」のずれ）
     'const float PI = 3.14159265358979;',
     'mat3 rotX(float a){ float c=cos(a), s=sin(a); return mat3(1.0,0.0,0.0, 0.0,c,s, 0.0,-s,c); }',
     'mat3 rotY(float a){ float c=cos(a), s=sin(a); return mat3(c,0.0,-s, 0.0,1.0,0.0, s,0.0,c); }',
@@ -23,6 +24,7 @@
     '  float t = tan(uFov * 0.5);',
     '  vec3 d = normalize(vec3(vP.x * t * uAspect, vP.y * t, -1.0));',
     '  d = rotY(-uYaw) * rotX(uPitch) * d;',            // yaw は右回りが正、pitch は上向きが正
+    '  if (uTilt != 0.0) { d = rotY(uTdir) * rotX(-uTilt) * rotY(-uTdir) * d; }',
     '  float lon = atan(d.x, -d.z); float lat = asin(clamp(d.y, -1.0, 1.0));',
     '  vec2 uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);',
     '  gl_FragColor = texture2D(uTex, uv);',
@@ -54,7 +56,7 @@
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     var aP = gl.getAttribLocation(prog, 'aP'); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
     var U = {};
-    ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
+    ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect', 'uTilt', 'uTdir'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
     var tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -95,12 +97,14 @@
     }
 
     /* src: VideoFrame / <video> / <img> / canvas。yaw・pitch・fov はラジアン（fov は縦の画角） */
-    function draw(src, yaw, pitch, fov) {
+    function draw(src, yaw, pitch, fov, tilt, tdir) {
       if (src) upload(src);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform1f(U.uYaw, yaw || 0);
       gl.uniform1f(U.uPitch, pitch || 0);
       gl.uniform1f(U.uFov, fov || (80 * Math.PI / 180));
+      gl.uniform1f(U.uTilt, tilt || 0);
+      gl.uniform1f(U.uTdir, tdir || 0);
       gl.uniform1f(U.uAspect, canvas.width / canvas.height);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       return canvas;
