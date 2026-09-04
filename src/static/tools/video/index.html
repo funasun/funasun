@@ -25,6 +25,7 @@
     background: none; color: #f4f4f5; cursor: pointer; }
   .mini:hover { background: rgba(255,255,255,.06); }
   .mini:disabled { opacity: .4; cursor: default; }
+  .mini.on { border-color: #6f8cff; color: #adbcff; }
   .field { width: 100%; box-sizing: border-box; font: 400 14px 'Noto Sans JP', sans-serif; padding: 11px 12px; border-radius: 10px;
     border: 1px solid rgba(255,255,255,.2); background: #0e0e13; color: #f4f4f5; }
   .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -77,7 +78,7 @@
       <input id="url" class="field" style="flex:1; min-width:200px" type="url" placeholder="ファイル共有の受け取りURL（https://…/f/…）">
       <button id="load-url" class="mini" type="button">読み込む</button>
     </div>
-    <p class="hint" style="margin:8px 0 0">対応: MP4 / MOV（iPhone撮影・画面収録・このサイトで共有した動画）。</p>
+    <p class="hint" style="margin:8px 0 0">対応: MP4 / MOV（iPhone撮影・画面収録・このサイトで共有した動画）。THETA などの360°動画は、向きを決めて普通の動画に切り出せます。</p>
     <p id="in-msg" class="msg" role="status"></p>
   </div>
 
@@ -161,10 +162,41 @@
     <p class="hint" id="fx-preview-note" style="margin:10px 0 0"></p>
   </div>
 
+  <div class="card" id="v360-card" hidden>
+    <h2>3.7 360°の視点 <span class="hint" id="v360-name"></span></h2>
+    <p class="hint" style="margin:0 0 12px">
+      このクリップは全天球（360°）の動画です。<strong>ドラッグで向きを決める</strong>と、その向きで切り出した普通の動画になります。
+      ピンチ／ホイールで画角（ズーム）。書き出しの比率は下の「4. 書き出す」で選べます（縦・横どちらも）。</p>
+    <canvas id="v360-prev" style="display:block; width:100%; max-width:560px; margin:0 auto; border-radius:10px; background:#000; touch-action:none; cursor:grab"></canvas>
+    <div class="row" style="margin-top:10px">
+      <label class="hint" style="margin:0">画角 <span id="v360-fov-val">80°</span></label>
+      <input id="v360-fov" type="range" min="30" max="120" value="80" style="flex:1; min-width:120px">
+      <button id="v360-reset" class="mini" type="button">正面にもどす</button>
+    </div>
+    <label class="hint" style="display:block; margin-top:12px">
+      <input id="v360-useend" type="checkbox"> 終わりの視点も決める（始まりから終わりへ、ゆっくり向きが動く）
+    </label>
+    <div class="row" id="v360-endrow" style="margin-top:8px" hidden>
+      <button id="v360-edit-start" class="mini on" type="button">始まりの向きを編集</button>
+      <button id="v360-edit-end" class="mini" type="button">終わりの向きを編集</button>
+      <span class="hint" id="v360-which">いま動かしているのは「始まり」</span>
+    </div>
+  </div>
+
   <div class="card" id="export-card" hidden>
     <h2>4. 書き出す</h2>
     <div class="row">
       <input id="outname" class="field" style="flex:1; min-width:180px" type="text" value="編集した動画.mp4">
+      <select id="outaspect" class="field" style="width:auto" title="画面の比率">
+        <option value="orig" selected>比率: 元のまま</option>
+        <option value="16:9">16:9（横・YouTube）</option>
+        <option value="9:16">9:16（縦・ショート/リール）</option>
+        <option value="1:1">1:1（正方形）</option>
+        <option value="4:5">4:5（縦・Instagram）</option>
+        <option value="4:3">4:3（横）</option>
+        <option value="3:4">3:4（縦）</option>
+        <option value="21:9">21:9（シネマ横長）</option>
+      </select>
       <select id="outsize" class="field" style="width:auto">
         <option value="0">元の大きさ</option>
         <option value="1920" selected>フルHD（1920）まで</option>
@@ -189,6 +221,7 @@
 {{FOOTER}}
 <script src="mp4.js"></script>
 <script src="render.js"></script>
+<script src="proj360.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

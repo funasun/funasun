@@ -487,6 +487,30 @@ export const VIEWER360_JS = `
         var rs = document.createElement('button'); rs.type = 'button'; rs.textContent = '向きをもどす'; rs.style.marginLeft = '10px';
         rs.addEventListener('click', function () { touched = true; resetView(); });
         note.appendChild(rs);
+        /* この向きを「普通の」写真・動画にする。
+           写真はこの場で保存、動画はサイトの動画編集（向きと比率を選んで書き出す）へ渡す。 */
+        var mk = document.createElement('button'); mk.type = 'button'; mk.style.marginLeft = '10px';
+        mk.textContent = kind === 'video' ? 'この向きで普通の動画に切り出す ↗' : 'この向きを写真として保存';
+        mk.addEventListener('click', function () {
+          var deg = function (r) { return Math.round(r * 180 / Math.PI * 10) / 10; };
+          if (kind === 'video') {
+            var abs = new URL(src, location.href).href;
+            var u = 'https://tsutsumufunakoshi.com/tools/video/?src=' + encodeURIComponent(abs)
+              + '&yaw=' + deg(yaw) + '&pitch=' + deg(pitch) + '&fov=' + deg(fov);
+            window.open(u, '_blank', 'noopener');
+            return;
+          }
+          var keep = mode; mode = 0; draw(); mode = keep;
+          canvas.toBlob(function (b) {
+            if (!b) { flash('保存できませんでした'); draw(); return; }
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = String(name || 'photo').replace(/\\.[A-Za-z0-9]+$/, '') + '_view.jpg';
+            document.body.appendChild(a); a.click(); a.remove();
+            draw();
+          }, 'image/jpeg', 0.92);
+        });
+        note.appendChild(mk);
 
         if (kind === 'image') { el.style.display = 'none'; }
         box.insertBefore(root, el);

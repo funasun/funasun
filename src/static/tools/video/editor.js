@@ -60,9 +60,12 @@
       var clip = {
         movie: movie, reader: reader, name: name, srcUrl: srcUrl,
         in: 0, out: movie.video.duration, vDur: movie.video.duration,
-        effects: newEffects()
+        effects: newEffects(),
+        // 横:縦 = 2:1 なら全天球（THETA など）。向きを決めて普通の動画に切り出す
+        view: is360(movie) ? newView() : null
       };
       clips.push(clip);
+      if (clip.view && $('outaspect').value === 'orig') $('outaspect').value = '16:9';
       renderClips();
       selectClip(clips.length - 1);
       return clip;
@@ -77,9 +80,40 @@
   function hasEffects(c) {
     var e = c.effects || {};
     return !!(e.text && e.text.trim()) || Number(e.volume) !== 1 || Number(e.speed) !== 1
-      || Number(e.fadeIn) > 0 || Number(e.fadeOut) > 0;
+      || Number(e.fadeIn) > 0 || Number(e.fadeOut) > 0 || !!c.view;
   }
-  function anyEffects() { return clips.some(hasEffects); }
+  // 比率を変えるときも作り直し（コマを描き直す）
+  function anyEffects() { return clips.some(hasEffects) || $('outaspect').value !== 'orig'; }
+
+  /* ---------- 360°（全天球）の視点 ---------- */
+  function is360(movie) {
+    var w = movie.video.width, h = movie.video.height;
+    return w > 0 && h > 0 && Math.abs(w / h - 2) < 0.06;
+  }
+  var DEG = Math.PI / 180;
+  function newView() { return { yaw: 0, pitch: 0, fov: 80 * DEG, end: null }; }
+  function copyView(v) { return v ? { yaw: v.yaw, pitch: v.pitch, fov: v.fov, end: v.end ? { yaw: v.end.yaw, pitch: v.end.pitch, fov: v.end.fov } : null } : null; }
+  // k=0 で始まり、k=1 で終わりの向き（終わりが無ければずっと始まりのまま）
+  function viewAt(v, k) {
+    if (!v.end) return v;
+    var dy = v.end.yaw - v.yaw;
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));   // 近いほうへ回る
+    return { yaw: v.yaw + dy * k, pitch: v.pitch + (v.end.pitch - v.pitch) * k, fov: v.fov + (v.end.fov - v.fov) * k };
+  }
+  var ASPECTS = { '16:9': [16, 9], '9:16': [9, 16], '1:1': [1, 1], '4:5': [4, 5], '4:3': [4, 3], '3:4': [3, 4], '21:9': [21, 9] };
+  function even(n) { return Math.max(2, Math.round(n / 2) * 2); }
+  /* 書き出しの大きさ。比率を選んだときは「短いほう」を基準の大きさにする
+     （16:9 なら 1920×1080、9:16 なら 1080×1920） */
+  function outDims() {
+    var asp = $('outaspect').value;
+    if (asp === 'orig' || !ASPECTS[asp]) return null;
+    var sel = Number($('outsize').value) || 0;
+    var base = sel === 1280 ? 720 : sel === 854 ? 480 : 1080;
+    var a = ASPECTS[asp][0], b = ASPECTS[asp][1];
+    var W, H;
+    if (a >= b) { H = base; W = base * a / b; } else { W = base; H = base * b / a; }
+    return { W: even(W), H: even(H) };
+  }
 
   /* ---------- クリップ一覧 ---------- */
   function renderClips() {
@@ -100,6 +134,7 @@
       if (Number(e.volume) !== 1) marks.push(Number(e.volume) === 0 ? '無音' : '音量' + Math.round(e.volume * 100) + '%');
       if (Number(e.speed) !== 1) marks.push(e.speed + '倍');
       if (Number(e.fadeIn) > 0 || Number(e.fadeOut) > 0) marks.push('フェード');
+      if (c.view) marks.push('360°→' + Math.round(c.view.yaw / DEG) + '°の向き' + (c.view.end ? '（動く）' : ''));
       inf.querySelector('.rg').textContent =
         fmt(c.in) + '秒 〜 ' + fmt(c.out) + '秒（' + fmt(c.out - c.in) + '秒）'
         + (marks.length ? '　／　' + marks.join('・') : '');
@@ -123,7 +158,7 @@
     $('total').textContent = fmt(total) + '秒';
     $('clips-card').hidden = clips.length === 0;
     $('export-card').hidden = clips.length === 0;
-    if (clips.length === 0) { $('edit-card').hidden = true; $('fx-card').hidden = true; }
+    if (clips.length === 0) { $('edit-card').hidden = true; $('fx-card').hidden = true; $('v360-card').hidden = true; }
     updateModeNote();
   }
 
@@ -138,7 +173,7 @@
     var c = clips[i];
     var ef = {}; Object.keys(c.effects || {}).forEach(function (k) { ef[k] = c.effects[k]; });
     clips.splice(i + 1, 0, { movie: c.movie, reader: c.reader, name: c.name, srcUrl: c.srcUrl,
-      in: c.in, out: c.out, vDur: c.vDur, effects: ef });
+      in: c.in, out: c.out, vDur: c.vDur, effects: ef, view: copyView(c.view) });
     if (current > i) current++;
     renderClips();
   }
@@ -229,7 +264,11 @@
       var totalSec = clips.reduce(function (s, c) {
         return s + (c.out - c.in) / (Number(c.effects.speed) || 1);
       }, 0);
-      note.innerHTML = '書き出し方: <strong>作り直し</strong>（テロップなどの効果を使っているため）。'
+      var why = clips.some(function (c) { return c.view; }) ? '360°の切り出しをするため'
+        : ($('outaspect').value !== 'orig' ? '比率を変えるため' : 'テロップなどの効果を使っているため');
+      var dims = outDims();
+      note.innerHTML = '書き出し方: <strong>作り直し</strong>（' + why + '）。'
+        + (dims ? '出来上がりは ' + dims.W + '×' + dims.H + '。' : '')
         + 'おおよそ ' + Math.ceil(totalSec) + '秒ぶんを作り直します。端末によっては時間がかかります。';
     } else {
       note.innerHTML = '書き出し方: <strong>無劣化</strong>（効果なし）。一瞬で終わり、画質は元のままです。';
@@ -243,6 +282,8 @@
     $('fx-card').hidden = false;
     $('fx-name').textContent = '— ' + (i + 1) + '. ' + c.name;
     fxLoad(c);
+    $('v360-card').hidden = !c.view;
+    if (c.view) { $('v360-name').textContent = '— ' + (i + 1) + '. ' + c.name; v360Load(c); }
     updateModeNote();
     $('edit-name').textContent = '— ' + (i + 1) + '. ' + c.name;
     if (player.getAttribute('src') !== c.srcUrl) {
@@ -255,6 +296,115 @@
     renderClips();
     $('edit-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  /* ---- 360° の視点を決める画面。プレビューは player のコマを切り出して描く ---- */
+  var v360 = { proj: null, editing: 'start', drag: null };
+  function v360Cur() {       // いま編集中の向き（始まり or 終わり）
+    var c = clips[current]; if (!c || !c.view) return null;
+    if (v360.editing === 'end') { if (!c.view.end) c.view.end = { yaw: c.view.yaw, pitch: c.view.pitch, fov: c.view.fov }; return c.view.end; }
+    return c.view;
+  }
+  function v360Size() {
+    var cv = $('v360-prev');
+    var dims = outDims() || { W: 16, H: 9 };
+    var w = Math.min(560, Math.max(200, cv.parentElement.getBoundingClientRect().width || 560));
+    // 縦長の比率では、画面の6割の高さに収まる幅まで縮める（縦にはみ出さないように）
+    var maxH = Math.max(240, Math.round((window.innerHeight || 800) * 0.6));
+    if (w * dims.H / dims.W > maxH) w = Math.round(maxH * dims.W / dims.H);
+    var h = Math.round(w * dims.H / dims.W);
+    if (cv.width !== Math.round(w) || cv.height !== h) {
+      cv.width = Math.round(w); cv.height = h;
+      cv.style.aspectRatio = dims.W + ' / ' + dims.H;
+      if (v360.proj) v360.proj.resize(cv.width, cv.height);
+    }
+  }
+  function v360Draw(withFrame) {
+    if (current < 0 || !clips[current].view || $('v360-card').hidden) return;
+    if (!v360.proj) { v360.proj = Proj360.create($('v360-prev').width || 560, $('v360-prev').height || 315, $('v360-prev')); if (!v360.proj) return; }
+    v360Size();
+    var v = v360Cur(); if (!v) return;
+    try { v360.proj.draw(withFrame && player.readyState >= 2 ? player : null, v.yaw, v.pitch, v.fov); } catch (e) { }
+  }
+  function v360Load(c) {
+    v360.editing = 'start';
+    $('v360-useend').checked = !!c.view.end;
+    $('v360-endrow').hidden = !c.view.end;
+    v360Which();
+    $('v360-fov').value = Math.round(c.view.fov / DEG); $('v360-fov-val').textContent = $('v360-fov').value + '°';
+    v360Size();
+    setTimeout(function () { v360Draw(true); }, 50);
+  }
+  function v360Which() {
+    $('v360-edit-start').classList.toggle('on', v360.editing === 'start');
+    $('v360-edit-end').classList.toggle('on', v360.editing === 'end');
+    $('v360-which').textContent = 'いま動かしているのは「' + (v360.editing === 'end' ? '終わり' : '始まり') + '」';
+    var v = v360Cur(); if (v) { $('v360-fov').value = Math.round(v.fov / DEG); $('v360-fov-val').textContent = $('v360-fov').value + '°'; }
+  }
+  (function () {
+    var cv = $('v360-prev');
+    var ptrs = {}, pinchD = 0;
+    cv.addEventListener('pointerdown', function (e) {
+      cv.setPointerCapture(e.pointerId); ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var keys = Object.keys(ptrs);
+      if (keys.length === 1) v360.drag = { x: e.clientX, y: e.clientY };
+      else if (keys.length === 2) { var a = ptrs[keys[0]], b = ptrs[keys[1]]; pinchD = Math.hypot(a.x - b.x, a.y - b.y); }
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!ptrs[e.pointerId]) return;
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var v = v360Cur(); if (!v) return;
+      var keys = Object.keys(ptrs);
+      if (keys.length >= 2) {
+        var a = ptrs[keys[0]], b = ptrs[keys[1]]; var d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinchD > 0) v360Zoom(d / pinchD); pinchD = d; return;
+      }
+      if (!v360.drag) return;
+      var dx = e.clientX - v360.drag.x, dy = e.clientY - v360.drag.y;
+      v360.drag = { x: e.clientX, y: e.clientY };
+      var k = v.fov / Math.max(1, cv.getBoundingClientRect().height);   // 画面の1pxが何ラジアンか
+      v.yaw -= dx * k; v.pitch += dy * k;                                // 指についてくる向き
+      var lim = Math.PI / 2 - 0.001; if (v.pitch > lim) v.pitch = lim; if (v.pitch < -lim) v.pitch = -lim;
+      v360Draw(false); renderClips();
+    });
+    function up(e) { delete ptrs[e.pointerId]; if (!Object.keys(ptrs).length) { v360.drag = null; pinchD = 0; } }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', function (e) { e.preventDefault(); v360Zoom(Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    function v360Zoom(f) {
+      var v = v360Cur(); if (!v) return;
+      v.fov = Math.min(120 * DEG, Math.max(30 * DEG, v.fov / f));
+      $('v360-fov').value = Math.round(v.fov / DEG); $('v360-fov-val').textContent = $('v360-fov').value + '°';
+      v360Draw(false);
+    }
+    $('v360-fov').addEventListener('input', function () {
+      var v = v360Cur(); if (!v) return;
+      v.fov = Number($('v360-fov').value) * DEG; $('v360-fov-val').textContent = $('v360-fov').value + '°';
+      v360Draw(false);
+    });
+    $('v360-reset').addEventListener('click', function () {
+      var v = v360Cur(); if (!v) return;
+      v.yaw = 0; v.pitch = 0; v.fov = 80 * DEG; v360Which(); v360Draw(false); renderClips();
+    });
+    $('v360-useend').addEventListener('change', function () {
+      var c = clips[current]; if (!c || !c.view) return;
+      if ($('v360-useend').checked) { v360.editing = 'end'; v360Cur(); player.currentTime = c.out - 0.05; }
+      else { c.view.end = null; v360.editing = 'start'; }
+      $('v360-endrow').hidden = !$('v360-useend').checked;
+      v360Which(); v360Draw(true); renderClips(); updateModeNote();
+    });
+    $('v360-edit-start').addEventListener('click', function () { v360.editing = 'start'; v360Which(); if (clips[current]) player.currentTime = clips[current].in; v360Draw(true); });
+    $('v360-edit-end').addEventListener('click', function () { v360.editing = 'end'; v360Which(); if (clips[current]) player.currentTime = clips[current].out - 0.05; v360Draw(true); });
+    // プレビューのコマを、再生中はコマごと、止まっているときは移動時に描き直す
+    ['seeked', 'loadeddata'].forEach(function (ev) { player.addEventListener(ev, function () { v360Draw(true); }); });
+    if (typeof player.requestVideoFrameCallback === 'function') {
+      var onFrame = function () { if (!player.paused) v360Draw(true); player.requestVideoFrameCallback(onFrame); };
+      player.requestVideoFrameCallback(onFrame);
+    } else {
+      player.addEventListener('timeupdate', function () { v360Draw(true); });
+    }
+    $('outaspect').addEventListener('change', function () { v360Size(); v360Draw(true); updateModeNote(); });
+    $('outsize').addEventListener('change', function () { updateModeNote(); });
+    window.addEventListener('resize', function () { v360Size(); v360Draw(false); });
+  })();
 
   function applyTrim() {
     if (current < 0) return;
@@ -315,6 +465,24 @@
     player.currentTime = clips[0].in;
     player.play();
   });
+
+  /* ---------- 受け取りページの360°ビューアから「この向きで切り出す」で来たとき ---------- */
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var src = q.get('src');
+    if (!src) return;
+    setMsg($('in-msg'), '共有された動画を読み込んでいます…', 'info');
+    Promise.resolve().then(function () { return addFromUrl(src); }).then(function (clip) {
+      if (clip.view) {
+        clip.view.yaw = (Number(q.get('yaw')) || 0) * DEG;
+        clip.view.pitch = (Number(q.get('pitch')) || 0) * DEG;
+        clip.view.fov = Math.min(120, Math.max(30, Number(q.get('fov')) || 80)) * DEG;
+        v360Load(clip); renderClips();
+      }
+      setMsg($('in-msg'), '読み込みました。向きを確かめて、比率を選んで書き出してください。', 'ok');
+      history.replaceState(null, '', location.pathname);
+    }).catch(function (e) { setMsg($('in-msg'), e.message || '読み込めませんでした。', 'err'); });
+  })();
 
   /* ---------- 入力 ---------- */
   $('pick').addEventListener('click', function () { $('file').click(); });
@@ -398,8 +566,25 @@
     // 効果を使っているなら「作り直し」の道へ
     if (anyEffects()) {
       var maxW = Number($('outsize').value) || 100000;
+      var dims = outDims();
+      var opts = dims ? { width: dims.W, height: dims.H } : { maxWidth: maxW };
+      // 360°のクリップは、コマごとに「その時点の向き」で切り出してから描く
+      var projs = [];
+      clips.forEach(function (c) {
+        if (!c.view) { delete c.project; return; }
+        var W = dims ? dims.W : Math.min(maxW, 1920), H = dims ? dims.H : even(W * 9 / 16);
+        var pj = Proj360.create(W, H);
+        if (!pj) { setMsg(exMsg, 'この端末では360°の切り出しに対応していません（WebGL が使えません）。', 'err'); $('export').disabled = false; return; }
+        projs.push(pj);
+        if (!dims) { opts = { width: W, height: H }; }
+        var view = c.view;
+        c.project = function (frame, tRel, dur) {
+          var v = viewAt(view, dur > 0 ? Math.min(1, Math.max(0, tRel / dur)) : 0);
+          return pj.draw(frame, v.yaw, v.pitch, v.fov);
+        };
+      });
       setMsg(exMsg, '準備しています…', 'info');
-      MP4Render.render(clips, { maxWidth: maxW }, function (p, label) {
+      MP4Render.render(clips, opts, function (p, label) {
         barI.style.width = Math.round(p * 100) + '%';
         setMsg(exMsg, (label || '作り直しています') + '… ' + Math.round(p * 100) + '%', 'info');
       }).then(function (blob) {

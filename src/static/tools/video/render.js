@@ -20,15 +20,34 @@
 
   /* この端末で書き出せるか（形式ごと）を先に確かめる。
      できないのに始めてしまうと、長く待たせた末に失敗するので。 */
+  /* H.264 の「レベル」は絵の大きさで決まる（1280×720 までなら 3.1、フルHD は 4.0、
+     4K は 5.1）。小さいレベルのまま大きい絵を頼むと、符号器が断る端末がある。
+     大きさから必要なレベルを選び、Baseline → Main → High の順に使えるものを探す。 */
+  var LEVELS = [['1f', 3600, 108000], ['20', 5120, 216000], ['28', 8192, 245760], ['2a', 8704, 522240],
+    ['32', 22080, 589824], ['33', 22080, 983040], ['34', 36864, 2073600], ['3c', 139264, 4177920]];
+  function levelFor(w, h, fps) {
+    var mbs = Math.ceil(w / 16) * Math.ceil(h / 16), rate = mbs * (fps || 30);
+    for (var i = 0; i < LEVELS.length; i++) if (mbs <= LEVELS[i][1] && rate <= LEVELS[i][2]) return LEVELS[i][0];
+    return LEVELS[LEVELS.length - 1][0];
+  }
+  function pickCodec(width, height) {
+    var lv = levelFor(width, height, 30);
+    var cands = ['avc1.4200' + lv, 'avc1.4d00' + lv, 'avc1.6400' + lv, 'avc1.42001f'];
+    return cands.reduce(function (chain, codec) {
+      return chain.then(function (found) {
+        if (found) return found;
+        return VideoEncoder.isConfigSupported({ codec: codec, width: even(width), height: even(height), bitrate: 4000000 })
+          .then(function (r) { return r.supported ? codec : null; }).catch(function () { return null; });
+      });
+    }, Promise.resolve(null));
+  }
   function checkSupport(width, height) {
     if (!supported()) {
       return Promise.resolve({ ok: false, why: 'この端末のブラウザは動画の作り直しに対応していません。Chrome か Safari の新しい版でお試しください。' });
     }
-    return VideoEncoder.isConfigSupported({
-      codec: 'avc1.42001f', width: even(width), height: even(height), bitrate: 4000000
-    }).then(function (r) {
-      if (!r.supported) return { ok: false, why: 'この端末では、この大きさの動画を書き出せませんでした。書き出しの大きさを小さくしてお試しください。' };
-      return { ok: true };
+    return pickCodec(width, height).then(function (codec) {
+      if (!codec) return { ok: false, why: 'この端末では、この大きさの動画を書き出せませんでした。書き出しの大きさを小さくしてお試しください。' };
+      return { ok: true, codec: codec };
     }).catch(function () {
       return { ok: false, why: 'この端末では動画の作り直しに対応していないようです。' };
     });
@@ -119,11 +138,17 @@
   function paint(cx, frame, W, H, clip, tRel, dur) {
     cx.clearRect(0, 0, W, H);
     // 元のコマを、はみ出さないように中央へ
-    var fw = frame.displayWidth || frame.codedWidth;
-    var fh = frame.displayHeight || frame.codedHeight;
-    var k = Math.min(W / fw, H / fh);
-    var dw = fw * k, dh = fh * k;
-    cx.drawImage(frame, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    if (clip.project) {
+      /* 360°の切り出しなど、コマを別の絵に作り替えてから描く道
+         （返ってきた絵は出力と同じ大きさで、そのまま全面に敷く） */
+      cx.drawImage(clip.project(frame, tRel, dur), 0, 0, W, H);
+    } else {
+      var fw = frame.displayWidth || frame.codedWidth;
+      var fh = frame.displayHeight || frame.codedHeight;
+      var k = Math.min(W / fw, H / fh);
+      var dw = fw * k, dh = fh * k;
+      cx.drawImage(frame, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
 
     var ef = clip.effects || {};
 
@@ -351,7 +376,9 @@
     var v0 = clips[0].movie.video;
     var maxW = Number(opts.maxWidth) || 1920;
     var scale = Math.min(1, maxW / v0.width);
-    var W = even(v0.width * scale), H = even(v0.height * scale);
+    // 出力の大きさを直接指定できる（360°の切り出しは元と別の縦横比になる）
+    var W = opts.width ? even(Number(opts.width)) : even(v0.width * scale);
+    var H = opts.height ? even(Number(opts.height)) : even(v0.height * scale);
     var bitrate = Number(opts.bitrate) || Math.min(12000000, Math.max(2000000, W * H * 4));
 
     return checkSupport(W, H).then(function (sup) {
@@ -378,7 +405,7 @@
         error: function (e) { encErr = e; }
       });
       enc.configure({
-        codec: 'avc1.42001f', width: W, height: H, bitrate: bitrate,
+        codec: sup.codec || 'avc1.42001f', width: W, height: H, bitrate: bitrate,
         framerate: 30, latencyMode: 'quality'
       });
 
