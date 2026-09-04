@@ -174,8 +174,13 @@
       <button id="v360-reset" class="mini" type="button">正面にもどす</button>
     </div>
     <p class="hint" style="margin:14px 0 6px"><strong>水平を直す</strong>：横を向くと斜めになるときは、元の映像の「上」がずれています。
-      空の真上（または足元の真下）が真ん中に来るよう向けてから押してください。</p>
+      つまみを左右に動かすと、いま見ている向きを中心に絵が回ります（iPhone の写真アプリの傾き直しと同じ）。
+      前を向いて水平にし、横を向いてもう一度合わせると決まります。</p>
     <div class="row">
+      <input id="v360-dial" type="range" min="-45" max="45" step="0.5" value="0" style="flex:1; min-width:160px" aria-label="水平の回転">
+      <span class="hint" id="v360-dial-val">0°</span>
+    </div>
+    <div class="row" style="margin-top:8px">
       <button id="v360-lv-up" class="mini" type="button">ここを真上にする</button>
       <button id="v360-lv-down" class="mini" type="button">ここを真下にする</button>
       <button id="v360-lv-off" class="mini" type="button">補正をやめる</button>

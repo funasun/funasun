@@ -57,6 +57,7 @@ export const VIEWER360_CSS = `
   .v360 .v360-level p { margin:0 0 8px; color:#f4f4f5; }
   .v360 .v360-level-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .v360 .v360-level-state { color:#adbcff; }
+  .v360 .v360-dial { flex:1; min-width:140px; accent-color:#6f8cff; }
   .v360-note { margin:8px 0 0; font-size:12px; color:rgba(244,244,245,.5); line-height:1.8; }
   .v360-note a, .v360-note button { color:#adbcff; background:none; border:0; padding:0; font:inherit; cursor:pointer; text-decoration:underline; }
   .v360.full .v360-note { display:none; }
@@ -109,7 +110,7 @@ export const VIEWER360_JS = `
           'varying vec2 vP;',
           'uniform sampler2D uTex;',
           'uniform float uYaw; uniform float uPitch; uniform float uFov; uniform float uAspect; uniform int uMode;',
-          'uniform float uTilt; uniform float uTdir;',   /* 水平補正: 元の「上」が真上からどれだけ(uTilt)・どちらへ(uTdir)ずれているか */
+          'uniform mat3 uCorr;',   /* 水平補正（元の球をどう回すか）。単位行列なら補正なし */
           'const float PI = 3.14159265358979;',
           'mat3 rotX(float a){ float c=cos(a), s=sin(a); return mat3(1.0,0.0,0.0, 0.0,c,s, 0.0,-s,c); }',
           'mat3 rotY(float a){ float c=cos(a), s=sin(a); return mat3(c,0.0,-s, 0.0,1.0,0.0, s,0.0,c); }',
@@ -145,7 +146,7 @@ export const VIEWER360_JS = `
           '    d = normalize(vec3(p.x * t * uAspect, p.y * t, -1.0));',
           '    d = rotY(-uYaw) * rotX(uPitch) * d;',
           '  }',
-          '  if (uTilt != 0.0) { d = rotY(uTdir) * rotX(-uTilt) * rotY(-uTdir) * d; }',
+          '  d = uCorr * d;',
           '  float lon = atan(d.x, -d.z); float lat = asin(clamp(d.y, -1.0, 1.0));',
           '  uv = vec2(fract(lon / (2.0 * PI) + 0.5), 0.5 - lat / PI);',
           '  gl_FragColor = texture2D(uTex, uv);',
@@ -166,7 +167,7 @@ export const VIEWER360_JS = `
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
         var aP = gl.getAttribLocation(prog, 'aP'); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
         var U = {};
-        ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect', 'uMode', 'uTilt', 'uTdir'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
+        ['uTex', 'uYaw', 'uPitch', 'uFov', 'uAspect', 'uMode', 'uCorr'].forEach(function (n) { U[n] = gl.getUniformLocation(prog, n); });
 
         var tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -218,7 +219,10 @@ export const VIEWER360_JS = `
         /* 水平補正。天頂補正なしで保存された映像（THETA でアプリの補正を通していない物など）は
            元の「上」が真上からずれていて、横を向くと地平線が斜めになる。
            tilt = ずれの角度、tdir = ずれている方角。0 なら補正なし */
-        var tilt = 0, tdir = 0;
+        var I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+        var corr = I3.slice();            // 行優先の 3x3。単位行列なら補正なし
+        function isIdent(m) { for (var i = 0; i < 9; i++) if (Math.abs(m[i] - I3[i]) > 1e-9) return false; return true; }
+        function colMajor(m) { return new Float32Array([m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]]); }
         var autoSpin = kind === 'image';
         var touched = false;
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -245,7 +249,7 @@ export const VIEWER360_JS = `
           if (!texReady) { gl.clearColor(0.02, 0.02, 0.03, 1); gl.clear(gl.COLOR_BUFFER_BIT); return; }
           gl.uniform1f(U.uYaw, yaw); gl.uniform1f(U.uPitch, pitch);
           gl.uniform1f(U.uFov, fovNow()); gl.uniform1f(U.uAspect, W / H); gl.uniform1i(U.uMode, mode);
-          gl.uniform1f(U.uTilt, mode === 3 ? 0 : tilt); gl.uniform1f(U.uTdir, tdir);
+          gl.uniformMatrix3fv(U.uCorr, false, colMajor(mode === 3 ? I3 : corr));
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         }
 
@@ -418,6 +422,13 @@ export const VIEWER360_JS = `
         var lv = document.createElement('div'); lv.className = 'v360-level'; lv.hidden = true;
         lv.innerHTML = '<p>横を向くと斜めになるときは、元の映像の「上」がずれています。'
           + '<b>空の真上</b>（または足元の真下）が画面の真ん中に来るように向けてから、ボタンを押してください。</p>';
+        lv.innerHTML = '<p><b>回して水平にする</b>：つまみを左右に動かすと、いま見ている向きを中心に絵が回ります。'
+          + '前を向いて地平線を水平にし、次に横を向いてもう一度合わせると決まります。</p>';
+        var dial = document.createElement('input'); dial.type = 'range'; dial.min = '-45'; dial.max = '45'; dial.step = '0.5'; dial.value = '0'; dial.className = 'v360-dial';
+        dial.setAttribute('aria-label', '水平の回転');
+        var dialVal = document.createElement('span'); dialVal.className = 'v360-level-state'; dialVal.textContent = '0°';
+        var dialRow = document.createElement('div'); dialRow.className = 'v360-level-row'; dialRow.appendChild(dial); dialRow.appendChild(dialVal);
+        lv.appendChild(dialRow);
         var lvRow = document.createElement('div'); lvRow.className = 'v360-level-row';
         var upBtn = document.createElement('button'); upBtn.type = 'button'; upBtn.className = 'v360-btn'; upBtn.textContent = 'ここを真上にする';
         var dnBtn = document.createElement('button'); dnBtn.type = 'button'; dnBtn.className = 'v360-btn'; dnBtn.textContent = 'ここを真下にする';
@@ -426,28 +437,45 @@ export const VIEWER360_JS = `
         lvRow.appendChild(upBtn); lvRow.appendChild(dnBtn); lvRow.appendChild(offBtn); lvRow.appendChild(lvState);
         lv.appendChild(lvRow); root.appendChild(lv);
         lvBtn.addEventListener('click', function () { lv.hidden = !lv.hidden; lvBtn.classList.toggle('on', !lv.hidden); });
-        /* いま画面の真ん中に見えている方向（補正後の座標）を、元の球の座標に戻して
-           「その方向が本当の上（または下）」として記憶する */
+        /* いま画面の真ん中に見えている方向を、元の球の座標で返す */
         function viewDir() {
           var d = [0, 0, -1];
           d = mulv(rx(pitch), d); d = mulv(ry(-yaw), d);
-          if (tilt) d = mulv(mul(mul(ry(tdir), rx(-tilt)), ry(-tdir)), d);
-          return d;
+          return mulv(corr, d);
         }
+        // 任意の軸のまわりの回転（ロドリゲスの式）
+        function axisRot(ax, a) {
+          var x = ax[0], y = ax[1], z = ax[2], c = Math.cos(a), s = Math.sin(a), t = 1 - c;
+          return [t * x * x + c, t * x * y - s * z, t * x * z + s * y,
+                  t * x * y + s * z, t * y * y + c, t * y * z - s * x,
+                  t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+        }
+        function lvNote() { lvState.textContent = isIdent(corr) ? '' : '補正あり'; }
+        /* 「ここを真上（真下）にする」: 見ている方向を本当の上として、球を回す */
         function setLevelFrom(sign) {
           var u = viewDir(); if (sign < 0) u = [-u[0], -u[1], -u[2]];
           var t = Math.acos(Math.max(-1, Math.min(1, u[1])));
           var p = Math.atan2(-u[0], -u[2]);
-          tilt = t; tdir = p;
-          // 補正後は「真上を見ている」状態になるので、地平線へ戻しておく
-          pitch = sign > 0 ? Math.PI / 2 - 0.001 : -(Math.PI / 2 - 0.001);
+          corr = mul(mul(ry(p), rx(-t)), ry(-p));
           pitch = 0; touched = true;
-          lvState.textContent = '補正中（' + Math.round(t / Math.PI * 180) + '°）';
-          draw();
+          lvNote(); draw();
         }
+        /* ダイヤル: つまんだ時点の状態を覚え、見ている向きを軸に回す（離すと 0 に戻る＝相対） */
+        var dialBase = null, dialAxis = null;
+        function dialStart() { if (!dialBase) { dialBase = corr.slice(); dialAxis = viewDir(); } }
+        dial.addEventListener('pointerdown', dialStart);
+        dial.addEventListener('keydown', dialStart);
+        dial.addEventListener('input', function () {
+          dialStart();
+          var a = Number(dial.value) * Math.PI / 180;
+          dialVal.textContent = (Number(dial.value) > 0 ? '+' : '') + dial.value + '°';
+          corr = mul(axisRot(dialAxis, a), dialBase);
+          touched = true; lvNote(); draw();
+        });
+        dial.addEventListener('change', function () { dialBase = null; dialAxis = null; dial.value = '0'; dialVal.textContent = '0°'; });
         upBtn.addEventListener('click', function () { setLevelFrom(1); });
         dnBtn.addEventListener('click', function () { setLevelFrom(-1); });
-        offBtn.addEventListener('click', function () { tilt = 0; tdir = 0; lvState.textContent = ''; draw(); });
+        offBtn.addEventListener('click', function () { corr = I3.slice(); lvNote(); draw(); });
 
         function setMode(m) {
           mode = m; touched = true;
@@ -549,7 +577,7 @@ export const VIEWER360_JS = `
             var abs = new URL(src, location.href).href;
             var u = 'https://tsutsumufunakoshi.com/tools/video/?src=' + encodeURIComponent(abs)
               + '&yaw=' + deg(yaw) + '&pitch=' + deg(pitch) + '&fov=' + deg(fov)
-              + (tilt ? '&tilt=' + deg(tilt) + '&tdir=' + deg(tdir) : '');
+              + (isIdent(corr) ? '' : '&corr=' + corr.map(function (v) { return Math.round(v * 100000) / 100000; }).join(','));
             window.open(u, '_blank', 'noopener');
             return;
           }

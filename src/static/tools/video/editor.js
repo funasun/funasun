@@ -91,21 +91,32 @@
     return w > 0 && h > 0 && Math.abs(w / h - 2) < 0.06;
   }
   var DEG = Math.PI / 180;
-  // tilt/tdir は水平補正（元の映像の「上」のずれ）。クリップ全体で1つ
-  function newView() { return { yaw: 0, pitch: 0, fov: 80 * DEG, end: null, tilt: 0, tdir: 0 }; }
-  function copyView(v) { return v ? { yaw: v.yaw, pitch: v.pitch, fov: v.fov, tilt: v.tilt || 0, tdir: v.tdir || 0, end: v.end ? { yaw: v.end.yaw, pitch: v.end.pitch, fov: v.end.fov } : null } : null; }
+  // corr は水平補正（元の球をどう回すか。行優先 3x3）。クリップ全体で1つ
+  var I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  function isIdent(m) { for (var i = 0; i < 9; i++) if (Math.abs(m[i] - I3[i]) > 1e-9) return false; return true; }
+  function newView() { return { yaw: 0, pitch: 0, fov: 80 * DEG, end: null, corr: I3.slice() }; }
+  function copyView(v) { return v ? { yaw: v.yaw, pitch: v.pitch, fov: v.fov, corr: (v.corr || I3).slice(), end: v.end ? { yaw: v.end.yaw, pitch: v.end.pitch, fov: v.end.fov } : null } : null; }
   // 3x3 行列（行優先）
   function mul3(a, b) { var r = []; for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]; return r; }
   function mulv3(m, v) { return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]]; }
   function rx3(a) { var c = Math.cos(a), s = Math.sin(a); return [1, 0, 0, 0, c, -s, 0, s, c]; }
   function ry3(a) { var c = Math.cos(a), s = Math.sin(a); return [c, 0, s, 0, 1, 0, -s, 0, c]; }
-  /* いま画面の真ん中に見えている方向を「本当の上（sign=+1）／下（-1）」として、補正の角度を決める */
+  // 任意の軸のまわりの回転（ロドリゲスの式）
+  function axisRot3(ax, a) {
+    var x = ax[0], y = ax[1], z = ax[2], c = Math.cos(a), s = Math.sin(a), t = 1 - c;
+    return [t * x * x + c, t * x * y - s * z, t * x * z + s * y,
+            t * x * y + s * z, t * y * y + c, t * y * z - s * x,
+            t * x * z - s * y, t * y * z + s * x, t * z * z + c];
+  }
+  // いま画面の真ん中に見えている方向（元の球の座標）
+  function viewDir3(view, cur) { return mulv3(view.corr || I3, mulv3(ry3(-cur.yaw), mulv3(rx3(cur.pitch), [0, 0, -1]))); }
+  /* いま画面の真ん中に見えている方向を「本当の上（sign=+1）／下（-1）」として、球を回す */
   function levelFrom(view, cur, sign) {
-    var d = mulv3(ry3(-cur.yaw), mulv3(rx3(cur.pitch), [0, 0, -1]));
-    if (view.tilt) d = mulv3(mul3(mul3(ry3(view.tdir), rx3(-view.tilt)), ry3(-view.tdir)), d);
+    var d = viewDir3(view, cur);
     if (sign < 0) d = [-d[0], -d[1], -d[2]];
-    view.tilt = Math.acos(Math.max(-1, Math.min(1, d[1])));
-    view.tdir = Math.atan2(-d[0], -d[2]);
+    var t = Math.acos(Math.max(-1, Math.min(1, d[1])));
+    var p = Math.atan2(-d[0], -d[2]);
+    view.corr = mul3(mul3(ry3(p), rx3(-t)), ry3(-p));
     cur.pitch = 0;
   }
   // k=0 で始まり、k=1 で終わりの向き（終わりが無ければずっと始まりのまま）
@@ -339,7 +350,7 @@
     v360Size();
     var v = v360Cur(); if (!v) return;
     var cv0 = clips[current].view;
-    try { v360.proj.draw(withFrame && player.readyState >= 2 ? player : null, v.yaw, v.pitch, v.fov, cv0.tilt, cv0.tdir); } catch (e) { }
+    try { v360.proj.draw(withFrame && player.readyState >= 2 ? player : null, v.yaw, v.pitch, v.fov, cv0.corr); } catch (e) { }
   }
   function v360Load(c) {
     v360.editing = 'start';
@@ -352,7 +363,7 @@
     setTimeout(function () { v360Draw(true); }, 50);
   }
   function v360LevelState(v) {
-    $('v360-lv-state').textContent = v.tilt ? '補正中（' + Math.round(v.tilt / DEG) + '°のずれを直しています）' : '補正なし';
+    $('v360-lv-state').textContent = isIdent(v.corr || I3) ? '補正なし' : '補正あり';
   }
   function v360Which() {
     $('v360-edit-start').classList.toggle('on', v360.editing === 'start');
@@ -410,7 +421,25 @@
     });
     $('v360-lv-off').addEventListener('click', function () {
       var c = clips[current]; if (!c || !c.view) return;
-      c.view.tilt = 0; c.view.tdir = 0; v360LevelState(c.view); v360Draw(false);
+      c.view.corr = I3.slice(); v360LevelState(c.view); v360Draw(false);
+    });
+    /* ダイヤル: つまんだ時点の補正と向きを覚え、見ている向きを軸に回す。離すと 0 に戻る（相対） */
+    var dialBase = null, dialAxis = null;
+    function dialStart() {
+      var c = clips[current]; var v = v360Cur(); if (!c || !v || dialBase) return;
+      dialBase = (c.view.corr || I3).slice(); dialAxis = viewDir3(c.view, v);
+    }
+    $('v360-dial').addEventListener('pointerdown', dialStart);
+    $('v360-dial').addEventListener('keydown', dialStart);
+    $('v360-dial').addEventListener('input', function () {
+      dialStart(); var c = clips[current]; if (!c || !c.view || !dialBase) return;
+      var a = Number($('v360-dial').value) * DEG;
+      $('v360-dial-val').textContent = (a > 0 ? '+' : '') + $('v360-dial').value + '°';
+      c.view.corr = mul3(axisRot3(dialAxis, a), dialBase);
+      v360LevelState(c.view); v360Draw(false);
+    });
+    $('v360-dial').addEventListener('change', function () {
+      dialBase = null; dialAxis = null; $('v360-dial').value = '0'; $('v360-dial-val').textContent = '0°';
     });
     $('v360-reset').addEventListener('click', function () {
       var v = v360Cur(); if (!v) return;
@@ -509,8 +538,8 @@
         clip.view.yaw = (Number(q.get('yaw')) || 0) * DEG;
         clip.view.pitch = (Number(q.get('pitch')) || 0) * DEG;
         clip.view.fov = Math.min(120, Math.max(30, Number(q.get('fov')) || 80)) * DEG;
-        clip.view.tilt = (Number(q.get('tilt')) || 0) * DEG;
-        clip.view.tdir = (Number(q.get('tdir')) || 0) * DEG;
+        var cq = String(q.get('corr') || '').split(',').map(Number);
+        if (cq.length === 9 && cq.every(function (x) { return isFinite(x); })) clip.view.corr = cq;
         v360Load(clip); renderClips();
       }
       setMsg($('in-msg'), '読み込みました。向きを確かめて、比率を選んで書き出してください。', 'ok');
@@ -614,7 +643,7 @@
         var view = c.view;
         c.project = function (frame, tRel, dur) {
           var v = viewAt(view, dur > 0 ? Math.min(1, Math.max(0, tRel / dur)) : 0);
-          return pj.draw(frame, v.yaw, v.pitch, v.fov, view.tilt, view.tdir);
+          return pj.draw(frame, v.yaw, v.pitch, v.fov, view.corr);
         };
       });
       setMsg(exMsg, '準備しています…', 'info');
