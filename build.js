@@ -843,6 +843,9 @@ function classicNews() {
    説明文は data.json の texts から取るので /admin から書き換えられる。 */
 const CLASSIC_PREVIEWS = [
   { label: 'About', href: 'about.html', t: null, fallback: '研究・政治・芸術を守備範囲とする高校生' },
+  /* Story は About の下にある読み物。文言は About のカードと同じ1か所から取る。
+     写真はホームの顔写真（隣の Archive と同じ写真が並ばないように） */
+  { label: 'Story', href: 'story.html', t: 'about.storyTitle', photo: 'portrait' },
   { label: 'Research', href: 'research.html', t: 'index.research.lead', photo: 'research' },
   { label: 'Archive', href: 'archive.html', t: null, fallback: '政治・生徒会・音楽。活動の記録はこちら。', photo: 'politics' }
 ];
@@ -851,7 +854,10 @@ function classicPreviews() {
   return CLASSIC_PREVIEWS.map((p) => {
     /* 写真は brand 版の「柱の背景写真」と同じ場所から取る。
        どちらの見せ方でも同じ写真が出るし、差し替えも1回で済む。 */
-    const photo = p.photo ? ((data.home.pillarPhotos || {})[p.photo] || {}) : {};
+    const pp = data.home.pillarPhotos || {};
+    const photo = p.photo === 'portrait'
+      ? { src: (data.home.portrait || {}).src || 'images/jigazo2.webp', alt: (data.home.portrait || {}).alt || '船越温のポートレート' }
+      : (p.photo ? (pp[p.photo] || {}) : {});
     const thumb = photo.src
       ? `<span class="c-preview-thumb"><img src="${esc(photo.src)}" alt="${esc(photo.alt || '')}" loading="lazy"></span>`
       : '';
