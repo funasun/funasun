@@ -55,6 +55,45 @@
 
   function even(n) { return Math.max(2, Math.round(n / 2) * 2); }   // 幅・高さは偶数でないと符号器が嫌がる
 
+  /* 遠くの置き場所（NASの中継）のコマを1つずつ取りに行くと、往復だけで日が暮れる。
+     近い場所にあるコマを束ねて、少し先まで先回りして取り寄せる。
+     端末のファイルは切り出すだけなので、束ねずそのまま。 */
+  function samplePrefetcher(reader, track, startIdx, endIdx) {
+    var remote = !!reader.init;             // readerForUrl だけが init を持つ
+    if (!remote) return function (i) { return Promise.resolve(reader.part(track.offsets[i], track.sizes[i])); };
+    var GROUP = 6 * 1024 * 1024, GAP = 256 * 1024;
+    var groups = [], g = null;
+    for (var i = startIdx; i < endIdx; i++) {
+      var off = track.offsets[i], size = track.sizes[i];
+      if (g && off >= g.off && off - (g.off + g.len) <= GAP && (off + size - g.off) <= GROUP) {
+        g.len = Math.max(g.len, off + size - g.off); g.last = i;
+      } else {
+        g = { off: off, len: size, first: i, last: i, p: null }; groups.push(g);
+      }
+    }
+    var byIdx = {};
+    groups.forEach(function (gr, gi) { for (var k = gr.first; k <= gr.last; k++) byIdx[k] = gi; });
+    function fetchGroup(gi) {
+      var gr = groups[gi];
+      if (!gr.p) gr.p = reader.read(gr.off, gr.len);
+      return gr.p;
+    }
+    return function (i) {
+      var gi = byIdx[i];
+      if (gi === undefined) return Promise.resolve(reader.part(track.offsets[i], track.sizes[i]));
+      // 次の束も先に頼んでおく（2つ先まで）。復号している間に届く
+      if (gi + 1 < groups.length) fetchGroup(gi + 1);
+      if (gi + 2 < groups.length) fetchGroup(gi + 2);
+      return fetchGroup(gi).then(function (buf) {
+        var gr = groups[gi];
+        var st = track.offsets[i] - gr.off;
+        var out = buf.subarray(st, st + track.sizes[i]);
+        if (i === gr.last) gr.p = null;   // 使い切った束は手放す（メモリを溜めない）
+        return out;
+      });
+    };
+  }
+
   /* 1つのクリップの映像コマを、順番に取り出して渡す。
      切り出しは「直前のキーフレームから復号し、要らない前半は捨てる」。
      こうすると1コマ単位で正確に切れる。 */
@@ -74,6 +113,7 @@
       if (v.dts[i] / v.timescale >= clip.out) { endIdx = i; break; }
     }
 
+    var getV = samplePrefetcher(clip.reader, v, startIdx, endIdx);
     return new Promise(function (resolve, reject) {
       var done = 0, total = endIdx - startIdx, closed = false;
       var pending = [];
@@ -105,7 +145,7 @@
           }).catch(function (e) { reject(e); });
           return;
         }
-        Promise.resolve(clip.reader.part(v.offsets[i], v.sizes[i])).then(function (piece) {
+        getV(i).then(function (piece) {
           return piece instanceof Uint8Array ? piece
             : piece.arrayBuffer().then(function (b) { return new Uint8Array(b); });
         }).then(function (bytes) {
@@ -241,6 +281,7 @@
     var endIdx = a.count;
     for (i = startIdx; i < a.count; i++) { if (a.dts[i] / ts >= clip.out) { endIdx = i; break; } }
 
+    var getA = samplePrefetcher(clip.reader, a, startIdx, endIdx);
     return new Promise(function (resolve, reject) {
       var chunks = [];     // [{t, data:[Float32Array per ch]}]
       var closed = false;
@@ -273,7 +314,7 @@
           }).catch(function () { resolve(null); });
           return;
         }
-        Promise.resolve(clip.reader.part(a.offsets[i], a.sizes[i])).then(function (piece) {
+        getA(i).then(function (piece) {
           return piece instanceof Uint8Array ? piece : piece.arrayBuffer().then(function (b) { return new Uint8Array(b); });
         }).then(function (bytes) {
           if (closed) return;
