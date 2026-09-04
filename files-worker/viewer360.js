@@ -306,8 +306,10 @@ export const VIEWER360_JS = `
           if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
           var k = anglePerPx();
           // 指についてくる向き: 左へ引けば右側が見えてくる（yaw が増える＝右を向く）
-          vyaw = -dx * k; vpitch = dy * k;
-          yaw += vyaw; pitch += vpitch; clampPitch();
+          // 惰性は1コマあたりの上限を決めておく（勢いよく弾いても飛びすぎない）
+          var cap = 0.05;
+          vyaw = Math.max(-cap, Math.min(cap, -dx * k)); vpitch = Math.max(-cap, Math.min(cap, dy * k));
+          yaw -= dx * k; pitch += dy * k; clampPitch();
           gyroBase = null;
           draw();
         });
