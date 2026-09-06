@@ -11,7 +11,7 @@
    ・各ファイルに任意の「ダウンロード合言葉」と「有効期限」を付けられる。
      期限切れは毎日の cron ＋ アクセス時チェックで自動削除。
    ・どれだけ預かってよいかは Google に実際の空きを聞いて決める。
-     RESERVE の分だけは必ず残す＝Gmail 等の枠を食い潰さない。
+     管理画面で決めた予備容量の分だけは残す。
 
    【中身のプレビューについて】
    ダウンロードは今までどおり必ず添付（強制ダウンロード）で返す。
@@ -79,16 +79,11 @@ const TOKEN_KEYS = [
   'GOOGLE_REFRESH_TOKEN', 'GOOGLE_REFRESH_TOKEN_2', 'GOOGLE_REFRESH_TOKEN_3',
   'GOOGLE_REFRESH_TOKEN_4', 'GOOGLE_REFRESH_TOKEN_5'
 ];
-/* メールと写真のために必ず空けておく量。ここには絶対に手を付けない。
-   保管庫が満杯でメールが受け取れない、が一番困る壊れ方なので。 */
-const RESERVE = 3 * 1024 * 1024 * 1024;
-
-/* 有料プランで増えた容量は当てにしない。
-   増量はいつか終わる。終わったときに預かったものが上限を超えていると、
-   新しい保存ができなくなるだけでなくメールも受け取れなくなる。
-   「お金を払わなくても残る分」までしか使わないでおけば、そうならない。
-   有料分も使いたくなったら、この数字を上げればよい（戻すときは要注意）。 */
-const PLAN_FLOOR = 15 * 1024 * 1024 * 1024;
+/* 以前は 15GB までしか使わず、さらに 3GB を必ず空けていたため、
+   実質 12GB が上限だった。初期値はその安全な挙動を保ちつつ、管理画面から
+   Drive の使用上限と予備容量を自由に変えられるようにしている。 */
+const DEFAULT_STORAGE_CAP = 15 * 1024 * 1024 * 1024;
+const DEFAULT_RESERVE = 3 * 1024 * 1024 * 1024;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
@@ -245,16 +240,22 @@ async function allTokens(env) {
    預かったファイルを数え上げるのではなく、アカウント全体の使用量を聞く。
    15GB は Gmail や写真と共用なので、そちらの増減も込みで見ないと
    「まだ空いている」と思って預かった結果メールが止まる、が起こる。 */
-async function freeSpace(token) {
+async function freeSpace(token, cfg) {
   const res = await fetch('https://www.googleapis.com/drive/v3/about?fields=storageQuota',
     { headers: { Authorization: 'Bearer ' + token } });
   if (!res.ok) return null;
   const q = (await res.json().catch(function () { return {}; })).storageQuota || {};
   const usage = Number(q.usage || 0);
   const limit = Number(q.limit || 0);        // 上限なしのアカウントでは値が来ない
-  // 実際の上限と PLAN_FLOOR の小さいほう＝安心して使える量
-  const safe = limit ? Math.min(limit, PLAN_FLOOR) : PLAN_FLOOR;
-  return { limit: limit, safe: safe, usage: usage, free: Math.max(0, safe - usage - RESERVE) };
+  /* storageCapBytes が 0 なら、Google が返す実際の上限まで使う。
+     それ以外は、指定値と実際の上限の小さいほうにする。 */
+  const cap = Math.max(0, Number(cfg && cfg.storageCapBytes) || 0);
+  const reserve = Math.max(0, Number(cfg && cfg.reserveBytes) || 0);
+  // 上限なしの Workspace アカウントでは limit が来ないことがある。
+  // その場合に「0GB」と誤認して止めず、指定上限がなければ空き扱いにする。
+  const safe = cap ? (limit ? Math.min(limit, cap) : cap) : (limit || Number.MAX_SAFE_INTEGER);
+  return { limit: limit, safe: safe, usage: usage, reserve: reserve,
+    free: Math.max(0, safe - usage - reserve) };
 }
 
 /* ---- そのファイルがどのアカウントにあるかを探す ----
@@ -262,9 +263,9 @@ async function freeSpace(token) {
    自分が預かった分しか見えない＝「知りません」＝そこには無い、と言い切れる。
    順に聞けば必ず当たる。すでに配ったURLをそのまま使い続けられるのが利点。 */
 // size バイトを置ける保管先の鍵を返す。どこにも入らなければ null。
-async function pickAccount(accounts, size) {
+async function pickAccount(accounts, size, cfg) {
   for (const a of accounts) {
-    const sp = await freeSpace(a.token);
+    const sp = await freeSpace(a.token, cfg);
     if (sp && sp.free >= size) return a.token;
   }
   return null;
@@ -303,7 +304,10 @@ async function loadConfig(env) {
   if (cfgCache && Date.now() - cfgAt < CFG_TTL) return cfgCache;
   /* 読めなかったときは「合言葉が要る」に倒す。
      設定が読めないことを理由に誰でも上げられるようになる、は絶対に避ける。 */
-  let cfg = { requireCode: true, codeHash: '', maxBytes: 0 };
+  let cfg = {
+    requireCode: true, codeHash: '', maxBytes: 0,
+    storageCapBytes: DEFAULT_STORAGE_CAP, reserveBytes: DEFAULT_RESERVE
+  };
   try {
     const token = await getAccessToken(env, TOKEN_KEYS[0]);
     const p = ((await configFile(token)) || {}).appProperties || {};
@@ -311,7 +315,11 @@ async function loadConfig(env) {
       requireCode: p.requireCode !== '0',
       codeHash: p.codeHash || '',
       // 1ファイルの上限。0 は「決めない」＝仮置き場に入るかどうかだけが上限
-      maxBytes: Math.max(0, Number(p.maxBytes) || 0)
+      maxBytes: Math.max(0, Number(p.maxBytes) || 0),
+      storageCapBytes: p.storageCapBytes === undefined
+        ? DEFAULT_STORAGE_CAP : Math.max(0, Number(p.storageCapBytes) || 0),
+      reserveBytes: p.reserveBytes === undefined
+        ? DEFAULT_RESERVE : Math.max(0, Number(p.reserveBytes) || 0)
     };
   } catch (e) { /* 既定のまま＝合言葉が要る */ }
   cfgCache = cfg; cfgAt = Date.now();
@@ -324,7 +332,9 @@ async function saveConfig(env, cfg) {
     app: APP_TAG, kind: CONFIG_TAG,
     requireCode: cfg.requireCode ? '1' : '0',
     codeHash: cfg.codeHash || '',
-    maxBytes: String(Math.max(0, Number(cfg.maxBytes) || 0))
+    maxBytes: String(Math.max(0, Number(cfg.maxBytes) || 0)),
+    storageCapBytes: String(Math.max(0, Number(cfg.storageCapBytes) || 0)),
+    reserveBytes: String(Math.max(0, Number(cfg.reserveBytes) || 0))
   };
   const found = await configFile(token);
   const res = found
@@ -477,17 +487,18 @@ async function create(request, env, origin) {
      どれも足りなければ、期限切れを片付けてから一度だけ探し直す。
      （毎回片付けようとすると、全ファイルを見に行くので重い。詰まった時だけでよい。） */
   const accounts = await allTokens(env);
-  let token = await pickAccount(accounts, size);
+  const storageCfg = await loadConfig(env);
+  let token = await pickAccount(accounts, size, storageCfg);
   if (!token) {
     await cleanup(env);
-    token = await pickAccount(accounts, size);
+    token = await pickAccount(accounts, size, storageCfg);
   }
   if (!token) {
     /* 入らなかったときは「いまなら何GBまでなら入るか」を添える。
        仮置き場はNASへの引っ越しで毎時空くので、待てば直ることが多い。 */
     let best = 0;
     for (const a of accounts) {
-      const sp = await freeSpace(a.token);
+      const sp = await freeSpace(a.token, storageCfg);
       if (sp && sp.free > best) best = sp.free;
     }
     return json({ message: '仮置き場の空きが足りません（いま入るのは 約' + humanSize(best)
@@ -1622,6 +1633,7 @@ async function adminList(request, env, origin) {
   if (gate.err) return gate.err;
 
   const accounts = await allTokens(env);
+  const storageCfg = await loadConfig(env);
   const base = new URL(request.url).origin;
   const now = Date.now();
   const items = [];
@@ -1678,7 +1690,7 @@ async function adminList(request, env, origin) {
     const before = items.length;
     try { await listOwnFiles(a.token, function (f) { onFile(f); n++; }, 'name,createdTime'); }
     catch (e) { items.length = before; }
-    const sp = await freeSpace(a.token);
+    const sp = await freeSpace(a.token, storageCfg);
     if (sp) room += sp.free;
     stores.push({
       key: a.key, files: n,
@@ -1703,7 +1715,7 @@ async function adminList(request, env, origin) {
     files: items,
     used: used, usedText: humanSize(used),               // この道具が預かっている分
     cap: used + room, capText: humanSize(used + room),   // 預かれる見込みの合計
-    reserveText: humanSize(RESERVE),
+    reserveText: humanSize(storageCfg.reserveBytes),
     stores: stores
   }, 200, origin);
 }
@@ -1739,13 +1751,21 @@ async function adminConfig(request, env, origin) {
     /* 上限は GB で受け取る。0（や空）は「決めない」。
        仮置き場に入りきらない物は、この設定と関係なく create が断る。 */
     const gb = Number(b.maxGb);
+    const storageCapGb = Number(b.storageCapGb);
+    const reserveGb = Number(b.reserveGb);
     const next = {
       requireCode: !!b.requireCode,
       // 空のまま送られたら、今の合言葉をそのまま残す（うっかり消させない）
       codeHash: code ? await sha256hex(code) : cur.codeHash,
       maxBytes: (b.maxGb === undefined || b.maxGb === null || b.maxGb === '')
         ? cur.maxBytes
-        : Math.max(0, Math.round((isFinite(gb) ? gb : 0) * 1024 * 1024 * 1024))
+        : Math.max(0, Math.round((isFinite(gb) ? gb : 0) * 1024 * 1024 * 1024)),
+      storageCapBytes: (b.storageCapGb === undefined || b.storageCapGb === null || b.storageCapGb === '')
+        ? cur.storageCapBytes
+        : Math.max(0, Math.round((isFinite(storageCapGb) ? storageCapGb : 0) * 1024 * 1024 * 1024)),
+      reserveBytes: (b.reserveGb === undefined || b.reserveGb === null || b.reserveGb === '')
+        ? cur.reserveBytes
+        : Math.max(0, Math.round((isFinite(reserveGb) ? reserveGb : 0) * 1024 * 1024 * 1024))
     };
     if (next.requireCode && !next.codeHash && !env.UPLOAD_CODE) {
       return json({ message: '合言葉が空です。合言葉を決めるか、「合言葉なし」を選んでください。' }, 400, origin);
@@ -1757,6 +1777,8 @@ async function adminConfig(request, env, origin) {
   return json({
     requireCode: cfg.requireCode,
     maxBytes: cfg.maxBytes,
+    storageCapBytes: cfg.storageCapBytes,
+    reserveBytes: cfg.reserveBytes,
     hasCode: !!cfg.codeHash,
     // まだ管理画面で決めていない＝Cloudflare に登録した合言葉が使われている
     usingSecret: !cfg.codeHash && !!env.UPLOAD_CODE

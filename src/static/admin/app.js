@@ -578,6 +578,52 @@
       wrap.appendChild(lim);
       wrap.appendChild(el('p', { style: 'margin:10px 0 0' }, [limSave]));
       wrap.appendChild(limMsg);
+
+      /* ---- Drive 全体で使う量 ----
+         以前の「15GB まで使い、3GB は空ける」は実質12GBの固定上限だった。
+         ここでは 0 を「Drive が実際に許す上限まで」として、契約容量を
+         そのまま使いたい場合にも対応する。 */
+      var capGb = codeCache.storageCapBytes ? (codeCache.storageCapBytes / (1024 * 1024 * 1024)) : 0;
+      var reserveGb = codeCache.reserveBytes ? (codeCache.reserveBytes / (1024 * 1024 * 1024)) : 0;
+      var driveCap = el('input', { type: 'number', min: '0', step: '0.5', id: 'drive-cap-gb',
+        value: String(Math.round(capGb * 10) / 10) });
+      var driveReserve = el('input', { type: 'number', min: '0', step: '0.5', id: 'drive-reserve-gb',
+        value: String(Math.round(reserveGb * 10) / 10) });
+      var driveMsg = el('p', { class: 'fh' });
+      function driveText() {
+        driveMsg.textContent = 'いまは ' + (capGb ? (Math.round(capGb * 10) / 10) + ' GB まで使う設定' : 'Drive の実際の上限まで使う設定')
+          + ' ／ ' + (Math.round(reserveGb * 10) / 10) + ' GB を予備として空ける設定です。';
+      }
+      driveText();
+      var driveSave = el('button', { class: 'mini', type: 'button', text: 'Drive容量の設定を保存', onclick: function () {
+        var c = Number(driveCap.value), r = Number(driveReserve.value);
+        if (!isFinite(c) || c < 0 || !isFinite(r) || r < 0) {
+          driveMsg.textContent = 'どちらも 0 以上の数を入れてください。'; return;
+        }
+        driveSave.disabled = true;
+        driveMsg.textContent = '保存中…';
+        filesApi('/admin/config', { save: true, requireCode: codeCache.requireCode, code: '', storageCapGb: c, reserveGb: r })
+          .then(function (j) {
+            codeCache = j;
+            capGb = j.storageCapBytes ? (j.storageCapBytes / (1024 * 1024 * 1024)) : 0;
+            reserveGb = j.reserveBytes ? (j.reserveBytes / (1024 * 1024 * 1024)) : 0;
+            driveSave.disabled = false;
+            driveText();
+            setStatus('Driveへの一時アップロード容量の設定を保存しました。', 'ok');
+          })
+          .catch(function (e) { driveSave.disabled = false; driveMsg.textContent = e.message || '保存できませんでした。'; });
+      } });
+      wrap.appendChild(el('hr', { style: 'margin:22px 0 16px; border:0; border-top:1px solid rgba(255,255,255,.12)' }));
+      wrap.appendChild(el('label', { class: 'fl', text: 'Driveで使う上限（GB）' }, [
+        el('span', { class: 'fh', text: '0 にすると、Google Drive が実際に許す容量まで使います。' })
+      ]));
+      wrap.appendChild(driveCap);
+      wrap.appendChild(el('label', { class: 'fl', text: 'Driveに空けておく容量（GB）' }, [
+        el('span', { class: 'fh', text: 'GmailやGoogleフォトと容量を共用している場合の予備です。0 にすると空けません。' })
+      ]));
+      wrap.appendChild(driveReserve);
+      wrap.appendChild(el('p', { style: 'margin:10px 0 0' }, [driveSave]));
+      wrap.appendChild(driveMsg);
     }
 
     draw();
@@ -619,11 +665,10 @@
             : '使えません（鍵が切れているか、登録が未完了）') });
         })));
         box.appendChild(el('p', { class: 'fh', text:
-          'メールや写真のために ' + d.reserveText + ' は必ず空けてあります。ここには預かりません。' }));
+          'メールや写真のための予備容量は ' + d.reserveText + ' に設定されています。' }));
         if (d.stores.some(function (s) { return s.capped; })) {
           box.appendChild(el('p', { class: 'fh', text:
-            '有料プランで増えている分は使いません。プランが終わったときに容量オーバーになり、'
-            + 'メールが受け取れなくなるのを防ぐためです。' }));
+            'Google Driveの実際の容量より低い上限を設定しているため、その値までしか使いません。' }));
         }
       }
 
