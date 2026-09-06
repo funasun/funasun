@@ -80,10 +80,10 @@ const TOKEN_KEYS = [
   'GOOGLE_REFRESH_TOKEN_4', 'GOOGLE_REFRESH_TOKEN_5'
 ];
 /* 以前は 15GB までしか使わず、さらに 3GB を必ず空けていたため、
-   実質 12GB が上限だった。初期値はその安全な挙動を保ちつつ、管理画面から
-   Drive の使用上限と予備容量を自由に変えられるようにしている。 */
-const DEFAULT_STORAGE_CAP = 15 * 1024 * 1024 * 1024;
-const DEFAULT_RESERVE = 3 * 1024 * 1024 * 1024;
+   実質 12GB が上限だった。既存設定にも新しい設定項目がない間は
+   Drive の実容量まで・予備なしとして扱い、管理画面からは任意に変更できる。 */
+const DEFAULT_STORAGE_CAP = 0;
+const DEFAULT_RESERVE = 0;
 const PART_SIZE = 10 * 1024 * 1024;            // 分割サイズ 10MB（Google の 256KB 倍数条件を満たす）
 const ALLOWED_DAYS = [1, 3, 7, 30];            // 選べる有効期限（日）
 const APP_TAG = 'funasun';                     // 自分のファイルを見分ける印
